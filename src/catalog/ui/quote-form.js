@@ -2,8 +2,8 @@
  * Internal multi-step quote form.
  *
  * This is intentionally a screen, not a modal. The catalog selection remains
- * the source of truth for products while the form keeps contact data only in
- * memory until the quote adapter receives the final payload.
+ * the source of truth for products while the form keeps a local draft until
+ * the quote adapter receives the final payload.
  *
  * One step is visible at a time, centered, with nothing around it but the way
  * back to the catalog and the progress dots: the visitor should only ever have
@@ -12,15 +12,20 @@
  */
 
 import { findActiveClient } from '../core/fresa-clients.js';
+import { getDeliverySlots, normalizeDeliveryDate, normalizeDeliveryValue } from '../core/delivery-schedule.js';
 import { buildQuotePayload } from '../core/quote-payload.js';
+import { clearQuoteDraft, readQuoteDraft, writeQuoteDraft } from '../core/quote-draft.js';
+import { getQuotePricing } from '../core/pricing.js';
 import { describeQuoteItem } from '../core/format.js';
 import { maskPhoneForDisplay, maskTextForDisplay } from '../core/privacy.js';
 import { getCategoryLabel } from '../data/categories.js';
 import { resolveAdvisor } from '../data/advisors.js';
 import { resolveLocation } from '../data/locations.js';
 import { el, firstUsableImage, productMedia, replaceChildren } from './dom.js';
+import { deliverySchedulePicker } from './delivery-schedule.js';
 import { locationSelect } from './location-select.js';
 import { NO_PAYMENT_NOTE } from './states.js';
+import { openVariantPicker } from './variant-picker.js';
 
 const STEPS = [
   'Email',
@@ -30,6 +35,9 @@ const STEPS = [
   'Delivery information',
   'Other details',
 ];
+
+/** The step whose rail label follows the chosen order type. */
+const DELIVERY_STEP_INDEX = 4;
 
 // The client directory may need more than one request when Fresa paginates
 // the active-client list, and a failed page is retried once. Keep the lookup
@@ -41,33 +49,41 @@ const CLIENT_LOOKUP_TIMEOUT_MS = 12_000;
  * @param {ReturnType<typeof import('../app.js').createApp>['ctx']} ctx
  * @param {{
  *   onBack: () => void,
+ *   onOpenProductPicker?: (options?: { onClose?: () => void }) => void,
  *   onSubmit: (payload: ReturnType<typeof buildQuotePayload>, options: { targetWindow: Window|null }) => Promise<any>,
  * }} options
  */
 export function renderQuoteFormView(ctx, options) {
   const existingDestination = ctx.locationStore.getShippingDestination() ?? {};
+  const savedDraft = readQuoteDraft();
   const state = {
-    step: 0,
-    email: '',
-    recognized: false,
-    contact: { firstName: '', lastName: '', phone: '', company: '' },
-    orderType: 'Delivery',
+    step: savedDraft?.step ?? 0,
+    email: savedDraft?.email ?? '',
+    recognized: savedDraft?.recognized ?? false,
+    contact: savedDraft?.contact ?? { firstName: '', lastName: '', phone: '', company: '' },
+    orderType: savedDraft?.orderType ?? 'Delivery',
     delivery: {
       dateTime: '',
       address: '',
       city: existingDestination.city ?? '',
       state: existingDestination.state ?? '',
       zipCode: existingDestination.zipCode ?? '',
+      ...savedDraft?.delivery,
     },
-    notes: '',
+    notes: savedDraft?.notes ?? '',
     lookupPending: false,
-    clientLookup: 'idle',
+    clientLookup: savedDraft?.clientLookup ?? 'idle',
     submitPending: false,
     error: '',
     result: null,
   };
 
   const screen = el('section', { class: 'cat-quote-screen', 'aria-labelledby': 'cat-quote-title' });
+  screen.addEventListener('input', (event) => {
+    if (event.target?.name !== 'notes') return;
+    state.notes = event.target.value;
+    persistDraft();
+  });
   const formHost = el('div', { class: 'cat-quote-form-host' });
   const topBack = el('button', {
     type: 'button',
@@ -98,6 +114,7 @@ export function renderQuoteFormView(ctx, options) {
     const moved = state.step !== renderedStep;
     const direction = moved ? (state.step < renderedStep ? 'backward' : 'forward') : null;
     const isCatalogExit = state.result || state.step === 0;
+    if (!state.result) persistDraft();
     topBack.textContent = isCatalogExit ? '← Back to catalog' : '← Back';
     topBack.setAttribute('aria-label', isCatalogExit ? 'Back to catalog' : 'Back to previous question');
 
@@ -122,6 +139,10 @@ export function renderQuoteFormView(ctx, options) {
     render(true);
   }
 
+  function persistDraft() {
+    writeQuoteDraft(state);
+  }
+
   /**
    * A rail entry is built once and only has its state updated afterwards, so
    * moving between steps transitions the mark and the connector instead of
@@ -129,6 +150,7 @@ export function renderQuoteFormView(ctx, options) {
    */
   function railStep(label, index) {
     const mark = el('span', { class: 'cat-quote-rail-mark', 'aria-hidden': 'true', text: String(index + 1) });
+    const name = el('span', { class: 'cat-quote-rail-label', text: label });
     const button = el('button', {
       type: 'button',
       class: 'cat-quote-rail-button',
@@ -138,12 +160,17 @@ export function renderQuoteFormView(ctx, options) {
         state.error = '';
         render(true);
       },
-    }, [mark, el('span', { class: 'cat-quote-rail-label', text: label })]);
+    }, [mark, name]);
 
-    return { item: el('li', { class: 'cat-quote-rail-item' }, [button]), button, mark };
+    return { item: el('li', { class: 'cat-quote-rail-item' }, [button]), button, mark, name };
   }
 
   function updateRail() {
+    // The fifth step asks for a delivery address or only for a pickup day, so
+    // the rail says which one the visitor is in.
+    railSteps[DELIVERY_STEP_INDEX].name.textContent = state.orderType === 'Delivery'
+      ? 'Delivery information'
+      : 'Pickup information';
     railSteps.forEach((entry, index) => {
       const status = index === state.step ? 'current' : index < state.step ? 'complete' : 'upcoming';
       entry.item.dataset.state = status;
@@ -162,7 +189,9 @@ export function renderQuoteFormView(ctx, options) {
       ['Tell us a little about you', state.recognized ? 'We found your Esfenix profile and filled in your contact details.' : 'These details help our team get your quote right.'],
       ['Select your products', 'Review the products you selected and tell us where the request should be handled.'],
       ['How would you like to receive it?', 'Choose delivery or pickup so we can plan the next step.'],
-      ['Where should we deliver?', 'Choose a preferred date and give us the information our team needs.'],
+      state.orderType === 'Delivery'
+        ? ['Where should we deliver?', 'Choose a preferred date and give us the information our team needs.']
+        : ['When should we have it ready?', 'Choose the day you’ll collect your order and we’ll take it from there.'],
       ['Anything else we should know?', 'Add the details that will help us prepare the best quote.'],
     ][state.step];
 
@@ -240,6 +269,7 @@ export function renderQuoteFormView(ctx, options) {
         // previous profile before looking up the new one so contact and
         // shipping data from two people can never be mixed.
         clearProfileData();
+        persistDraft();
         button.disabled = true;
         button.textContent = 'Looking for you…';
 
@@ -419,7 +449,18 @@ export function renderQuoteFormView(ctx, options) {
           el('span', { class: 'cat-quote-section-count', text: `${items.length} selected` }),
         ]),
         productRows,
-        el('button', { type: 'button', class: 'cat-linkbtn cat-quote-add-products', text: '+ Add or edit products in catalog', onClick: options.onBack }),
+        el('button', {
+          type: 'button',
+          class: 'cat-linkbtn cat-quote-add-products',
+          text: '+ Add or edit products in catalog',
+          onClick: () => {
+            if (options.onOpenProductPicker) {
+              options.onOpenProductPicker({ onClose: () => render() });
+            } else {
+              options.onBack();
+            }
+          },
+        }),
       ]),
       stepActions('Continue to order type'),
     ]);
@@ -433,20 +474,48 @@ export function renderQuoteFormView(ctx, options) {
       (variant.lengthCm ?? null) === item.lengthCm,
     );
     const image = firstUsableImage(selectedVariant?.images) ?? firstUsableImage(product?.images);
-    const quantity = el('input', {
-      type: 'number',
-      min: '1',
-      step: '1',
-      class: 'cat-quote-product-quantity',
-      value: String(item.quantity),
+    const quantity = el('div', {
+      class: 'cat-qty cat-qty-sm cat-quote-product-quantity-control',
+      role: 'group',
       'aria-label': `Quantity for ${item.productName}`,
-      onChange: (event) => {
-        const value = Number.parseInt(event.currentTarget.value, 10);
-        if (Number.isInteger(value) && value > 0) ctx.quoteStore.setQuantity(item.id, value);
-        else event.currentTarget.value = String(item.quantity);
-        render();
-      },
-    });
+    }, [
+      el('button', {
+        type: 'button',
+        class: 'cat-qty-btn',
+        'aria-label': `Decrease quantity for ${item.productName}`,
+        disabled: item.quantity <= 1,
+        text: '-',
+        onClick: () => {
+          ctx.quoteStore.setQuantity(item.id, Math.max(1, item.quantity - 1));
+          render();
+        },
+      }),
+      el('input', {
+        type: 'number',
+        min: '1',
+        step: '1',
+        inputmode: 'numeric',
+        class: 'cat-qty-input',
+        value: String(item.quantity),
+        'aria-label': `Quantity for ${item.productName}`,
+        onChange: (event) => {
+          const value = Number.parseInt(event.currentTarget.value, 10);
+          if (Number.isInteger(value) && value > 0) ctx.quoteStore.setQuantity(item.id, value);
+          else event.currentTarget.value = String(item.quantity);
+          render();
+        },
+      }),
+      el('button', {
+        type: 'button',
+        class: 'cat-qty-btn',
+        'aria-label': `Increase quantity for ${item.productName}`,
+        text: '+',
+        onClick: () => {
+          ctx.quoteStore.setQuantity(item.id, item.quantity + 1);
+          render();
+        },
+      }),
+    ]);
 
     return el('li', { class: 'cat-quote-product-row' }, [
       productMedia(image, { label: item.productName, className: 'cat-quote-product-thumb', width: 96, height: 96 }),
@@ -457,18 +526,53 @@ export function renderQuoteFormView(ctx, options) {
       ]),
       el('div', { class: 'cat-quote-product-controls' }, [
         quantity,
+        product
+          ? el('button', {
+              type: 'button',
+              class: 'cat-linkbtn',
+              text: 'Edit',
+              onClick: () => editProduct(item, product),
+            })
+          : null,
         el('button', { type: 'button', class: 'cat-linkbtn cat-linkbtn-danger', text: 'Remove', onClick: () => { ctx.quoteStore.removeItem(item.id); render(); } }),
       ]),
     ]);
   }
 
+  /** Reuses the catalog's validated variant picker for an existing quote line. */
+  function editProduct(item, product) {
+    openVariantPicker({
+      product,
+      initial: {
+        variety: item.variety,
+        color: item.color,
+        lengthCm: item.lengthCm,
+        measure: item.measure,
+        quantity: item.quantity,
+      },
+      onAdd(selection) {
+        ctx.quoteStore.removeItem(item.id);
+        ctx.quoteStore.addItem(product, selection);
+        render();
+      },
+    });
+  }
+
   function orderTypeStep() {
+    const pricing = currentQuotePricing();
+    if (!pricing.deliveryAllowed && state.orderType === 'Delivery') {
+      state.orderType = 'Pickup';
+      persistDraft();
+    }
+
     return el('form', {
       class: 'cat-quote-step-form',
       onSubmit: (event) => {
         event.preventDefault();
         // The choice is radio buttons, which already write to state.orderType
         // as they change; there is nothing left to read here.
+        const latestPricing = currentQuotePricing();
+        if (!latestPricing.deliveryAllowed) state.orderType = 'Pickup';
         state.step = 4;
         state.error = '';
         render(true);
@@ -482,16 +586,24 @@ export function renderQuoteFormView(ctx, options) {
     ]);
   }
 
+  function currentQuotePricing() {
+    return getQuotePricing(ctx.quoteStore.getItems(), ctx.products);
+  }
+
   function choice(value, description) {
     const id = `cat-order-${value.toLowerCase()}`;
-    return el('label', { class: `cat-quote-choice ${state.orderType === value ? 'is-selected' : ''}` }, [
+    const disabled = value === 'Delivery' && !currentQuotePricing().deliveryAllowed;
+    return el('label', { class: `cat-quote-choice ${state.orderType === value ? 'is-selected' : ''} ${disabled ? 'is-disabled' : ''}` }, [
       el('input', {
         type: 'radio',
         name: 'orderType',
         value,
         checked: state.orderType === value,
+        disabled,
         onChange: () => {
+          if (disabled) return;
           state.orderType = value;
+          persistDraft();
           render();
         },
         id,
@@ -502,17 +614,67 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function deliveryStep() {
-    const deliveryRequired = state.orderType === 'Delivery';
+    const isDelivery = state.orderType === 'Delivery';
+    const clientTimeZone = ctx.clientTimeZone ?? 'UTC';
+    // Both order types run on the same working calendar, so both are booked
+    // through the schedule picker rather than a free-form date that could ask
+    // for a Sunday at 11 PM. Only delivery reserves a two-hour window: for
+    // pickup nothing is held against capacity, so only the day is asked for.
+    const scheduleOptions = { now: new Date(), timeZone: clientTimeZone };
+    const validValue = isDelivery
+      ? normalizeDeliveryValue(state.delivery.dateTime, scheduleOptions)
+      : normalizeDeliveryDate(state.delivery.dateTime, scheduleOptions);
+    state.delivery.dateTime = validValue;
+    state.delivery.slot = isDelivery && validValue
+      ? getDeliverySlots(validValue.slice(0, 10), scheduleOptions).find((slot) => slot.value === validValue)
+      : undefined;
     const hasSavedShipping = state.recognized && [
       state.delivery.address,
       state.delivery.city,
       state.delivery.state,
       state.delivery.zipCode,
     ].some(Boolean);
+    const scheduleInput = el('input', {
+      type: 'hidden',
+      name: 'dateTime',
+      value: state.delivery.dateTime,
+      required: true,
+    });
+    const scheduleField = el('div', { class: 'cat-quote-field cat-quote-schedule-field' }, [
+      el('div', { class: 'cat-quote-schedule-label' }, [
+        el('label', { text: isDelivery ? 'Preferred delivery date and time' : 'Preferred pickup date' }),
+        el('span', { text: isDelivery ? 'Mon–Fri · 8:00 AM–4:00 PM' : 'Mon–Fri' }),
+      ]),
+      deliverySchedulePicker({
+        value: state.delivery.dateTime,
+        timeZone: clientTimeZone,
+        mode: isDelivery ? 'window' : 'date',
+        onChange: (selection) => {
+          state.delivery.dateTime = selection.dateTime;
+          state.delivery.slot = selection.slot;
+          scheduleInput.value = selection.dateTime;
+          state.error = '';
+          persistDraft();
+        },
+      }),
+      scheduleInput,
+      el('small', {
+        text: isDelivery
+          ? 'Pick a two-hour window. Each window accepts up to 2 delivery requests.'
+          : 'Pick the day you’d like to collect your order. We’ll agree the exact time with you.',
+      }),
+    ]);
     return el('form', {
       class: 'cat-quote-step-form',
       onSubmit: (event) => {
         event.preventDefault();
+        if (!state.delivery.dateTime) {
+          state.error = isDelivery
+            ? 'Choose a delivery date and time window to continue.'
+            : 'Choose a pickup date to continue.';
+          render(true);
+          return;
+        }
         if (!event.currentTarget.checkValidity()) {
           event.currentTarget.reportValidity();
           return;
@@ -523,22 +685,22 @@ export function renderQuoteFormView(ctx, options) {
         render(true);
       },
     }, [
-      field({ label: 'Preferred date and time', name: 'dateTime', type: 'datetime-local', value: state.delivery.dateTime, required: true, help: 'We’ll confirm availability with you.' }),
-      state.orderType === 'Delivery'
+      scheduleField,
+      isDelivery
         ? el('div', { class: 'cat-quote-delivery-fields' }, [
             hasSavedShipping
               ? el('p', { class: 'cat-quote-email-confirmed', text: 'We filled in your saved delivery address. You can edit any missing details.' })
               : null,
-            deliveryField('Address', 'address', 'street-address', deliveryRequired),
+            deliveryField('Address', 'address', 'street-address', true),
             el('div', { class: 'cat-quote-field-grid' }, [
-              deliveryField('City', 'city', 'address-level2', deliveryRequired),
-              deliveryField('State', 'state', 'address-level1', deliveryRequired),
+              deliveryField('City', 'city', 'address-level2', true),
+              deliveryField('State', 'state', 'address-level1', true),
             ]),
-            deliveryField('ZIP code', 'zipCode', 'postal-code', deliveryRequired, 'text', 'numeric'),
+            deliveryField('ZIP code', 'zipCode', 'postal-code', true, 'text', 'numeric'),
           ])
         : el('div', { class: 'cat-quote-info-note' }, [
             el('strong', { text: 'Pickup selected' }),
-            el('p', { text: 'We’ll confirm the pickup location and available time with you after reviewing your request.' }),
+            el('p', { text: 'We’ll confirm the pickup address with you after reviewing your request.' }),
           ]),
       stepActions('Continue to other details'),
     ]);
@@ -571,19 +733,33 @@ export function renderQuoteFormView(ctx, options) {
       onSubmit: async (event) => {
         event.preventDefault();
         state.notes = event.currentTarget.querySelector('textarea[name="notes"]').value.trim();
+        persistDraft();
         const targetWindow = reserveQuoteWindow();
         state.submitPending = true;
         button.disabled = true;
         button.textContent = 'Sending request…';
         state.error = '';
 
+        const pricing = currentQuotePricing();
+        // Re-check at the final boundary so a quantity/product change cannot
+        // submit Delivery below the Fresa minimum.
+        const orderType = pricing.deliveryAllowed && state.orderType === 'Delivery'
+          ? 'Delivery'
+          : 'Pickup';
+        state.orderType = orderType;
+
         const payload = buildQuotePayload({
           locationId: ctx.locationId,
           items: ctx.quoteStore.getItems(),
           email: state.email,
           contact: state.contact,
-          orderType: state.orderType,
-          delivery: state.delivery,
+          orderType,
+          delivery: {
+            ...state.delivery,
+            // Both order types now book a window, so the window is meaningless
+            // to the receiving team without the clock it was chosen in.
+            timeZone: ctx.clientTimeZone ?? 'UTC',
+          },
           shippingDestination: ctx.locationStore.getShippingDestination(),
           notes: state.notes,
         });
@@ -591,6 +767,8 @@ export function renderQuoteFormView(ctx, options) {
         try {
           const result = await options.onSubmit(payload, { targetWindow });
           if (result?.ok) {
+            ctx.quoteStore.clear();
+            clearQuoteDraft();
             state.result = result;
           } else {
             targetWindow?.close?.();
@@ -621,7 +799,7 @@ export function renderQuoteFormView(ctx, options) {
     return el('div', { class: 'cat-quote-review' }, [
       el('div', { class: 'cat-quote-section-label' }, [el('span', { text: 'Ready to send' }), el('span', { class: 'cat-quote-section-count', text: `${items.length} product${items.length === 1 ? '' : 's'}` })]),
       el('p', { text: `${state.email} · ${resolveLocation(ctx.locationId).label} · ${state.orderType}` }),
-      el('p', { class: 'cat-note', text: 'Your request contains no payment or pricing information.' }),
+      el('p', { class: 'cat-note', text: NO_PAYMENT_NOTE }),
     ]);
   }
 
@@ -630,7 +808,7 @@ export function renderQuoteFormView(ctx, options) {
       el('div', { class: 'cat-quote-success-icon', text: '✓' }),
       el('p', { class: 'cat-quote-step-count', text: 'Request received' }),
       el('h2', { id: 'cat-quote-title', text: 'Your quote request is on its way.' }),
-      el('p', { text: 'We opened the next step in a new tab. You can return to the catalog whenever you’re ready.' }),
+      el('p', { text: 'Your request was recorded. You can return to the catalog whenever you’re ready.' }),
     ]);
   }
 
@@ -660,11 +838,11 @@ export function renderQuoteFormView(ctx, options) {
           if (config.name === 'phone') state.contact.phone = event.currentTarget.value;
           if (config.name === 'company') state.contact.company = event.currentTarget.value;
           if (config.name === 'email') state.email = event.currentTarget.value;
-          if (config.name === 'dateTime') state.delivery.dateTime = event.currentTarget.value;
           if (config.name === 'address') state.delivery.address = event.currentTarget.value;
           if (config.name === 'city') state.delivery.city = event.currentTarget.value;
           if (config.name === 'state') state.delivery.state = event.currentTarget.value;
           if (config.name === 'zipCode') state.delivery.zipCode = event.currentTarget.value;
+          persistDraft();
         },
       }),
       config.help ? el('small', { text: config.help }) : null,

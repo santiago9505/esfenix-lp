@@ -83,6 +83,28 @@ test('the internal quote form carries contact, order and delivery details', () =
   assert.equal(payload.fresa.delivery.dateTime, '2026-08-08T12:00');
 });
 
+test('delivery metadata preserves the customer timezone and slot capacity', () => {
+  const payload = buildQuotePayload({
+    locationId: 'houston',
+    orderType: 'Delivery',
+    delivery: {
+      dateTime: '2026-08-10T08:00',
+      timeZone: 'America/Bogota',
+      slot: { date: '2026-08-10', start: '08:00', end: '10:00', capacity: 2 },
+    },
+  });
+
+  assert.equal(payload.deliveryTimeZone, 'America/Bogota');
+  assert.deepEqual(payload.deliverySlot, {
+    date: '2026-08-10',
+    start: '08:00',
+    end: '10:00',
+    capacity: 2,
+  });
+  assert.equal(payload.delivery.timeZone, 'America/Bogota');
+  assert.equal(payload.fresa.delivery.slot.capacity, 2);
+});
+
 test('the payload carries no pricing of any kind', () => {
   const payload = buildQuotePayload({
     locationId: 'houston',

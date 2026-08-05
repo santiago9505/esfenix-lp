@@ -1,7 +1,6 @@
 /**
  * The category sidebar on the product page: categories, the groups inside them
- * (Ecuadorian Roses, Garden Roses, …), their products, and each product's
- * varieties.
+ * (Ecuadorian Roses, Garden Roses, …), and their product families.
  *
  * The whole tree is built from the products the selected location actually
  * carries, so it never offers a route to something that is not there. The
@@ -13,17 +12,13 @@
 
 import { CATEGORIES, getCategoryLabel } from '../data/categories.js';
 import { el } from './dom.js';
-import { getVarieties } from '../core/repository.js';
-import { slugify } from '../core/slug.js';
 
 /**
  * @param {{
  *   tree: ReturnType<typeof import('../core/repository').buildCategoryTree>,
  *   currentProductId?: string|null,
  *   currentCategory?: string|null,
- *   currentVariety?: string|null,
  *   hrefFor: (product: import('../core/repository').LocationProduct) => string,
- *   varietyHrefFor?: (product: import('../core/repository').LocationProduct, variety: string) => string,
  *   catalogHref: string,
  * }} options
  */
@@ -31,7 +26,10 @@ export function categoryNav(options) {
   const present = new Set(options.tree.map((branch) => branch.category));
 
   return el('nav', { class: 'cat-sidenav', 'aria-label': 'Product categories' }, [
-    el('a', { class: 'cat-sidenav-all', href: options.catalogHref, text: 'All products' }),
+    el('a', { class: 'cat-sidenav-all', href: options.catalogHref }, [
+      el('span', { text: 'All products' }),
+      el('span', { class: 'cat-sidenav-all-arrow', 'aria-hidden': 'true', text: '→' }),
+    ]),
 
     ...CATEGORIES.filter((category) => present.has(category.id)).map((category) => {
       const branch = options.tree.find((entry) => entry.category === category.id);
@@ -92,7 +90,15 @@ function categorySection(config) {
     config.groups.map((group) =>
       el('div', { class: 'cat-sidenav-group' }, [
         showGroupLabels && group.label
-          ? el('p', { class: 'cat-sidenav-group-label', text: group.label })
+          ? el('div', { class: 'cat-sidenav-group-head' }, [
+              el('p', { class: 'cat-sidenav-group-label', text: group.label }),
+              el('span', {
+                class: 'cat-sidenav-group-count',
+                text: group.products.length === 1
+                  ? '1 family'
+                  : `${group.products.length} products`,
+              }),
+            ])
           : null,
         el(
           'ul',
@@ -112,7 +118,6 @@ function categorySection(config) {
  */
 function productItem(product, options) {
   const isCurrent = product.id === options.currentProductId;
-  const varieties = isCurrent ? getVarieties(product) : [];
 
   return el('li', {}, [
     el('a', {
@@ -122,24 +127,6 @@ function productItem(product, options) {
       text: product.name,
     }),
 
-    // Varieties are only listed for the product being viewed: a rose family can
-    // have 70 of them, and printing every one under every product would bury
-    // the navigation.
-    isCurrent && varieties.length > 0 && options.varietyHrefFor
-      ? el(
-          'ul',
-          { class: 'cat-sidenav-varieties' },
-          varieties.map((variety) =>
-            el('li', {}, [
-              el('a', {
-                href: options.varietyHrefFor(product, variety),
-                'aria-current': slugify(variety) === slugify(options.currentVariety ?? '') ? 'true' : null,
-                text: variety,
-              }),
-            ]),
-          ),
-        )
-      : null,
   ]);
 }
 

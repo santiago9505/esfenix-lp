@@ -40,24 +40,21 @@ function recorder() {
   };
 }
 
-test('without an endpoint the form opens directly', async () => {
-  const open = recorder();
+test('without an endpoint the legacy form is not opened', async () => {
   const integration = createQuoteIntegration({
     formUrl: FORM_URL,
     sessionEndpoint: null,
-    openImpl: open.open,
   });
 
   assert.equal(integration.mode(), 'direct');
 
   const result = await integration.start(payloadWithProducts());
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, false);
   assert.equal(result.mode, 'direct');
-  assert.equal(open.opened.length, 1);
-  assert.ok(open.opened[0].startsWith(FORM_URL));
+  assert.match(result.error, /not configured/i);
 });
 
-test('the direct URL carries routing context and nothing personal', async () => {
+test('without an endpoint the selection summary is retained for the next integration', async () => {
   const open = recorder();
   const integration = createQuoteIntegration({
     formUrl: FORM_URL,
@@ -65,30 +62,10 @@ test('the direct URL carries routing context and nothing personal', async () => 
     openImpl: open.open,
   });
 
-  await integration.start(payloadWithProducts());
-  const url = new URL(open.opened[0]);
-
-  assert.equal(url.searchParams.get('location'), 'NATION WIDE');
-  assert.equal(url.searchParams.get('serviceCenter'), 'HOUSTON');
-  assert.equal(url.searchParams.get('source'), 'esfenix-product-catalog');
-
-  const query = url.search.toLowerCase();
-  for (const forbidden of ['miami', '33101', 'email', 'address', 'zip', 'sunflowers']) {
-    assert.ok(!query.includes(forbidden), `${forbidden} must never appear in the URL`);
-  }
-});
-
-test('a blocked popup is reported without losing the selection', async () => {
-  const integration = createQuoteIntegration({
-    formUrl: FORM_URL,
-    sessionEndpoint: null,
-    openImpl: () => null,
-  });
-
   const result = await integration.start(payloadWithProducts());
   assert.equal(result.ok, false);
-  assert.match(result.error, /blocked/i);
-  assert.match(result.summary, /Sunflowers/, 'the summary is still offered as a fallback');
+  assert.match(result.summary, /Sunflowers/);
+  assert.equal(open.opened.length, 0, 'the legacy form is never opened');
 });
 
 test('with an endpoint the payload is POSTed and the returned URL is opened', async () => {

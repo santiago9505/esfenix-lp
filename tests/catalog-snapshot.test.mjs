@@ -14,5 +14,6 @@ test('the fast catalog snapshot is populated and carries no pricing fields', () 
   const serialized = JSON.stringify(snapshot.products);
   assert.ok(Buffer.byteLength(serialized) < 500_000, 'snapshot stays small enough for the first render');
   assert.doesNotMatch(serialized, /"(?:price|precio|cost|costo|amount)"\s*:/i);
+  assert.doesNotMatch(serialized, /[$€£]\s*\d/, 'snapshot descriptions stay price-free');
   assert.doesNotMatch(serialized, /https?:\/\//i, 'expiring remote attachments are not bundled');
 });

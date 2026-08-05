@@ -89,12 +89,12 @@ function facetGroup(facet, options) {
     }),
   );
 
-  const body = el('div', { class: 'cat-facet-body', id: `${id}-body` }, [list]);
+  const body = el('div', { class: 'cat-facet-body', id: `${id}-body`, hidden: true }, [list]);
 
   const toggle = el('button', {
     type: 'button',
     class: 'cat-facet-toggle',
-    'aria-expanded': 'true',
+    'aria-expanded': 'false',
     'aria-controls': `${id}-body`,
     onClick(event) {
       const expanded = event.currentTarget.getAttribute('aria-expanded') === 'true';

@@ -5,9 +5,9 @@
  * `tsc --checkJs` can verify the shapes the modules document with JSDoc.
  *
  * There is deliberately no price, stemPrice, bunchPrice, unitPrice, total,
- * subtotal, currency, pricingLocation or discount anywhere in this model. The
- * catalog is a quote-request tool, not a store, and the seed data is generated
- * from the source workbooks with pricing columns excluded at read time.
+ * subtotal, currency, pricingLocation or discount in this public model. The
+ * catalog is a quote-request tool, not a store; internal price metadata used
+ * to enforce the minimum order remains outside these declarations and payloads.
  */
 
 export type ProductCategory = 'roses' | 'other-flowers' | 'foliage' | 'supplies';
@@ -190,11 +190,25 @@ export interface QuotePayload {
   }>;
   orderType: string | null;
   deliveryDateTime?: string;
+  deliveryTimeZone?: string;
+  deliverySlot?: {
+    date: string;
+    start: string;
+    end: string;
+    capacity: number;
+  };
   delivery: {
     address: string;
     city: string;
     state: string;
     zipCode: string;
+    timeZone?: string;
+    slot?: {
+      date: string;
+      start: string;
+      end: string;
+      capacity: number;
+    };
   };
   notes: string;
 }

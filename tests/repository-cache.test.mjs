@@ -20,6 +20,7 @@ function normalizedProduct(id) {
     id,
     name: `Product ${id}`,
     slug: `product-${id}`,
+    description: 'Product $12.50',
     category: 'other-flowers',
     locations: [{ location: 'houston', catalogAvailable: true, variants: [] }],
   };
@@ -38,6 +39,7 @@ test('renders the bundled snapshot immediately and marks it for background refre
   });
 
   assert.equal(products[0].id, 'snapshot');
+  assert.equal(products[0].description, null, 'snapshot price descriptions are hidden before rendering');
   assert.equal(productsNeedRefresh(), true);
 
   resetProductCache();

@@ -29,6 +29,8 @@ const DIMENSIONS = [
   { key: 'lengthCm', label: 'Stem length' },
 ];
 
+const VARIETY_SEARCH_THRESHOLD = 12;
+
 /** @param {ProductVariant[]} variants */
 function presentDimensions(variants) {
   return DIMENSIONS.filter((dimension) =>
@@ -76,7 +78,7 @@ function optionsFor(variants, key) {
  * @param {{
  *   initial?: Record<string, any>,
  *   onValidityChange?: (valid: boolean) => void,
- *   onSelectionChange?: (state: { variant: ProductVariant|null }) => void,
+ *   onSelectionChange?: (state: { variant: ProductVariant|null, variety: string|null }) => void,
  * }} [options]
  */
 export function variantForm(product, options = {}) {
@@ -90,6 +92,7 @@ export function variantForm(product, options = {}) {
     measure: options.initial?.measure ?? null,
     quantity: options.initial?.quantity ?? 1,
   };
+  const searchTerms = { variety: '' };
 
   const container = el('div', { class: 'cat-variant-form' });
   const errorList = el('ul', { class: 'cat-field-errors', role: 'alert', hidden: true });
@@ -131,27 +134,37 @@ export function variantForm(product, options = {}) {
         choice[dimension.key] = values.length === 1 ? values[0] : null;
       }
 
+      const optionConfig = {
+        label: dimension.label,
+        value: choice[dimension.key],
+        options: values.map((value) => ({
+          value,
+          label: dimension.key === 'lengthCm' ? `${value} cm` : String(value),
+        })),
+        disabled: values.length === 1,
+        onChange(value) {
+          choice[dimension.key] = dimension.key === 'lengthCm' ? Number(value) : value;
+          // Anything chosen further down may no longer be reachable.
+          let past = false;
+          for (const other of dimensions) {
+            if (past) choice[other.key] = null;
+            if (other.key === dimension.key) past = true;
+          }
+          choice.measure = null;
+          render();
+        },
+      };
+
       rows.push(
-        selectRow({
-          label: dimension.label,
-          value: choice[dimension.key],
-          options: values.map((value) => ({
-            value,
-            label: dimension.key === 'lengthCm' ? `${value} cm` : String(value),
-          })),
-          disabled: values.length === 1,
-          onChange(value) {
-            choice[dimension.key] = dimension.key === 'lengthCm' ? Number(value) : value;
-            // Anything chosen further down may no longer be reachable.
-            let past = false;
-            for (const other of dimensions) {
-              if (past) choice[other.key] = null;
-              if (other.key === dimension.key) past = true;
-            }
-            choice.measure = null;
-            render();
-          },
-        }),
+        dimension.key === 'variety' && values.length > VARIETY_SEARCH_THRESHOLD
+          ? searchableVarietyRow({
+              ...optionConfig,
+              searchTerm: searchTerms.variety,
+              onSearch(value) {
+                searchTerms.variety = value;
+              },
+            })
+          : selectRow(optionConfig),
       );
     }
 
@@ -159,22 +172,6 @@ export function variantForm(product, options = {}) {
     if (measureValues.length > 0) {
       if (measureValues.length === 1) choice.measure = measureValues[0];
       else if (choice.measure && !measureValues.includes(choice.measure)) choice.measure = null;
-
-      rows.push(
-        selectRow({
-          label: 'Available as',
-          value: choice.measure,
-          options: measureValues.map((measure) => ({
-            value: measure,
-            label: MEASURE_LABELS[measure] ?? capitalize(measure),
-          })),
-          disabled: measureValues.length === 1,
-          onChange(value) {
-            choice.measure = value;
-            render();
-          },
-        }),
-      );
     }
 
     const variant = currentVariant();
@@ -188,12 +185,15 @@ export function variantForm(product, options = {}) {
       );
     }
 
-    rows.push(quantityRow(choice, render));
+    rows.push(quantityRow(choice, render, measureValues));
     rows.push(errorList);
 
     replaceChildren(container, rows);
     options.onValidityChange?.(currentVariant() !== null);
-    options.onSelectionChange?.({ variant: currentVariant() });
+    options.onSelectionChange?.({
+      variant: currentVariant(),
+      variety: choice.variety ?? null,
+    });
   }
 
   render();
@@ -209,6 +209,20 @@ export function variantForm(product, options = {}) {
         measure: choice.measure ?? null,
         quantity: choice.quantity,
       };
+    },
+
+    /** Selects a variety from an external visual control such as the gallery. */
+    selectVariety(variety) {
+      if (!dimensions.some((dimension) => dimension.key === 'variety')) return;
+
+      const available = optionsFor(product.variants, 'variety');
+      if (variety !== null && variety !== undefined && !available.includes(variety)) return;
+
+      choice.variety = variety ?? null;
+      choice.color = null;
+      choice.lengthCm = null;
+      choice.measure = null;
+      render();
     },
 
     /** @param {string[]} errors */
@@ -264,10 +278,91 @@ function selectRow(config) {
 }
 
 /**
+ * A long variety list is a decision aid, not a giant native select. Search
+ * keeps EC Roses and Garden Roses scannable while the selected option remains
+ * visible and the rest of the product form keeps its compact rhythm.
+ *
+ * @param {{
+ *   label: string,
+ *   value: any,
+ *   options: Array<{ value: any, label: string }>,
+ *   searchTerm: string,
+ *   onSearch: (value: string) => void,
+ *   onChange: (value: any) => void,
+ * }} config
+ */
+function searchableVarietyRow(config) {
+  const id = `cat-variant-search-${++rowId}`;
+  const listId = `${id}-list`;
+  const list = el('div', {
+    class: 'cat-option-list',
+    id: listId,
+    role: 'listbox',
+    'aria-label': config.label,
+  });
+  const empty = el('p', { class: 'cat-option-empty', hidden: true, text: 'No varieties match that search.' });
+
+  const renderOptions = (term = config.searchTerm) => {
+    const normalized = term.trim().toLocaleLowerCase();
+    const visible = config.options.filter((option) =>
+      String(option.label).toLocaleLowerCase().includes(normalized),
+    );
+
+    replaceChildren(
+      list,
+      visible.map((option) => {
+        const selected = String(option.value) === String(config.value);
+        return el('button', {
+          type: 'button',
+          class: `cat-option-chip ${selected ? 'is-selected' : ''}`,
+          role: 'option',
+          'aria-selected': String(selected),
+          text: option.label,
+          onClick() {
+            config.onChange(option.value);
+          },
+        });
+      }),
+    );
+    empty.hidden = visible.length > 0;
+  };
+
+  const search = el('input', {
+    id,
+    type: 'search',
+    class: 'cat-variant-search',
+    value: config.searchTerm,
+    placeholder: 'Search varieties',
+    autocomplete: 'off',
+    'aria-controls': listId,
+    onInput(event) {
+      const value = event.currentTarget.value;
+      config.onSearch(value);
+      renderOptions(value);
+    },
+  });
+
+  renderOptions();
+  return el('div', { class: 'cat-field cat-variety-field' }, [
+    el('div', { class: 'cat-option-label-row' }, [
+      el('label', { for: id, text: config.label }),
+      el('span', { class: 'cat-option-count', text: `${config.options.length} available` }),
+    ]),
+    el('div', { class: 'cat-variant-search-wrap' }, [
+      el('span', { class: 'cat-variant-search-icon', 'aria-hidden': 'true', text: '⌕' }),
+      search,
+    ]),
+    list,
+    empty,
+  ]);
+}
+
+/**
  * @param {Record<string, any>} choice
  * @param {() => void} rerender
+ * @param {string[]} measureValues
  */
-function quantityRow(choice, rerender) {
+function quantityRow(choice, rerender, measureValues = []) {
   const id = `cat-variant-qty-${++rowId}`;
   const input = el('input', {
     id,
@@ -277,6 +372,7 @@ function quantityRow(choice, rerender) {
     inputmode: 'numeric',
     class: 'cat-qty-input',
     value: String(choice.quantity),
+    'aria-label': 'Quantity',
     onInput(event) {
       const parsed = Number.parseInt(event.currentTarget.value, 10);
       choice.quantity = Number.isFinite(parsed) ? parsed : Number.NaN;
@@ -290,25 +386,66 @@ function quantityRow(choice, rerender) {
     rerender();
   };
 
-  return el('div', { class: 'cat-field cat-field-qty' }, [
+  return el('div', { class: 'cat-field cat-field-qty cat-variant-quantity-row' }, [
     el('label', { for: id, text: 'Quantity' }),
-    el('div', { class: 'cat-qty' }, [
-      el('button', {
-        type: 'button',
-        class: 'cat-qty-btn',
-        'aria-label': 'Decrease quantity',
-        text: '−',
-        onClick: step(-1),
-      }),
-      input,
-      el('button', {
-        type: 'button',
-        class: 'cat-qty-btn',
-        'aria-label': 'Increase quantity',
-        text: '+',
-        onClick: step(1),
-      }),
+    el('div', { class: 'cat-variant-quantity-controls' }, [
+      el('div', { class: 'cat-qty cat-qty-product', role: 'group', 'aria-label': 'Quantity controls' }, [
+        el('button', {
+          type: 'button',
+          class: 'cat-qty-btn',
+          'aria-label': 'Decrease quantity',
+          disabled: choice.quantity <= 1,
+          text: '−',
+          onClick: step(-1),
+        }),
+        input,
+        el('button', {
+          type: 'button',
+          class: 'cat-qty-btn',
+          'aria-label': 'Increase quantity',
+          text: '+',
+          onClick: step(1),
+        }),
+      ]),
+      measureValues.length > 0 ? measureControl(choice, measureValues, rerender) : null,
     ]),
+  ]);
+}
+
+/**
+ * Keeps the measure close to quantity without giving it the visual weight of
+ * another full-width product option.
+ *
+ * @param {Record<string, any>} choice
+ * @param {string[]} measureValues
+ * @param {() => void} rerender
+ */
+function measureControl(choice, measureValues, rerender) {
+  const id = `cat-variant-measure-${++rowId}`;
+  const label = MEASURE_LABELS[choice.measure] ?? capitalize(choice.measure ?? '');
+  return el('div', { class: 'cat-variant-measure-control' }, [
+    el('label', { for: id, text: 'Unit' }),
+    measureValues.length === 1
+      ? el('span', { class: 'cat-variant-measure-value', text: label })
+      : el('div', { class: 'cat-variant-measure-select-wrap' }, [
+          el('select', {
+            id,
+            class: 'cat-variant-measure-select',
+            value: choice.measure ?? '',
+            'aria-label': 'Unit',
+            onChange: (event) => {
+              choice.measure = event.currentTarget.value || null;
+              rerender();
+            },
+          }, [
+            el('option', { value: '', selected: !choice.measure, text: 'Select' }),
+            ...measureValues.map((measure) => el('option', {
+              value: measure,
+              selected: measure === choice.measure,
+              text: MEASURE_LABELS[measure] ?? capitalize(measure),
+            })),
+          ]),
+        ]),
   ]);
 }
 

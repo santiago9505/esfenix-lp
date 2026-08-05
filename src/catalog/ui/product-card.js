@@ -17,6 +17,28 @@
 import { getCategoryLabel } from '../data/categories.js';
 import { el, firstUsableImage, productMedia } from './dom.js';
 
+/** @param {import('../core/repository').LocationProduct} product */
+function productOptionSummary(product) {
+  const varieties = new Set();
+  const colors = new Set();
+  const lengths = new Set();
+
+  for (const variant of product.variants ?? []) {
+    if (variant.variety) varieties.add(variant.variety);
+    if (variant.color) colors.add(variant.color);
+    if (variant.lengthCm !== null && variant.lengthCm !== undefined) lengths.add(variant.lengthCm);
+  }
+
+  const parts = [];
+  if (varieties.size > 0) parts.push(`${varieties.size} ${varieties.size === 1 ? 'variety' : 'varieties'}`);
+  if (colors.size > 0) parts.push(`${colors.size} ${colors.size === 1 ? 'color' : 'colors'}`);
+  if (lengths.size > 0) parts.push(`${lengths.size} stem ${lengths.size === 1 ? 'length' : 'lengths'}`);
+
+  if (parts.length > 0) return parts.join(' · ');
+  if ((product.variants ?? []).length > 1) return `${product.variants.length} available options`;
+  return 'See available formats';
+}
+
 /**
  * @param {{
  *   product: import('../core/repository').LocationProduct,
@@ -50,7 +72,7 @@ export function productCard(options) {
         el('a', { class: 'cat-card-link', href: options.href, text: product.name }),
       ]),
 
-      product.variety ? el('p', { class: 'cat-card-variety', text: product.variety }) : null,
+      el('p', { class: 'cat-card-variety', text: productOptionSummary(product) }),
 
       el('div', { class: 'cat-card-actions' }, [
         el('button', {
@@ -66,7 +88,7 @@ export function productCard(options) {
           },
         }),
         el('a', { class: 'tlink cat-card-details', href: options.href, tabindex: '-1' }, [
-          'View details ',
+          'See options ',
           el('span', { class: 'arr', text: '›' }),
         ]),
       ]),

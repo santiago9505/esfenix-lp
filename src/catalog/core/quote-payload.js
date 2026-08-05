@@ -44,7 +44,7 @@ function locationCode(locationId) {
  *   email?: string,
  *   contact?: { firstName?: string, lastName?: string, phone?: string, company?: string }|null,
  *   orderType?: string|null,
- *   delivery?: { address?: string, city?: string, state?: string, zipCode?: string, dateTime?: string }|null,
+ *   delivery?: { address?: string, city?: string, state?: string, zipCode?: string, dateTime?: string, timeZone?: string, slot?: { date?: string, start?: string, end?: string, capacity?: number } }|null,
  *   notes?: string,
  * }} input
  * @returns {QuotePayload & { fresa: object }}
@@ -90,6 +90,23 @@ export function buildQuotePayload(input) {
   }
   if (input.delivery?.dateTime) {
     payload.deliveryDateTime = String(input.delivery.dateTime).trim();
+  }
+  if (input.delivery?.timeZone) {
+    const timeZone = String(input.delivery.timeZone).trim();
+    payload.deliveryTimeZone = timeZone;
+    payload.delivery.timeZone = timeZone;
+  }
+  if (input.delivery?.slot && typeof input.delivery.slot === 'object') {
+    const slot = {
+      date: String(input.delivery.slot.date ?? '').trim(),
+      start: String(input.delivery.slot.start ?? '').trim(),
+      end: String(input.delivery.slot.end ?? '').trim(),
+      capacity: Number(input.delivery.slot.capacity) || 2,
+    };
+    if (slot.date && slot.start && slot.end) {
+      payload.deliverySlot = slot;
+      payload.delivery.slot = slot;
+    }
   }
 
   return { ...payload, fresa: buildFresaBlock(items, location, payload) };

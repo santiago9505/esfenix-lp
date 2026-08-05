@@ -24,7 +24,7 @@ test('normalizes Fresa columns and attachments without assuming field keys', () 
           listId: 'flowers',
           listName: 'Products',
           name: 'Roses',
-          description: null,
+          description: 'EC ROSES 50 | DMV | 50 cm | Stem $0.84 | Bunch $21.00',
           position: 2,
           fields: {
             classification_01: 'Other Flowers',
@@ -70,6 +70,7 @@ test('normalizes Fresa columns and attachments without assuming field keys', () 
   );
   assert.ok(!JSON.stringify(products[0]).includes('25000'), 'price is not copied into the view model');
   assert.equal(products[0].name, 'Roses', 'variant suffixes are not shown as separate product names');
+  assert.equal(products[0].description, null, 'generated price descriptions stay private');
 });
 
 test('uses local flower photography only when Fresa has no usable image', () => {

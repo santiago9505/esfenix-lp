@@ -2,9 +2,11 @@
  * Fresa catalog integration.
  *
  * This module is the only place that knows the remote catalog contract. The
- * rest of the catalog works with the small, price-free view produced by
- * normalizeCatalog(). Attachment URLs stay in memory only and are refreshed
- * whenever the catalog cache is revalidated.
+ * rest of the catalog works with the small display view produced by
+ * normalizeCatalog(). Price metadata is kept in a private index for the
+ * minimum-order rule; it is never added to that view or to quote payloads.
+ * Attachment URLs stay in memory only and are refreshed whenever the catalog
+ * cache is revalidated.
  */
 
 import { getCategoryLabel, resolveCategoryId } from '../data/categories.js';
@@ -12,6 +14,7 @@ import { LOCATIONS } from '../data/locations.js';
 import { catalogOrderForFamily, resolveCatalogFamily } from '../data/catalog-taxonomy.js';
 import { slugify } from './slug.js';
 import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
+import { rememberVariantPrices } from './pricing.js';
 
 const env = typeof import.meta !== 'undefined' ? import.meta.env ?? {} : {};
 
@@ -335,6 +338,11 @@ function normalizeProduct(raw, columns) {
     location: findColumn(columns, 'location'),
     origin: findColumn(columns, 'origin'),
     isNew: findColumn(columns, 'isNew'),
+    stemPrice: findColumn(columns, 'stemPrice'),
+    bunchPrice: findColumn(columns, 'bunchPrice'),
+    unitPrice: findColumn(columns, 'unitPrice'),
+    packPrice: findColumn(columns, 'packPrice'),
+    boxPrice: findColumn(columns, 'boxPrice'),
   };
 
   // Fresa's `type_product` is the catalog taxonomy. A generic `category`
@@ -357,7 +365,11 @@ function normalizeProduct(raw, columns) {
   const images = uniqueAttachments(variants.flatMap((variant) => variant.images ?? []));
   const files = uniqueAttachments(variants.flatMap((variant) => variant.files ?? []));
   const varietyValues = distinctVariantValues(variants, 'variety');
-  const description = safeString(raw.description);
+  // Fresa may return a generated description that embeds wholesale metrics
+  // (for example, "Stem $0.84 | Bunch $21.00"). Keep those metrics private:
+  // they are captured below for the internal minimum-order rule, but must
+  // never enter the public product view.
+  const description = sanitizeCatalogDescription(raw.description);
   const createdAt = safeString(raw.createdAt);
   const resolvedFamilyName = familyName(safeString(raw.name), variants);
   const familyMeta = resolveCatalogFamily(resolvedFamilyName);
@@ -393,6 +405,20 @@ function normalizeProduct(raw, columns) {
     familyKey: familyMeta?.familyKey ?? buildFamilyKey(category, raw.name, variants),
     familyName: resolvedFamilyName,
   };
+}
+
+/**
+ * Keeps editorial descriptions while dropping Fresa-generated descriptions
+ * that contain monetary or price-labelled content.
+ * @param {unknown} value
+ * @returns {string|null}
+ */
+export function sanitizeCatalogDescription(value) {
+  const description = safeString(value);
+  if (!description) return null;
+
+  const hasPriceReference = /[$€£]\s*\d|\b(?:price|precio|cost|costo)\b|\b(?:stem|bunch|unit|pack|box)\s*(?:price|precio)?\s*[:=]?\s*[$€£]?\s*\d/i.test(description);
+  return hasPriceReference ? null : description;
 }
 
 /**
@@ -540,6 +566,26 @@ function buildVariants(raw, fields, columns, roleColumns) {
       .map(normalizeMeasure)
       .filter(Boolean),
   };
+  const prices = {
+    stem: readColumnValue(fields, roleColumns.stemPrice),
+    bunch: readColumnValue(fields, roleColumns.bunchPrice),
+    unit: readColumnValue(fields, roleColumns.unitPrice),
+    pack: readColumnValue(fields, roleColumns.packPrice),
+    box: readColumnValue(fields, roleColumns.boxPrice),
+  };
+  const pricedMeasures = Object.entries(prices)
+    .filter(([, value]) => value !== null && value !== undefined && value !== '')
+    .map(([measure]) => measure);
+  const hasPriceDescriptor = ['stemPrice', 'bunchPrice', 'unitPrice', 'packPrice', 'boxPrice']
+    .some((role) => roleColumns[role]);
+  const availableMeasures = [...new Set([...values.measure, ...pricedMeasures])]
+    .filter((measure) => {
+      // When Fresa exposes a price column, an empty value means that metric is
+      // not available for this product. Older/sparse fixtures without price
+      // descriptors keep their declared sales unit unchanged.
+      if (!hasPriceDescriptor) return true;
+      return pricedMeasures.includes(measure);
+    });
 
   const customColumns = columns.filter((column) => {
     if (!safeString(column.key)) return false;
@@ -564,17 +610,21 @@ function buildVariants(raw, fields, columns, roleColumns) {
   const files = attachments.filter((attachment) => !attachment.isImage);
 
   const variants = cartesianVariants(values);
-  return variants.map((variant, index) => ({
-    id: `${safeString(raw.id)}__variant_${index + 1}`,
+  return variants.map((variant, index) => {
+    const normalized = {
+      id: `${safeString(raw.id)}__variant_${index + 1}`,
     sourceProductId: safeString(raw.id),
     variety: variant.variety,
     color: variant.color,
     lengthCm: variant.lengthCm,
-    availableMeasures: values.measure,
+    availableMeasures,
     attributes,
     images,
     files,
-  }));
+    };
+    rememberVariantPrices(normalized, prices);
+    return normalized;
+  });
 }
 
 /** @param {unknown} value */
@@ -604,7 +654,7 @@ function cartesianVariants(values) {
   );
 }
 
-/** @param {Array<Record<string, unknown>>} columns @param {'typeProduct'|'category'|'group'|'variety'|'color'|'lengthCm'|'measure'|'location'|'origin'|'isNew'} role */
+/** @param {Array<Record<string, unknown>>} columns @param {'typeProduct'|'category'|'group'|'variety'|'color'|'lengthCm'|'measure'|'location'|'origin'|'isNew'|'stemPrice'|'bunchPrice'|'unitPrice'|'packPrice'|'boxPrice'} role */
 function findColumn(columns, role) {
   const aliases = ROLE_ALIASES[role];
   let best = null;
@@ -641,6 +691,11 @@ const ROLE_ALIASES = {
   location: ['location', 'ubicacion', 'sede', 'branch', 'market', 'region'],
   origin: ['origin', 'origen', 'grown in', 'procedencia'],
   isNew: ['is new', 'new', 'nuevo', 'novedad'],
+  stemPrice: ['stem price', 'stem_price', 'price per stem', 'precio por tallo'],
+  bunchPrice: ['bunch price', 'bunch_price', 'price per bunch', 'precio por ramo'],
+  unitPrice: ['unit price', 'unit_price', 'price per unit', 'precio por unidad'],
+  packPrice: ['pack price', 'pack_price', 'price per pack', 'precio por paquete'],
+  boxPrice: ['box price', 'box_price', 'price per box', 'precio por caja'],
 };
 
 /** @param {Record<string, unknown>} fields @param {Record<string, unknown>|null} column */

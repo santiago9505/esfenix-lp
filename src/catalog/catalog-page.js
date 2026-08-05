@@ -26,10 +26,10 @@ export function renderCatalogView(ctx) {
     head: el('div', {}, [
       breadcrumbs([{ label: 'Home', href: '/' }, { label: 'Catalog' }]),
       el('header', { class: 'cat-head-block' }, [
-        el('span', { class: 'eyebrow', text: 'Our products' }),
-        el('h1', { text: 'Product Catalog' }),
+        el('span', { class: 'eyebrow', text: 'Build your selection' }),
+        el('h1', { text: 'Explore the catalog' }),
         el('p', {
-          text: 'Explore flowers, foliage and floral supplies available for your location.',
+          text: 'Start with a category, open a product family, then choose the exact variety and format for your location.',
         }),
       ]),
     ]),
@@ -149,10 +149,26 @@ function categoryChips(ctx) {
     counts.set(product.category, (counts.get(product.category) ?? 0) + 1);
   }
 
-  return el(
-    'div',
-    { class: 'cat-chips', role: 'group', 'aria-label': 'Categories' },
-    CATEGORIES.map((category) => {
+  return el('section', { class: 'cat-browse', 'aria-labelledby': 'cat-browse-title' }, [
+    el('div', { class: 'cat-browse-head' }, [
+      el('span', { class: 'eyebrow', text: 'Browse by type' }),
+      el('h2', { id: 'cat-browse-title', text: 'Start with a category' }),
+      el('p', { text: 'You will choose the exact variety and format on the product page.' }),
+    ]),
+    el(
+      'div',
+      { class: 'cat-chips', role: 'group', 'aria-label': 'Categories' },
+      [
+        el('button', {
+          type: 'button',
+          class: 'cat-chip',
+          'aria-pressed': String(ctx.filters.category.length === 0),
+          onClick: () => ctx.onSetFilters({ ...ctx.filters, category: [] }),
+        }, [
+          el('span', { text: 'All types' }),
+          el('span', { class: 'cat-chip-count', text: String(ctx.products.length) }),
+        ]),
+        ...CATEGORIES.map((category) => {
       const selected = ctx.filters.category.includes(category.id);
       const count = counts.get(category.id) ?? 0;
       return el('button', {
@@ -164,8 +180,10 @@ function categoryChips(ctx) {
         el('span', { text: category.label }),
         count > 0 ? el('span', { class: 'cat-chip-count', text: String(count) }) : null,
       ]);
-    }),
-  );
+        }),
+      ],
+    ),
+  ]);
 }
 
 /**

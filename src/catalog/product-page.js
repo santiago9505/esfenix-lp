@@ -1,7 +1,9 @@
 /**
  * The /catalog/[category]/[slug] view: gallery, characteristics, variant
  * selection, and the category sidebar that lets the visitor keep browsing
- * without going back to the grid.
+ * without going back to the grid. A product page represents one family; its
+ * varieties and formats are selected here instead of becoming 70 separate
+ * navigation destinations.
  *
  * Two "not found" cases are distinguished, because they need different
  * answers: a product that does not exist at all, and a product that exists but
@@ -47,8 +49,9 @@ export function renderProductView(ctx, route) {
     : null;
 
   const related = getRelatedProducts(product, ctx.products, 6);
-  const galleryView = gallery(product);
-  const detailView = details(ctx, product, initialVariety, galleryView.setVariant);
+  let detailView = null;
+  const galleryView = gallery(product, (variant) => detailView?.selectVariety(variant?.variety ?? null));
+  detailView = details(ctx, product, initialVariety, galleryView.setVariant, galleryView.setVariety);
 
   return {
     head: el('div', {}, [
@@ -80,17 +83,14 @@ export function renderProductView(ctx, route) {
               tree: ctx.categoryTree(),
               currentProductId: product.id,
               currentCategory: product.category,
-              currentVariety: initialVariety,
               hrefFor: (entry) => ctx.hrefFor(entry),
-              varietyHrefFor: (entry, variety) =>
-                `${ctx.hrefFor(entry)}${ctx.hrefFor(entry).includes('?') ? '&' : '?'}variety=${slugify(variety)}`,
               catalogHref: ctx.catalogHref(false),
             }),
           ]),
 
           el('div', { class: 'cat-product-main' }, [
             galleryView.element,
-            detailView,
+            detailView.element,
           ]),
         ]),
 
@@ -102,17 +102,50 @@ export function renderProductView(ctx, route) {
 
 /**
  * @param {import('./core/repository').LocationProduct} product
- * @returns {{ element: HTMLElement, setVariant: (variant: import('./core/types').ProductVariant|null) => void }}
+ * @param {(variant: import('./core/types').ProductVariant) => void} [onImageSelect]
+ * @returns {{
+ *   element: HTMLElement,
+ *   setVariant: (variant: import('./core/types').ProductVariant|null) => void,
+ *   setVariety: (variety: string|null) => void,
+ * }}
  */
-function gallery(product) {
+function gallery(product, onImageSelect) {
   const mainHost = el('div', { class: 'cat-gallery-main' });
   const thumbsHost = el('div', { class: 'cat-gallery-thumbs-host' });
+  let activeVariant = null;
+  let activeImageKey = null;
 
-  function render(variant = null) {
+  const imageKey = (image) => image?.id ?? image?.src ?? null;
+
+  function variantForImage(image) {
+    const key = imageKey(image);
+    if (!key) return null;
+
+    return product.variants.find((variant) =>
+      (variant.images ?? []).some((candidate) => imageKey(candidate) === key),
+    ) ?? null;
+  }
+
+  function imagesForVariety(variety) {
+    const images = product.variants
+      .filter((variant) => variant.variety === variety)
+      .flatMap((variant) => variant.images ?? []);
+    const seen = new Set();
+    return images.filter((image) => {
+      const key = imageKey(image);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function render(variant = activeVariant, imageOverride = null) {
     // Once a variant is selected, do not borrow another variant's photo. A
     // missing image for that exact option must remain a placeholder.
     const images = variant ? variant.images ?? [] : product.images ?? [];
-    const primary = firstUsableImage(images);
+    const primary = firstUsableImage(
+      imageOverride ? [imageOverride, ...images.filter((image) => imageKey(image) !== imageKey(imageOverride))] : images,
+    );
 
     replaceChildren(mainHost, [
       productMedia(primary, {
@@ -132,16 +165,35 @@ function gallery(product) {
             el(
               'ul',
               { class: 'cat-gallery-thumbs' },
-              images.map((image) =>
-                el('li', {}, [
-                  productMedia(image, {
-                    label: product.name,
-                    className: 'cat-gallery-thumb',
-                    width: 160,
-                    height: 120,
-                  }),
-                ]),
-              ),
+              images.map((image) => {
+                const imageVariant = variantForImage(image);
+                const key = imageKey(image);
+                return el('li', {}, [
+                  el('button', {
+                    type: 'button',
+                    class: 'cat-gallery-thumb-button',
+                    'aria-label': imageVariant?.variety
+                      ? `View ${imageVariant.variety}`
+                      : `View ${product.name} photo`,
+                    'aria-pressed': key !== null && key === activeImageKey ? 'true' : 'false',
+                    onClick() {
+                      activeImageKey = key;
+                      if (imageVariant?.variety && onImageSelect) {
+                        onImageSelect(imageVariant);
+                      } else {
+                        render(variant, image);
+                      }
+                    },
+                  }, [
+                    productMedia(image, {
+                      label: imageVariant?.variety ?? product.name,
+                      className: 'cat-gallery-thumb',
+                      width: 160,
+                      height: 120,
+                    }),
+                  ]),
+                ]);
+              }),
             ),
           ]
         : [],
@@ -151,7 +203,17 @@ function gallery(product) {
   render();
   return {
     element: el('div', { class: 'cat-gallery' }, [mainHost, thumbsHost]),
-    setVariant: render,
+    setVariant(variant) {
+      activeVariant = variant;
+      activeImageKey = null;
+      render(variant);
+    },
+    setVariety(variety) {
+      activeVariant = null;
+      const image = firstUsableImage(imagesForVariety(variety));
+      activeImageKey = imageKey(image);
+      render(null, image);
+    },
   };
 }
 
@@ -160,11 +222,15 @@ function gallery(product) {
  * @param {import('./core/repository').LocationProduct} product
  * @param {string|null} initialVariety
  * @param {(variant: import('./core/types').ProductVariant|null) => void} [onVariantChange]
+ * @param {(variety: string|null) => void} [onVarietyChange]
  */
-function details(ctx, product, initialVariety, onVariantChange) {
+function details(ctx, product, initialVariety, onVariantChange, onVarietyChange) {
   const form = variantForm(product, {
     initial: { variety: initialVariety },
-    onSelectionChange: ({ variant }) => onVariantChange?.(variant),
+    onSelectionChange: ({ variant, variety }) => {
+      if (variant) onVariantChange?.(variant);
+      else onVarietyChange?.(variety);
+    },
   });
 
   const addButton = el('button', {
@@ -185,31 +251,62 @@ function details(ctx, product, initialVariety, onVariantChange) {
     },
   });
 
-  return el('div', { class: 'cat-product-info' }, [
-    el('span', { class: 'eyebrow', text: getCategoryLabel(product.category) }),
-    el('h1', { class: 'cat-product-title', text: product.name }),
+  return {
+    element: el('div', { class: 'cat-product-info' }, [
+      el('div', { class: 'cat-product-kicker' }, [
+        el('span', { class: 'eyebrow', text: getCategoryLabel(product.category) }),
+        product.groupLabel && product.groupLabel !== getCategoryLabel(product.category)
+          ? el('span', { class: 'cat-product-family', text: product.groupLabel })
+          : null,
+      ]),
+      el('h1', { class: 'cat-product-title', text: product.name }),
 
-    product.description
-      ? el('p', { class: 'cat-product-desc', text: product.description })
-      : null,
+      product.description
+        ? el('p', { class: 'cat-product-desc', text: product.description })
+        : el('p', {
+            class: 'cat-product-desc',
+            text: 'Choose the option that fits your order. The image and available formats update as you make your selection.',
+          }),
 
-    characteristics(product, ctx),
-    attachmentLinks(product),
+      el('div', { class: 'cat-product-selection-note' }, [
+        el('span', { class: 'cat-product-selection-step', text: '1' }),
+        el('p', {}, [
+          el('strong', { text: 'Build your selection' }),
+          ' Start with the variety, then choose the stem length and presentation.',
+        ]),
+      ]),
 
-    el('div', { class: 'cat-product-form' }, [form.element]),
+      el('div', { class: 'cat-product-form' }, [
+        el('div', { class: 'cat-product-form-head' }, [
+          el('h2', { text: 'Choose your options' }),
+          el('p', { text: 'Only combinations available for this location are shown.' }),
+        ]),
+        form.element,
+      ]),
 
-    el('div', { class: 'cat-product-actions' }, [
-      addButton,
-      el('button', {
-        type: 'button',
-        class: 'btn btn-light',
-        text: 'Request a quote',
-        onClick: () => (ctx.quoteStore.isEmpty() ? ctx.startQuoteWithoutProducts() : ctx.openQuote()),
-      }),
+      el('div', { class: 'cat-product-actions' }, [
+        addButton,
+        el('button', {
+          type: 'button',
+          class: 'btn btn-light',
+          text: 'Request a quote',
+          onClick: () => (ctx.quoteStore.isEmpty() ? ctx.startQuoteWithoutProducts() : ctx.openQuote()),
+        }),
+      ]),
+
+      el('div', { class: 'cat-product-facts' }, [
+        el('div', { class: 'cat-product-facts-head' }, [
+          el('span', { class: 'eyebrow', text: 'Product details' }),
+          el('span', { class: 'cat-product-facts-rule', 'aria-hidden': 'true' }),
+        ]),
+        characteristics(product, ctx),
+        attachmentLinks(product),
+      ]),
+
+      availabilityNote(PRODUCT_AVAILABILITY_NOTE),
     ]),
-
-    availabilityNote(PRODUCT_AVAILABILITY_NOTE),
-  ]);
+    selectVariety: form.selectVariety,
+  };
 }
 
 /**
@@ -333,8 +430,6 @@ function openCategoryDrawer(ctx, product) {
       currentProductId: product?.id ?? null,
       currentCategory: product?.category ?? null,
       hrefFor: (entry) => ctx.hrefFor(entry),
-      varietyHrefFor: (entry, variety) =>
-        `${ctx.hrefFor(entry)}${ctx.hrefFor(entry).includes('?') ? '&' : '?'}variety=${slugify(variety)}`,
       catalogHref: ctx.catalogHref(false),
     }),
   });

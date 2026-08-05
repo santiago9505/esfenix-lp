@@ -2,7 +2,7 @@
  * quoteIntegrationService — the seam between the catalog and the quote form.
  *
  * The catalog never drives the Fresa form by poking at its DOM: that breaks the
- * moment the form changes. It hands over a payload and gets back a URL to open.
+ * moment the form changes. It hands over a payload to a configured integration.
  *
  * Two adapters, chosen automatically:
  *
@@ -11,21 +11,18 @@
  *            address and the product list travel in the request body — never in
  *            a query string.
  *
- *   direct   The fallback while no endpoint exists. Opens the form with only
- *            non-identifying routing context in the URL, and returns a text
- *            summary the visitor can paste. Fresa has no published prefill API
- *            yet; when it does, add an adapter for it here and nothing else in
- *            the catalog needs to change.
+ *   direct   The safe fallback while no endpoint exists. It does not open the
+ *            legacy Fresa form or claim that the request was submitted.
  *
  * Failure never costs the visitor their selection: the caller keeps the quote
  * list and can retry.
  */
 
-import { QUOTE_FORM_URL, QUOTE_SESSION_ENDPOINT, URL_SAFE_PARAMS } from '../data/quote-config.js';
+import { QUOTE_FORM_URL, QUOTE_SESSION_ENDPOINT } from '../data/quote-config.js';
 import { assertNoPricing, buildQuoteSummaryText } from './quote-payload.js';
 
 /**
- * @typedef {{ ok: true, mode: 'session'|'direct', url: string, summary: string, sessionId?: string }} QuoteSuccess
+ * @typedef {{ ok: true, mode: 'session'|'direct', url?: string, summary: string, sessionId?: string }} QuoteSuccess
  * @typedef {{ ok: false, mode: 'session'|'direct', error: string, summary: string }} QuoteFailure
  */
 
@@ -64,23 +61,6 @@ export function createQuoteIntegration(options = {}) {
     }
   }
 
-  /**
-   * The form URL with only the parameters listed in URL_SAFE_PARAMS.
-   * @param {ReturnType<typeof import('./quote-payload').buildQuotePayload>} payload
-   */
-  function directUrl(payload) {
-    const url = new URL(formUrl);
-    const values = {
-      source: payload.source,
-      location: payload.fresa?.location ?? payload.selectedLocation,
-      serviceCenter: payload.serviceCenter,
-    };
-    for (const key of URL_SAFE_PARAMS) {
-      if (values[key]) url.searchParams.set(key, values[key]);
-    }
-    return url.toString();
-  }
-
   return {
     /** Which adapter a call to `start` would use. */
     mode() {
@@ -113,17 +93,16 @@ export function createQuoteIntegration(options = {}) {
       }
 
       if (!sessionEndpoint) {
-        const url = directUrl(payload);
-        const opened = openQuoteUrl(url);
-        if (!opened) {
-          return {
-            ok: false,
-            mode: 'direct',
-            error: 'The quote form could not be opened. Your browser may have blocked the new tab.',
-            summary,
-          };
-        }
-        return { ok: true, mode: 'direct', url, summary };
+        // This used to open QUOTE_FORM_URL as a fallback. That form belongs to
+        // the previous flow and must never receive a completed request. Keep
+        // the reserved tab closed and let the caller retain the quote list.
+        openOptions.targetWindow?.close?.();
+        return {
+          ok: false,
+          mode: 'direct',
+          error: 'Quote submission is not configured yet. No external form was opened, and your selection is still saved.',
+          summary,
+        };
       }
 
       const controller = new AbortController();

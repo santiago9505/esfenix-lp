@@ -13,6 +13,7 @@ import {
   loadFresaCatalog,
   normalizeCatalog,
   resetFresaCatalogCache,
+  sanitizeCatalogDescription,
 } from './fresa-catalog.js';
 import { read, remove, write } from './storage.js';
 import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
@@ -122,7 +123,7 @@ async function loadProductSnapshot(options) {
 
   productsAreSnapshot = true;
   productsCachedAt = 0;
-  productsCache = applyLocalProductImageFallbacks(payload.products);
+  productsCache = applyLocalProductImageFallbacks(sanitizeProductDescriptions(payload.products));
   return productsCache;
 }
 
@@ -137,7 +138,15 @@ function readPersistedProducts() {
     if (entry !== null) remove(PRODUCT_CACHE_KEY);
     return null;
   }
-  return { savedAt, products: entry.products };
+  return { savedAt, products: sanitizeProductDescriptions(entry.products) };
+}
+
+/** @param {Product[]} products */
+function sanitizeProductDescriptions(products) {
+  return products.map((product) => ({
+    ...product,
+    description: sanitizeCatalogDescription(product.description),
+  }));
 }
 
 /** @param {unknown} value */

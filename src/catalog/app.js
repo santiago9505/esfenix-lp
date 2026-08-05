@@ -30,6 +30,7 @@ import { errorState, loadingSkeleton } from './ui/states.js';
 import { needsVariantChoice } from './core/format.js';
 import { openQuoteSummary } from './ui/quote-summary.js';
 import { openVariantPicker } from './ui/variant-picker.js';
+import { openProductListPicker } from './ui/product-list-picker.js';
 import { renderQuoteFormView } from './ui/quote-form.js';
 import { parseRoute } from './core/url-state.js';
 import { renderCatalogView } from './catalog-page.js';
@@ -37,11 +38,13 @@ import { renderProductView } from './product-page.js';
 import { resolveLocation } from './data/locations.js';
 import { initReveals } from './ui/site-chrome.js';
 import { FRESA_CATALOG_REVALIDATE_MS } from './core/fresa-catalog.js';
+import { getClientTimeZone } from './core/timezone.js';
 
 export function createApp({ head, body }) {
   const locationStore = createLocationStore();
   const quoteStore = createQuoteStore(locationStore.getId());
   const integration = createQuoteIntegration();
+  const clientTimeZone = getClientTimeZone();
 
   /** @type {import('./core/types').Product[]} */
   let allProducts = [];
@@ -71,6 +74,7 @@ export function createApp({ head, body }) {
     get location() {
       return resolveLocation(locationStore.getId());
     },
+    clientTimeZone,
     locationStore,
     quoteStore,
     route: parseRoute(),
@@ -113,6 +117,7 @@ export function createApp({ head, body }) {
 
     requestLocationChange,
     addProduct,
+    openProductPicker,
     openQuote: openSummary,
     startQuoteWithoutProducts,
   };
@@ -168,9 +173,21 @@ export function createApp({ head, body }) {
 
   /**
    * @param {import('./core/repository').LocationProduct} product
-   * @param {{ initial?: Record<string, any> }} [options]
+   * @param {{
+   *   initial?: Record<string, any>,
+   *   render?: boolean,
+   *   openSummary?: boolean,
+   *   onAdded?: () => void,
+   * }} [options]
    */
   function addProduct(product, options = {}) {
+    const complete = () => {
+      announce(`${product.name} added to your quote list.`);
+      options.onAdded?.();
+      if (options.render !== false) render();
+      if (options.openSummary !== false) openSummary();
+    };
+
     if (!needsVariantChoice(product) && !options.initial) {
       const variant = product.variants[0];
       const measures = variant.availableMeasures ?? [];
@@ -180,9 +197,7 @@ export function createApp({ head, body }) {
         quantity: 1,
       });
       if (result.ok) {
-        announce(`${product.name} added to your quote list.`);
-        render();
-        openSummary();
+        complete();
       }
       return;
     }
@@ -193,11 +208,33 @@ export function createApp({ head, body }) {
       onAdd(selection) {
         const result = quoteStore.addItem(product, selection);
         if (result.ok) {
-          announce(`${product.name} added to your quote list.`);
-          render();
-          openSummary();
+          complete();
         }
       },
+    });
+  }
+
+  /**
+   * Opens the compact product list without leaving the current quote step.
+   * Product additions intentionally do not re-render the whole app or open the
+   * quote summary; the picker refreshes its own selected state and the quote
+   * step refreshes when the picker closes.
+   *
+   * @param {{ onClose?: () => void }} [options]
+   */
+  function openProductPicker(options = {}) {
+    return openProductListPicker({
+      products: locationProducts,
+      locationLabel: ctx.location.label,
+      selectedCount: (productId) => ctx.selectedCount(productId),
+      onAdd(product, onAdded) {
+        addProduct(product, {
+          render: false,
+          openSummary: false,
+          onAdded,
+        });
+      },
+      onClose: options.onClose,
     });
   }
 
@@ -327,6 +364,7 @@ export function createApp({ head, body }) {
       route.view === 'quote'
         ? renderQuoteFormView(ctx, {
             onBack: closeQuoteFormScreen,
+            onOpenProductPicker: openProductPicker,
             onSubmit: submitQuoteForm,
           })
         : route.view === 'product'
