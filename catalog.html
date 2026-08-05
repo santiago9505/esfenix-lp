@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Catalog — Esfenix</title>
+<meta name="description" content="Explore flowers, foliage and floral supplies available for your location. Build a list of products and request a quote from Esfenix.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/styles/base.css">
+<link rel="stylesheet" href="/src/catalog/catalog.css">
+</head>
+<body data-theme="light" class="catalog-page">
+
+<!--#include header-->
+<script>
+  // The catalog has no hero for the header to sit on, so it starts in its
+  // solid state. Done inline, during parse, to avoid a flash of the
+  // transparent-over-hero styling.
+  document.getElementById('hdr').classList.add('solid');
+</script>
+
+<!--#include overlay-->
+
+<main id="catalog-root" class="cat-root">
+  <!-- Rendered server-side for first paint and for crawlers; src/catalog/main.js
+       replaces it per view (the product page has its own breadcrumbs). -->
+  <div class="wrap" id="cat-head">
+    <nav class="cat-crumbs" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="/">Home</a></li>
+        <li aria-current="page">Catalog</li>
+      </ol>
+    </nav>
+
+    <header class="cat-head-block">
+      <span class="eyebrow">Catalog</span>
+      <h1>Product Catalog</h1>
+      <p>Explore flowers, foliage and floral supplies available for your location.</p>
+    </header>
+  </div>
+
+  <!-- Filled in by src/catalog/main.js. The skeleton below is what shows
+       before the catalog data resolves. -->
+  <div class="wrap" id="cat-app">
+    <div class="cat-skeleton" role="status" aria-live="polite">
+      <span class="cat-sr">Loading the catalog…</span>
+      <div class="cat-skeleton-bar"></div>
+      <div class="cat-skeleton-grid">
+        <div class="cat-skeleton-card"></div>
+        <div class="cat-skeleton-card"></div>
+        <div class="cat-skeleton-card"></div>
+        <div class="cat-skeleton-card"></div>
+        <div class="cat-skeleton-card"></div>
+        <div class="cat-skeleton-card"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!--#include footer-->
+
+<script type="module" src="/src/catalog/main.js"></script>
+</body>
+</html>

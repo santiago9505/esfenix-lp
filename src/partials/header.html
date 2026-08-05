@@ -1,0 +1,31 @@
+<!-- Shared site header. Included by index.html and catalog.html through the
+     html-partials Vite plugin, so the navigation has a single source of truth.
+
+     Section links are absolute (`/#valores`) because those sections live on the
+     Home page: from the Home page they behave as same-document hash links
+     exactly as before, and from the catalog they navigate home.
+
+     The quote CTA carries `data-quote-cta` so the catalog can intercept it and
+     open the quote flow. The Home page does not bind it and keeps its current
+     behaviour. -->
+<header id="hdr">
+  <div class="wrap nav">
+    <a href="/#inicio" class="logo" aria-label="Esfenix — home"><img src="/assets/esfenix-logo.svg" alt="Esfenix" class="logo-img"></a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="/#valores">About</a>
+      <a href="/catalog" data-nav-catalog>Catalog</a>
+      <a href="/#envios">Shipping</a>
+      <a href="/#sedes">Locations</a>
+      <a href="/#contacto">Contact</a>
+    </nav>
+    <div class="nav-right">
+      <a class="nav-cart" href="/catalog" data-quote-cart aria-label="Open flower cart">
+        <img class="nav-cart-icon nav-cart-icon-white" src="/assets/flower-cart-white.svg" alt="" aria-hidden="true">
+        <img class="nav-cart-icon nav-cart-icon-color" src="/assets/flower-cart-color.svg" alt="" aria-hidden="true">
+        <span class="nav-cart-label" aria-hidden="true">Wishlist</span>
+      </a>
+      <a href="/#cotizar" class="btn btn-primary nav-cta" data-quote-cta>Request a quote</a>
+      <button class="burger" id="menuOpen" aria-label="Open menu" aria-expanded="false">≡</button>
+    </div>
+  </div>
+</header>

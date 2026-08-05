@@ -1,0 +1,24 @@
+<!-- Shared mobile overlay menu. See src/partials/header.html for why the
+     section links are absolute. -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Main menu">
+  <div class="bg"><div class="ph" data-img data-menu-bg data-src="/assets/images/flowers-bg.webp"></div></div>
+  <div class="scrim"></div>
+  <div class="ov-inner">
+    <div class="ov-top">
+      <a href="/#inicio" class="logo" aria-label="Esfenix - home"><img src="/assets/esfenix-logo.svg" alt="Esfenix" class="logo-img"></a>
+      <button class="ov-close" id="menuClose" aria-label="Close menu">Close <span>&times;</span></button>
+    </div>
+    <nav aria-label="Primary">
+      <a href="/#inicio"><span class="idx">01</span> Home</a>
+      <a href="/#valores"><span class="idx">02</span> About</a>
+      <a href="/catalog" data-nav-catalog><span class="idx">03</span> Catalog</a>
+      <a href="/#envios"><span class="idx">04</span> Shipping</a>
+      <a href="/#sedes"><span class="idx">05</span> Locations</a>
+      <a href="/#contacto"><span class="idx">06</span> Contact</a>
+    </nav>
+    <div class="ov-foot">
+      <span>+1 (713) 887-8773 &nbsp;&middot;&nbsp; +1 (346) 733-7799 &nbsp;&middot;&nbsp; info@esfenix.com</span>
+      <a href="/#cotizar" class="btn btn-primary" style="background:var(--c-sage);color:var(--c-forest)" data-quote-cta>Request a quote <span class="arr">&rsaquo;</span></a>
+    </div>
+  </div>
+</div>
