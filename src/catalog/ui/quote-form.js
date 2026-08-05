@@ -14,6 +14,7 @@
 import { findActiveClient } from '../core/fresa-clients.js';
 import { buildQuotePayload } from '../core/quote-payload.js';
 import { describeQuoteItem } from '../core/format.js';
+import { maskEmailForDisplay, maskPhoneForDisplay } from '../core/privacy.js';
 import { getCategoryLabel } from '../data/categories.js';
 import { resolveAdvisor } from '../data/advisors.js';
 import { resolveLocation } from '../data/locations.js';
@@ -305,7 +306,15 @@ export function renderQuoteFormView(ctx, options) {
               el('p', { text: state.clientLookup === 'unavailable' ? 'Please enter your contact details below and continue with your quote.' : 'Please enter your contact details below to request a quote.' }),
             ]),
           ]),
-      field({ label: 'Email address', name: 'email', type: 'email', value: state.email, autocomplete: 'email', readonly: true }),
+      field({
+        label: 'Email address',
+        name: 'email',
+        type: state.recognized ? 'text' : 'email',
+        value: state.recognized ? maskEmailForDisplay(state.email) : state.email,
+        autocomplete: state.recognized ? 'off' : 'email',
+        readonly: true,
+        help: state.recognized ? 'Masked for your privacy' : null,
+      }),
       el('div', { class: 'cat-quote-field-grid' }, [
         contactField('First name', 'firstName', 'given-name', true),
         contactField('Last name', 'lastName', 'family-name', true),
@@ -353,10 +362,10 @@ export function renderQuoteFormView(ctx, options) {
       label,
       name,
       type,
-      value,
-      autocomplete,
+      value: state.recognized && name === 'phone' && value ? maskPhoneForDisplay(value) : value,
+      autocomplete: state.recognized && name === 'phone' ? 'off' : autocomplete,
       required,
-      help,
+      help: state.recognized && name === 'phone' && value ? 'Masked for your privacy' : help,
       // Known values are displayed as a confirmation of what Fresa returned.
       // Empty values remain editable so an incomplete Fresa record does not
       // prevent the visitor from finishing the quote.
@@ -598,7 +607,7 @@ export function renderQuoteFormView(ctx, options) {
     const items = ctx.quoteStore.getItems();
     return el('div', { class: 'cat-quote-review' }, [
       el('div', { class: 'cat-quote-section-label' }, [el('span', { text: 'Ready to send' }), el('span', { class: 'cat-quote-section-count', text: `${items.length} product${items.length === 1 ? '' : 's'}` })]),
-      el('p', { text: `${state.email} · ${resolveLocation(ctx.locationId).label} · ${state.orderType}` }),
+      el('p', { text: `${state.recognized ? maskEmailForDisplay(state.email) : state.email} · ${resolveLocation(ctx.locationId).label} · ${state.orderType}` }),
       el('p', { class: 'cat-note', text: 'Your request contains no payment or pricing information.' }),
     ]);
   }
@@ -650,10 +659,13 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function readContact(root) {
-    state.contact.firstName = root.querySelector('[name="firstName"]').value.trim();
-    state.contact.lastName = root.querySelector('[name="lastName"]').value.trim();
-    state.contact.phone = root.querySelector('[name="phone"]').value.trim();
-    state.contact.company = root.querySelector('[name="company"]').value.trim();
+    const fields = ['firstName', 'lastName', 'phone', 'company'];
+    fields.forEach((name) => {
+      const input = root.querySelector(`[name="${name}"]`);
+      // A recognized value may be masked in the input. Keep the original value
+      // in state and only read fields that the visitor was allowed to edit.
+      if (input && !input.readOnly) state.contact[name] = input.value.trim();
+    });
   }
 
   function readDelivery(root) {
