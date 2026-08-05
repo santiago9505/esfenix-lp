@@ -24,21 +24,19 @@ async function readEnvironment() {
   return values;
 }
 
-function isBundledAttachment(attachment) {
-  const source = String(attachment?.src ?? attachment?.url ?? '');
-  return attachment?.isFallback === true || source.startsWith('/');
-}
-
 function snapshotProduct(product) {
   return {
     ...product,
-    images: (product.images ?? []).filter(isBundledAttachment),
+    // Attachment URLs expire and local image references are highly repetitive.
+    // Ship neither: the browser rebuilds local fallbacks from its bundled map,
+    // then the background Fresa refresh supplies current remote attachments.
+    images: [],
     files: [],
     locations: (product.locations ?? []).map((location) => ({
       ...location,
       variants: (location.variants ?? []).map((variant) => ({
         ...variant,
-        images: (variant.images ?? []).filter(isBundledAttachment),
+        images: [],
         files: [],
       })),
     })),

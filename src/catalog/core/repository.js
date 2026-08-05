@@ -15,6 +15,7 @@ import {
   resetFresaCatalogCache,
 } from './fresa-catalog.js';
 import { read, remove, write } from './storage.js';
+import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
 
 /**
  * @typedef {import('./types').Product} Product
@@ -121,7 +122,7 @@ async function loadProductSnapshot(options) {
 
   productsAreSnapshot = true;
   productsCachedAt = 0;
-  productsCache = payload.products;
+  productsCache = applyLocalProductImageFallbacks(payload.products);
   return productsCache;
 }
 
