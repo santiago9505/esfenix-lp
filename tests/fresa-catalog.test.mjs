@@ -205,8 +205,8 @@ test('fetches every Fresa page with bearer auth and the required pagination', as
             columns: [{ key: 'category', field_name: 'category', field_type: 'select' }],
             products: [product],
             page: offset === '0'
-              ? { offset: 0, limit: 250, totalCount: 2, hasMore: true, nextOffset: 250 }
-              : { offset: 250, limit: 250, totalCount: 2, hasMore: false, nextOffset: null },
+              ? { offset: 0, limit: 1000, totalCount: 2, hasMore: true, nextOffset: 1000 }
+              : { offset: 1000, limit: 1000, totalCount: 2, hasMore: false, nextOffset: null },
           },
         };
       },
@@ -221,10 +221,10 @@ test('fetches every Fresa page with bearer auth and the required pagination', as
 
   assert.deepEqual(
     calls.map((call) => new URL(call.url).search),
-    ['?limit=250&offset=0', '?limit=250&offset=250'],
+    ['?limit=1000&offset=0', '?limit=1000&offset=1000'],
   );
   assert.equal(calls[0].options.headers.Authorization, 'Bearer test-key');
-  assert.deepEqual(response.catalog.products.map((product) => product.id), ['product-0', 'product-250']);
+  assert.deepEqual(response.catalog.products.map((product) => product.id), ['product-0', 'product-1000']);
 });
 
 test('accepts Fresa source responses that expose products as top-level records', async () => {

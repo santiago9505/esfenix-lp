@@ -18,9 +18,15 @@ const env = typeof import.meta !== 'undefined' ? import.meta.env ?? {} : {};
 export const FRESA_CATALOG_API_URL = String(env.FRESA_CATALOG_API_URL ?? '').trim();
 export const FRESA_CATALOG_API_KEY = String(env.FRESA_CATALOG_API_KEY ?? '').trim();
 export const FRESA_CATALOG_INTEGRATION_ID = String(env.FRESA_CATALOG_INTEGRATION_ID ?? '').trim();
-export const FRESA_CATALOG_REVALIDATE_MS = 60_000;
+// Fresa attachment URLs are signed for one hour. Revalidate halfway through
+// that window so a warm browser avoids repeatedly downloading the full source
+// while every cached URL is still valid.
+export const FRESA_CATALOG_REVALIDATE_MS = 30 * 60_000;
 export const FRESA_CATALOG_SOURCE_NAME = 'Landing Page';
-const PAGE_LIMIT = 250;
+// The public Fresa endpoint accepts up to 1,000 records. The production source
+// currently has more than 1,300 rows, so this reduces six sequential requests
+// to two without changing the response contract.
+const PAGE_LIMIT = 1000;
 
 let cachedCatalog = null;
 let cacheExpiresAt = 0;
@@ -50,7 +56,7 @@ export class FresaCatalogError extends Error {
 }
 
 /**
- * Loads all pages of the catalog. Calls within the 60-second window share the
+ * Loads all pages of the catalog. Calls within the revalidation window share the
  * same response; a failed request is never cached so Retry remains useful.
  *
  * @param {{
@@ -132,7 +138,7 @@ export async function fetchCatalogPages({
       response = await fetchImpl(url.toString(), {
         headers: { Authorization: `Bearer ${token}` },
         // Keep signed attachment responses out of browser/CDN caches while the
-        // catalog is revalidated in memory for 60 seconds.
+        // catalog is revalidated in memory before signed URLs expire.
         cache: 'no-store',
       });
     } catch (error) {

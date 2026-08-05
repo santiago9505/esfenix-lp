@@ -10,6 +10,7 @@
     "generate:brand-assets": "node scripts/generate-brand-assets.mjs",
     "optimize:assets": "node scripts/optimize-assets.mjs",
     "build:catalog-data": "node scripts/build-catalog-data.mjs",
+    "snapshot:catalog": "node scripts/generate-fresa-catalog-snapshot.mjs",
     "check:fresa-map": "node scripts/check-fresa-map.mjs",
     "test": "node --test \"tests/**/*.test.mjs\""
   },

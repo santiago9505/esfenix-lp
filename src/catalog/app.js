@@ -19,6 +19,7 @@ import {
   getProductsForLocation,
   loadProducts,
   productExistsAnywhere,
+  productsNeedRefresh,
 } from './core/repository.js';
 import { catalogHref, productHref, readFiltersFromUrl, syncUrl } from './core/url-state.js';
 import { confirmLocationChange } from './ui/modal.js';
@@ -51,6 +52,8 @@ export function createApp({ head, body }) {
   /** @type {ReturnType<typeof openQuoteSummary>|null} */
   let summary = null;
   let refreshTimer = null;
+  let refreshRequest = null;
+  let warmupTimer = null;
 
   const ctx = {
     get products() {
@@ -381,6 +384,20 @@ export function createApp({ head, body }) {
     render();
     bindGlobalQuoteCtas();
     scheduleCatalogRefresh();
+    scheduleCatalogWarmup();
+  }
+
+  function scheduleCatalogWarmup() {
+    if (!productsNeedRefresh() || warmupTimer !== null) return;
+
+    // Contact recognition has priority on the quote route. The bundled
+    // snapshot already has the product list, so let the much smaller client
+    // lookup finish before starting the full catalog transfer.
+    const delay = parseRoute().view === 'quote' ? 8_000 : 0;
+    warmupTimer = window.setTimeout(() => {
+      warmupTimer = null;
+      void refreshCatalog();
+    }, delay);
   }
 
   /**
@@ -390,24 +407,37 @@ export function createApp({ head, body }) {
    */
   function scheduleCatalogRefresh() {
     if (refreshTimer !== null) return;
-    refreshTimer = window.setInterval(async () => {
-      // Do not replace an in-progress quote screen while the visitor is
-      // entering contact or delivery details. The next catalog visit will
-      // receive the refreshed product data normally.
-      if (parseRoute().view === 'quote') return;
+    refreshTimer = window.setInterval(() => {
+      void refreshCatalog();
+    }, FRESA_CATALOG_REVALIDATE_MS);
+  }
+
+  /** Refreshes live data without making the first render wait for Fresa. */
+  function refreshCatalog() {
+    if (refreshRequest) return refreshRequest;
+
+    refreshRequest = (async () => {
       try {
         const nextProducts = await loadProducts({ force: true });
-        if (catalogSignature(nextProducts) === catalogSignature(allProducts)) return;
+        const changed = catalogSignature(nextProducts) !== catalogSignature(allProducts);
 
         allProducts = nextProducts;
         locationProducts = getProductsForLocation(allProducts, locationStore.getId());
         filters = pruneFilters(locationProducts, filters);
         quoteStore.reconcile(locationProducts);
-        render();
+
+        // Keep an in-progress contact or delivery form untouched. The fresh
+        // products are already in memory and appear on the next catalog view.
+        if (changed && parseRoute().view !== 'quote') render();
       } catch {
-        // Keep the last successful catalog visible. The next interval retries.
+        // Keep the snapshot or last successful catalog visible. The next
+        // interval retries without turning a transient Fresa error into a blank page.
+      } finally {
+        refreshRequest = null;
       }
-    }, FRESA_CATALOG_REVALIDATE_MS);
+    })();
+
+    return refreshRequest;
   }
 
   /** @param {import('./core/types').Product[]} products */
