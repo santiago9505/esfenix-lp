@@ -1,16 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { maskEmailForDisplay, maskPhoneForDisplay } from '../src/catalog/core/privacy.js';
+import { maskPhoneForDisplay, maskTextForDisplay } from '../src/catalog/core/privacy.js';
 
-test('masks an email while preserving recognizable fragments', () => {
-  const actual = 'freddy@fresaai.com';
-  const displayed = maskEmailForDisplay(actual);
+test('masks names and companies while preserving recognizable fragments', () => {
+  const actual = 'Fresa AI';
+  const displayed = maskTextForDisplay(actual);
 
-  assert.equal(displayed, 'fr••••@fr••••.com');
-  assert.ok(!displayed.includes('freddy'));
-  assert.ok(!displayed.includes('fresaai'));
-  assert.equal(actual, 'freddy@fresaai.com', 'masking does not alter the source value');
+  assert.equal(maskTextForDisplay('Fresa'), 'Fr•••');
+  assert.equal(maskTextForDisplay('Test'), 'Te••');
+  assert.equal(maskTextForDisplay('GFT'), 'G••');
+  assert.equal(displayed, 'Fr••• ••');
+  assert.equal(actual, 'Fresa AI', 'masking does not alter the source value');
 });
 
 test('masks the middle phone digits and keeps its formatting', () => {
@@ -19,6 +20,6 @@ test('masks the middle phone digits and keeps its formatting', () => {
 });
 
 test('does not echo malformed sensitive values', () => {
-  assert.equal(maskEmailForDisplay('not-an-email'), '••••••');
+  assert.equal(maskTextForDisplay('---'), '•••');
   assert.equal(maskPhoneForDisplay('unknown'), '••••••');
 });

@@ -1,25 +1,22 @@
 const MASK = '•';
 
-function maskedSuffix(visiblePrefix, count = 4) {
-  return `${visiblePrefix}${MASK.repeat(count)}`;
-}
-
 /**
- * Keeps enough of an email visible for a returning client to recognize it
- * without exposing the complete address in the page or accessibility tree.
+ * Keeps the beginning of a name or company visible so the returning client can
+ * recognize it, while masking the remaining letters and digits.
  */
-export function maskEmailForDisplay(email) {
-  const value = String(email ?? '').trim();
-  const separator = value.lastIndexOf('@');
-  if (separator <= 0 || separator === value.length - 1) return MASK.repeat(6);
+export function maskTextForDisplay(text) {
+  const value = String(text ?? '').trim();
+  const characterCount = ([...value].filter((character) => /[\p{L}\p{N}]/u.test(character))).length;
+  if (characterCount === 0) return MASK.repeat(3);
 
-  const local = value.slice(0, separator);
-  const domain = value.slice(separator + 1);
-  const dot = domain.lastIndexOf('.');
-  const domainName = dot > 0 ? domain.slice(0, dot) : domain;
-  const extension = dot > 0 ? domain.slice(dot) : '';
-
-  return `${maskedSuffix(local.slice(0, 2))}@${maskedSuffix(domainName.slice(0, 2))}${extension}`;
+  const visibleCount = characterCount <= 3 ? 1 : 2;
+  let seen = 0;
+  return [...value].map((character) => {
+    if (!/[\p{L}\p{N}]/u.test(character)) return character;
+    const visible = seen < visibleCount;
+    seen += 1;
+    return visible ? character : MASK;
+  }).join('');
 }
 
 /** Keeps the first and last two digits while preserving the original format. */

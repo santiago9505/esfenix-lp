@@ -14,7 +14,7 @@
 import { findActiveClient } from '../core/fresa-clients.js';
 import { buildQuotePayload } from '../core/quote-payload.js';
 import { describeQuoteItem } from '../core/format.js';
-import { maskEmailForDisplay, maskPhoneForDisplay } from '../core/privacy.js';
+import { maskPhoneForDisplay, maskTextForDisplay } from '../core/privacy.js';
 import { getCategoryLabel } from '../data/categories.js';
 import { resolveAdvisor } from '../data/advisors.js';
 import { resolveLocation } from '../data/locations.js';
@@ -289,7 +289,10 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function contactStep() {
-    const welcomeName = [state.contact.firstName, state.contact.lastName].filter(Boolean).join(' ');
+    const welcomeName = [state.contact.firstName, state.contact.lastName]
+      .filter(Boolean)
+      .map(maskTextForDisplay)
+      .join(' ');
     const fields = [
       state.recognized
         ? el('div', { class: 'cat-quote-recognized' }, [
@@ -309,12 +312,14 @@ export function renderQuoteFormView(ctx, options) {
       field({
         label: 'Email address',
         name: 'email',
-        type: state.recognized ? 'text' : 'email',
-        value: state.recognized ? maskEmailForDisplay(state.email) : state.email,
-        autocomplete: state.recognized ? 'off' : 'email',
+        type: 'email',
+        value: state.email,
+        autocomplete: 'email',
         readonly: true,
-        help: state.recognized ? 'Masked for your privacy' : null,
       }),
+      state.recognized
+        ? el('p', { class: 'cat-quote-email-confirmed', text: 'Some profile details are masked for your privacy.' })
+        : null,
       el('div', { class: 'cat-quote-field-grid' }, [
         contactField('First name', 'firstName', 'given-name', true),
         contactField('Last name', 'lastName', 'family-name', true),
@@ -358,14 +363,22 @@ export function renderQuoteFormView(ctx, options) {
 
   function contactField(label, name, autocomplete, required, type = 'text', help) {
     const value = state.contact[name] ?? '';
+    const masksText = ['firstName', 'lastName', 'company'].includes(name);
+    const displayValue = state.recognized && value
+      ? name === 'phone'
+        ? maskPhoneForDisplay(value)
+        : masksText
+          ? maskTextForDisplay(value)
+          : value
+      : value;
     return field({
       label,
       name,
       type,
-      value: state.recognized && name === 'phone' && value ? maskPhoneForDisplay(value) : value,
-      autocomplete: state.recognized && name === 'phone' ? 'off' : autocomplete,
+      value: displayValue,
+      autocomplete: state.recognized && value ? 'off' : autocomplete,
       required,
-      help: state.recognized && name === 'phone' && value ? 'Masked for your privacy' : help,
+      help,
       // Known values are displayed as a confirmation of what Fresa returned.
       // Empty values remain editable so an incomplete Fresa record does not
       // prevent the visitor from finishing the quote.
@@ -607,7 +620,7 @@ export function renderQuoteFormView(ctx, options) {
     const items = ctx.quoteStore.getItems();
     return el('div', { class: 'cat-quote-review' }, [
       el('div', { class: 'cat-quote-section-label' }, [el('span', { text: 'Ready to send' }), el('span', { class: 'cat-quote-section-count', text: `${items.length} product${items.length === 1 ? '' : 's'}` })]),
-      el('p', { text: `${state.recognized ? maskEmailForDisplay(state.email) : state.email} · ${resolveLocation(ctx.locationId).label} · ${state.orderType}` }),
+      el('p', { text: `${state.email} · ${resolveLocation(ctx.locationId).label} · ${state.orderType}` }),
       el('p', { class: 'cat-note', text: 'Your request contains no payment or pricing information.' }),
     ]);
   }
