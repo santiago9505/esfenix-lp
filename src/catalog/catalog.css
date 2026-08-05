@@ -81,11 +81,32 @@
 @media(min-width:1000px){.cat-layout{grid-template-columns:220px 1fr;gap:36px}}
 
 .cat-sidebar{display:none}
-@media(min-width:1000px){.cat-sidebar{display:block;position:sticky;top:120px}}
+@media(min-width:1000px){
+  /* Keep the complete filter set reachable without making the page/grid fight
+     the pointer for scroll focus. The panel owns its scroll once it reaches
+     the viewport, then hands it back to the page at either end. */
+  .cat-sidebar{
+    display:block;
+    position:sticky;
+    top:120px;
+    max-height:calc(100vh - 160px);
+    overflow-y:auto;
+    overscroll-behavior:auto;
+    scrollbar-gutter:stable;
+    scrollbar-width:thin;
+    scrollbar-color:var(--c-sage) transparent;
+    padding-right:8px;
+  }
+  .cat-sidebar::-webkit-scrollbar{width:8px}
+  .cat-sidebar::-webkit-scrollbar-track{background:transparent}
+  .cat-sidebar::-webkit-scrollbar-thumb{background:var(--c-sage);border:2px solid transparent;border-radius:var(--r-pill);background-clip:padding-box}
+  .cat-sidebar::-webkit-scrollbar-thumb:hover{background:var(--c-muted);border-width:1px}
+}
 
 /* ---- Filters ----------------------------------------------------- */
 
 .cat-filters-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding-bottom:14px;border-bottom:1px solid var(--c-text)}
+@media(min-width:1000px){.cat-filters-head{position:sticky;top:0;z-index:1;padding-top:4px;background:var(--c-cream)}}
 .cat-filters-title{font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
 .cat-clear{background:none;border:0;padding:0;font-family:var(--ff);font-size:13px;font-weight:600;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .cat-clear:hover{color:var(--c-text)}
@@ -100,7 +121,9 @@
 .cat-facet-toggle[aria-expanded="false"] .cat-facet-chevron{transform:rotate(0deg)}
 .cat-facet-body{padding-bottom:16px}
 .cat-facet-options{list-style:none;display:flex;flex-direction:column;gap:2px}
-.cat-facet-scroll{max-height:268px;overflow-y:auto;padding-right:6px}
+/* The sidebar owns the only filter scroll. Long facets stay in the same flow
+   so the wheel never gets trapped in a second, nested scrollbar. */
+.cat-facet-scroll{max-height:none;overflow:visible;padding-right:0}
 .cat-facet-options li{display:flex;align-items:center}
 
 .cat-facet-check{position:absolute;opacity:0;width:1px;height:1px}

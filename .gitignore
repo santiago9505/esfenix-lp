@@ -30,3 +30,6 @@ firebase-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Generated review artifacts (may include source price lists)
+tmp/pdfs/catalog-review/

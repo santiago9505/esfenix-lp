@@ -50,17 +50,19 @@ de datos local ni importa `products.generated.json` para mostrar productos.
 Configura las variables en `.env.local` (el archivo no se versiona):
 
 ```env
-FRESA_CATALOG_API_URL=http://localhost:3000/api/integrations/catalog
+FRESA_CATALOG_INTEGRATION_ID=replace-with-catalog-integration-id
+FRESA_CATALOG_API_URL=https://fresaai.app/api/integrations/lists/replace-with-catalog-integration-id
 FRESA_CATALOG_API_KEY=replace-with-a-rotated-fresa-catalog-key
-FRESA_CLIENTS_API_URL=http://localhost:3000/api/integrations/catalog
+FRESA_CLIENTS_INTEGRATION_ID=replace-with-active-clients-integration-id
+FRESA_CLIENTS_API_URL=https://fresaai.app/api/integrations/lists/replace-with-active-clients-integration-id
 FRESA_CLIENTS_API_KEY=replace-with-a-rotated-fresa-active-clients-key
 FRESA_QUOTE_SESSION_ENDPOINT=https://your-domain.example/api/quote-sessions
 ```
 
 La consulta usa `Authorization: Bearer ...`, sigue `page.nextOffset` (o
 `catalog.page.nextOffset` en la respuesta envuelta) hasta completar la
-paginacion y revalida el catalogo cada 60 segundos. La integracion acepta tanto
-`catalog.products` como `records` en el nivel superior. Las columnas se
+paginacion y revalida el catalogo cada 60 segundos. La URL, el ID y la llave
+de cada fuente se configuran como una pareja; las columnas se
 interpretan desde `catalog.columns[].key` o `columns[].key`; las imagenes y archivos
 usan directamente `attachment.url` y no se convierten ni se descargan desde
 otra ruta. En produccion, rota la API key de prueba y permite el dominio de la

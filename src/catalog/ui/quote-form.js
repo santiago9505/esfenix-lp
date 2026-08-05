@@ -17,7 +17,7 @@ import { describeQuoteItem } from '../core/format.js';
 import { getCategoryLabel } from '../data/categories.js';
 import { resolveAdvisor } from '../data/advisors.js';
 import { resolveLocation } from '../data/locations.js';
-import { el, productMedia, replaceChildren } from './dom.js';
+import { el, firstUsableImage, productMedia, replaceChildren } from './dom.js';
 import { locationSelect } from './location-select.js';
 import { NO_PAYMENT_NOTE } from './states.js';
 
@@ -168,7 +168,6 @@ export function renderQuoteFormView(ctx, options) {
     return el('div', { class: `cat-quote-step ${state.step === 2 ? 'is-wide' : ''} ${direction ? `is-entering is-${direction}` : ''}` }, [
       advisorPortrait(state.step === 0),
       el('div', { class: 'cat-quote-step-heading' }, [
-        el('p', { class: 'cat-quote-step-count', text: `Step ${state.step + 1} of ${STEPS.length} · ${STEPS[state.step]}` }),
         el('h2', { id: 'cat-quote-title', text: config[0] }),
         config[1] ? el('p', { class: 'cat-quote-step-description', text: config[1] }) : null,
       ]),
@@ -236,6 +235,10 @@ export function renderQuoteFormView(ctx, options) {
         state.email = input.value.trim();
         state.lookupPending = true;
         state.clientLookup = 'checking';
+        // A visitor can go back and submit a different email. Clear the
+        // previous profile before looking up the new one so contact and
+        // shipping data from two people can never be mixed.
+        clearProfileData();
         button.disabled = true;
         button.textContent = 'Looking for you…';
 
@@ -258,10 +261,10 @@ export function renderQuoteFormView(ctx, options) {
           state.contact = profile;
           state.delivery = {
             ...state.delivery,
-            address: profile.shipping?.address || state.delivery.address,
-            city: profile.shipping?.city || state.delivery.city,
-            state: profile.shipping?.state || state.delivery.state,
-            zipCode: profile.shipping?.zipCode || state.delivery.zipCode,
+            address: profile.shipping?.address || '',
+            city: profile.shipping?.city || existingDestination.city || '',
+            state: profile.shipping?.state || existingDestination.state || '',
+            zipCode: profile.shipping?.zipCode || '',
           };
         }
         state.step = 1;
@@ -332,6 +335,18 @@ export function renderQuoteFormView(ctx, options) {
     ]);
   }
 
+  function clearProfileData() {
+    state.recognized = false;
+    state.contact = { firstName: '', lastName: '', phone: '', company: '' };
+    state.delivery = {
+      ...state.delivery,
+      address: '',
+      city: existingDestination.city ?? '',
+      state: existingDestination.state ?? '',
+      zipCode: '',
+    };
+  }
+
   function contactField(label, name, autocomplete, required, type = 'text', help) {
     const value = state.contact[name] ?? '';
     return field({
@@ -390,11 +405,12 @@ export function renderQuoteFormView(ctx, options) {
 
   function productRow(item) {
     const product = ctx.products.find((entry) => entry.id === item.productId);
-    const image = product?.variants?.find((variant) =>
+    const selectedVariant = product?.variants?.find((variant) =>
       (variant.variety ?? null) === item.variety &&
       (variant.color ?? null) === item.color &&
       (variant.lengthCm ?? null) === item.lengthCm,
-    )?.images?.find((entry) => entry.isPrimary) ?? product?.images?.find((entry) => entry.isPrimary) ?? product?.images?.[0] ?? null;
+    );
+    const image = firstUsableImage(selectedVariant?.images) ?? firstUsableImage(product?.images);
     const quantity = el('input', {
       type: 'number',
       min: '1',

@@ -19,7 +19,7 @@ import {
   listSentence,
   capitalize,
 } from './core/format.js';
-import { el, productMedia, replaceChildren } from './ui/dom.js';
+import { el, firstUsableImage, productMedia, replaceChildren } from './ui/dom.js';
 import { findProductBySlug, getCatalogSourcesForProduct, getRelatedProducts } from './core/repository.js';
 import { getCategoryLabel } from './data/categories.js';
 import { locationSelect } from './ui/location-select.js';
@@ -112,7 +112,7 @@ function gallery(product) {
     // Once a variant is selected, do not borrow another variant's photo. A
     // missing image for that exact option must remain a placeholder.
     const images = variant ? variant.images ?? [] : product.images ?? [];
-    const primary = images.find((image) => image.isPrimary) ?? images[0] ?? null;
+    const primary = firstUsableImage(images);
 
     replaceChildren(mainHost, [
       productMedia(primary, {

@@ -162,9 +162,9 @@ export function announce(message) {
 /**
  * Renders an image with the site's branded placeholder fallback.
  *
- * Products without confirmed photography intentionally render the site's `.ph`
- * placeholder rather than a stand-in flower photo, so a missing image stays
- * visible as missing while still carrying the site's brand mark.
+ * Products without a usable API image or a local fallback intentionally render
+ * the site's `.ph` placeholder, so a missing image stays visible as missing
+ * while still carrying the site's brand mark.
  *
  * @param {{ src?: string, alt?: string }|null} image
  * @param {{ label: string, className?: string, width?: number, height?: number, eager?: boolean }} options
@@ -203,4 +203,17 @@ export function productMedia(image, options) {
       },
     }),
   ]);
+}
+
+/**
+ * Picks an image that can actually render. API attachment arrays can contain
+ * an empty URL before a valid attachment, so choosing the first array entry
+ * would hide the valid image behind the placeholder.
+ *
+ * @param {Array<{ src?: string|null, isPrimary?: boolean }>|null|undefined} images
+ */
+export function firstUsableImage(images) {
+  return images?.find((image) => image?.isPrimary && String(image.src ?? '').trim())
+    ?? images?.find((image) => String(image.src ?? '').trim())
+    ?? null;
 }

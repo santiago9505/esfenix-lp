@@ -243,7 +243,7 @@ export function createApp({ head, body }) {
         summary?.update(quoteStore.getItems());
         render();
       },
-      onContinue: continueToQuote,
+      onContinue: openQuoteFormScreen,
       onClose() {
         summary = null;
       },
@@ -430,16 +430,14 @@ export function createApp({ head, body }) {
   }
 
   /**
-   * The site-wide "Request a quote" buttons in the header, menu and footer.
-   * With products selected they open the quote summary; without, they go
-   * straight to the form.
+   * The site-wide "Request a quote" buttons always lead to the catalog quote
+   * form. The selected products stay in the shared local wishlist.
    */
   function bindGlobalQuoteCtas() {
     for (const node of document.querySelectorAll('[data-quote-cta]')) {
       node.addEventListener('click', (event) => {
         event.preventDefault();
-        if (quoteStore.isEmpty()) startQuoteWithoutProducts();
-        else openSummary();
+        openQuoteFormScreen();
       });
     }
 
@@ -449,6 +447,16 @@ export function createApp({ head, body }) {
         openSummary();
       });
     }
+
+    const updateCount = () => {
+      for (const node of document.querySelectorAll('[data-quote-count]')) {
+        const count = quoteStore.getCount();
+        node.textContent = count > 0 ? String(count) : '';
+        node.hidden = count === 0;
+      }
+    };
+    quoteStore.subscribe(updateCount);
+    updateCount();
   }
 
   window.addEventListener('popstate', () => {

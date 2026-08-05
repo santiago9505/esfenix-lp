@@ -9,12 +9,15 @@
 
 import { getCategoryLabel, resolveCategoryId } from '../data/categories.js';
 import { LOCATIONS } from '../data/locations.js';
+import { catalogOrderForFamily, resolveCatalogFamily } from '../data/catalog-taxonomy.js';
 import { slugify } from './slug.js';
+import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
 
 const env = typeof import.meta !== 'undefined' ? import.meta.env ?? {} : {};
 
 export const FRESA_CATALOG_API_URL = String(env.FRESA_CATALOG_API_URL ?? '').trim();
 export const FRESA_CATALOG_API_KEY = String(env.FRESA_CATALOG_API_KEY ?? '').trim();
+export const FRESA_CATALOG_INTEGRATION_ID = String(env.FRESA_CATALOG_INTEGRATION_ID ?? '').trim();
 export const FRESA_CATALOG_REVALIDATE_MS = 60_000;
 export const FRESA_CATALOG_SOURCE_NAME = 'Landing Page';
 const PAGE_LIMIT = 250;
@@ -128,9 +131,8 @@ export async function fetchCatalogPages({
     try {
       response = await fetchImpl(url.toString(), {
         headers: { Authorization: `Bearer ${token}` },
-        // The catalog and the active-client directory share this URL and Fresa
-        // returns `Cache-Control: public` without varying on Authorization, so
-        // a shared cache entry can answer one source with the other's data.
+        // Keep signed attachment responses out of browser/CDN caches while the
+        // catalog is revalidated in memory for 60 seconds.
         cache: 'no-store',
       });
     } catch (error) {
@@ -210,17 +212,23 @@ export async function fetchCatalogPages({
 }
 
 /**
- * The catalog and active-client directory intentionally share an integration
- * route in some environments, so the response source is part of the security
- * boundary. Never let a valid `records` response from another Fresa source be
- * interpreted as products.
+ * The response source is part of the security boundary. Never let a valid
+ * `records` response from another Fresa source be interpreted as products.
  *
  * @param {Record<string, unknown>|null|undefined} source
  * @param {unknown} columns
  */
 function assertCatalogSource(source, columns) {
   const sourceName = normalizeLabel(source?.name);
-  if (sourceName !== normalizeLabel(FRESA_CATALOG_SOURCE_NAME)) {
+  const sourceId = safeString(source?.id);
+  if (FRESA_CATALOG_INTEGRATION_ID) {
+    if (sourceId !== FRESA_CATALOG_INTEGRATION_ID) {
+      throw new FresaCatalogError(
+        0,
+        'The catalog API returned an unexpected Fresa integration.',
+      );
+    }
+  } else if (sourceName !== normalizeLabel(FRESA_CATALOG_SOURCE_NAME)) {
     throw new FresaCatalogError(
       0,
       'The catalog API returned an unexpected Fresa data source.',
@@ -247,7 +255,7 @@ function assertCatalogSource(source, columns) {
  * fields are read through catalog.columns[].key; raw field names are never
  * guessed from the product object itself.
  *
- * @param {{ catalog?: { products?: unknown[], columns?: unknown[], lists?: unknown[] } }} payload
+ * @param {{ catalog?: { id?: unknown, name?: unknown, products?: unknown[], columns?: unknown[], lists?: unknown[] } }} payload
  */
 export function normalizeCatalog(payload) {
   const catalog = payload?.catalog ?? payload ?? {};
@@ -257,7 +265,8 @@ export function normalizeCatalog(payload) {
       ? payload.columns
       : [];
   const sourceName = safeString(catalog.name) || safeString(payload?.source?.name);
-  if (sourceName) assertCatalogSource({ name: sourceName }, allColumns);
+  const sourceId = safeString(catalog.id) || safeString(payload?.source?.id);
+  if (sourceName || sourceId) assertCatalogSource({ name: sourceName, id: sourceId }, allColumns);
   const columnsByList = new Map();
 
   for (const column of allColumns) {
@@ -299,7 +308,7 @@ export function normalizeCatalog(payload) {
     usedSlugs.add(slug);
   }
 
-  return groupedProducts;
+  return applyLocalProductImageFallbacks(groupedProducts);
 }
 
 /**
@@ -344,15 +353,20 @@ function normalizeProduct(raw, columns) {
   const varietyValues = distinctVariantValues(variants, 'variety');
   const description = safeString(raw.description);
   const createdAt = safeString(raw.createdAt);
+  const resolvedFamilyName = familyName(safeString(raw.name), variants);
+  const familyMeta = resolveCatalogFamily(resolvedFamilyName);
+  const resolvedCategory = familyMeta?.category ?? category;
+  const resolvedGroupLabel = familyMeta?.groupLabel ?? groupLabel;
+  const resolvedGroup = familyMeta?.group ?? (slugify(resolvedGroupLabel) || resolvedCategory);
 
   return {
     id: safeString(raw.id),
     slug: slugify(safeString(raw.name)) || slugify(safeString(raw.id)) || 'product',
     name: safeString(raw.name) || 'Unnamed product',
     description,
-    category,
-    group: slugify(groupLabel) || category,
-    groupLabel,
+    category: resolvedCategory,
+    group: resolvedGroup,
+    groupLabel: resolvedGroupLabel,
     variety: varietyValues.length === 1 ? varietyValues[0] : null,
     images,
     files,
@@ -369,8 +383,9 @@ function normalizeProduct(raw, columns) {
         variants,
       },
     ],
-    familyKey: buildFamilyKey(category, raw.name, variants),
-    familyName: familyName(safeString(raw.name), variants),
+    catalogOrder: familyMeta?.order ?? catalogOrderForFamily(resolvedFamilyName),
+    familyKey: familyMeta?.familyKey ?? buildFamilyKey(category, raw.name, variants),
+    familyName: resolvedFamilyName,
   };
 }
 
@@ -404,6 +419,7 @@ function groupProductFamilies(products) {
     current.origin ||= product.origin;
     current.isNew ||= product.isNew;
     current.position = Math.min(current.position ?? 0, product.position ?? 0);
+    current.catalogOrder = Math.min(current.catalogOrder ?? Number.MAX_SAFE_INTEGER, product.catalogOrder ?? Number.MAX_SAFE_INTEGER);
     current.images = uniqueAttachments([...(current.images ?? []), ...(product.images ?? [])]);
     current.files = uniqueAttachments([...(current.files ?? []), ...(product.files ?? [])]);
     current.locations = mergeLocations(current.locations, product.locations);

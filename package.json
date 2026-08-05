@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "generate:brand-assets": "node scripts/generate-brand-assets.mjs",
     "optimize:assets": "node scripts/optimize-assets.mjs",
     "build:catalog-data": "node scripts/build-catalog-data.mjs",
     "check:fresa-map": "node scripts/check-fresa-map.mjs",

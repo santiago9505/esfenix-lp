@@ -1,23 +1,21 @@
 /**
  * Fresa active-client directory integration.
  *
- * This is intentionally separate from the product catalog integration. The
- * endpoint is the same today, but the credential points at a different Fresa
- * source and the response uses `records` rather than `catalog.products`.
+ * This is intentionally separate from the product catalog integration. It
+ * uses its own Fresa integration URL and credential; the response uses
+ * `records` rather than `catalog.products`.
  * Only the normalized contact profile of active clients is retained in memory;
  * raw client records are never persisted by the landing page.
  *
- * Because both integrations share one URL, every request is made with
- * `cache: 'no-store'`. Fresa answers with `Cache-Control: public,
- * stale-while-revalidate` and without `Vary: Authorization`, so a cached
- * catalog response would otherwise be replayed for a client request — and the
- * directory would silently look like a list of products.
+ * Requests remain `cache: 'no-store'` as an extra safeguard for signed and
+ * source-specific responses.
  */
 
 const env = typeof import.meta !== 'undefined' ? import.meta.env ?? {} : {};
 
 export const FRESA_CLIENTS_API_URL = String(env.FRESA_CLIENTS_API_URL ?? '').trim();
 export const FRESA_CLIENTS_API_KEY = String(env.FRESA_CLIENTS_API_KEY ?? '').trim();
+export const FRESA_CLIENTS_INTEGRATION_ID = String(env.FRESA_CLIENTS_INTEGRATION_ID ?? '').trim();
 export const FRESA_CLIENTS_SOURCE_NAME = String(env.FRESA_CLIENTS_SOURCE_NAME ?? 'Clientes Activos').trim();
 export const FRESA_CLIENTS_REVALIDATE_MS = 60_000;
 
@@ -220,8 +218,8 @@ async function requestPage(url, apiKey, fetchImpl) {
     try {
       response = await fetchImpl(url, {
         headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
-        // Both Fresa sources answer on the same URL and the response does not
-        // vary on Authorization; a shared cache entry would return the catalog.
+        // Keep this response out of browser/CDN caches even though this source
+        // now has its own URL; the directory contains contact data.
         cache: 'no-store',
       });
     } catch (error) {
@@ -253,17 +251,23 @@ async function requestPage(url, apiKey, fetchImpl) {
 }
 
 /**
- * The catalog and the client directory share an integration route, so the
- * response source is part of the contract. A catalog response reaching this
- * module would otherwise be read as an empty client list and every visitor
- * would be treated as a new contact.
+ * The response source is part of the contract. A catalog response reaching
+ * this module would otherwise be read as an empty client list and every
+ * visitor would be treated as a new contact.
  *
  * @param {{ name?: unknown }|null} source
  */
 function assertClientSource(source) {
   const name = normalizeLabel(source?.name);
-  if (!name || !FRESA_CLIENTS_SOURCE_NAME) return;
-  if (name !== normalizeLabel(FRESA_CLIENTS_SOURCE_NAME)) {
+  const sourceId = normalizeLabel(source?.id);
+  if (FRESA_CLIENTS_INTEGRATION_ID) {
+    if (sourceId !== normalizeLabel(FRESA_CLIENTS_INTEGRATION_ID)) {
+      throw new FresaClientsError(
+        0,
+        'The client directory returned an unexpected Fresa integration.',
+      );
+    }
+  } else if (name && FRESA_CLIENTS_SOURCE_NAME && name !== normalizeLabel(FRESA_CLIENTS_SOURCE_NAME)) {
     throw new FresaClientsError(
       0,
       `The client directory returned the "${source?.name}" source instead of "${FRESA_CLIENTS_SOURCE_NAME}".`,

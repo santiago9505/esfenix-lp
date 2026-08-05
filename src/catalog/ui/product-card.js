@@ -15,7 +15,7 @@
  */
 
 import { getCategoryLabel } from '../data/categories.js';
-import { el, productMedia } from './dom.js';
+import { el, firstUsableImage, productMedia } from './dom.js';
 
 /**
  * @param {{
@@ -28,7 +28,7 @@ import { el, productMedia } from './dom.js';
  */
 export function productCard(options) {
   const { product } = options;
-  const primary = product.images?.find((image) => image.isPrimary) ?? product.images?.[0] ?? null;
+  const primary = firstUsableImage(product.images);
   const selected = options.selectedCount ?? 0;
 
   return el('article', { class: 'cat-card fx-pop' }, [

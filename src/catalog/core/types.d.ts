@@ -31,6 +31,7 @@ export interface ProductImage {
   src: string | null;
   alt: string;
   isPrimary?: boolean;
+  isFallback?: boolean;
 }
 
 export interface ProductAttachment {
@@ -95,6 +96,8 @@ export interface Product {
   /** Fresa list used to classify this product when the catalog has one list. */
   listName?: string;
   position?: number;
+  /** Editorial position from the printed product catalogue. */
+  catalogOrder?: number;
 
   /** Confirmed origin only. Never inferred. */
   origin?: string | null;

@@ -72,6 +72,42 @@ test('normalizes Fresa columns and attachments without assuming field keys', () 
   assert.equal(products[0].name, 'Roses', 'variant suffixes are not shown as separate product names');
 });
 
+test('uses local flower photography only when Fresa has no usable image', () => {
+  const baseProduct = {
+    id: 'ecuadorian-roses-60',
+    listId: 'flowers',
+    listName: 'Products',
+    name: 'EC ROSES',
+    fields: {
+      type_product_field: 'Roses',
+      floral_variant: 'Freedom',
+      gallery_field: [],
+    },
+  };
+
+  const local = normalizeCatalog({ catalog: { columns, products: [baseProduct] } })[0];
+  assert.match(local.images[0].src, /flowers-fallback\/roses-freedom\.webp$/);
+  assert.ok(local.images.length > 1, 'EC ROSES receives several nearby local photos');
+  assert.equal(local.images[0].isFallback, true);
+  assert.match(local.locations[0].variants[0].images[0].src, /roses-freedom\.webp$/);
+  assert.ok(local.locations[0].variants[0].images.length > 1, 'the selected rose variant also has nearby fallback photos');
+
+  const fromApi = normalizeCatalog({
+    catalog: {
+      columns,
+      products: [{
+        ...baseProduct,
+        fields: {
+          ...baseProduct.fields,
+          gallery_field: [{ id: 'api-image', name: 'freedom.webp', type: 'image/webp', url: 'https://cdn/freedom.webp' }],
+        },
+      }],
+    },
+  })[0];
+  assert.equal(fromApi.images[0].src, 'https://cdn/freedom.webp');
+  assert.ok(fromApi.images.every((image) => !image.isFallback), 'API photography is never mixed with local fallback');
+});
+
 test('groups size suffixes in product names when Fresa has no length column', () => {
   const products = normalizeCatalog({
     catalog: {
@@ -93,6 +129,62 @@ test('groups size suffixes in product names when Fresa has no length column', ()
     products[0].locations[0].variants.map((variant) => variant.lengthCm),
     [60, 70, 80],
   );
+});
+
+test('merges equivalent rose families even when Fresa classifies one duplicate incorrectly', () => {
+  const products = normalizeCatalog({
+    catalog: {
+      columns,
+      products: [
+        {
+          id: 'ec-roses-60',
+          listId: 'flowers',
+          listName: 'Products',
+          name: 'EC ROSES 60',
+          fields: { type_product_field: 'Roses' },
+        },
+        {
+          id: 'ec-roses-70-other',
+          listId: 'flowers',
+          listName: 'Products',
+          name: 'EC ROSES 70',
+          fields: { type_product_field: 'Other Flowers' },
+        },
+        {
+          id: 'garden-roses-50',
+          listId: 'flowers',
+          listName: 'Products',
+          name: 'GARDEN ROSES 50',
+          fields: { type_product_field: 'Roses' },
+        },
+        {
+          id: 'garden-roses-60-other',
+          listId: 'flowers',
+          listName: 'Products',
+          name: 'GARDEN ROSES 60',
+          fields: { type_product_field: 'Other Flowers' },
+        },
+      ],
+    },
+  });
+
+  assert.equal(products.length, 2, 'EC Roses and Garden Roses each render once');
+
+  const ecRoses = products.find((product) => product.name === 'EC ROSES');
+  assert.ok(ecRoses);
+  assert.equal(ecRoses.category, 'roses');
+  assert.equal(ecRoses.groupLabel, 'Ecuadorian Roses');
+  assert.deepEqual(ecRoses.sourceProductIds, ['ec-roses-60', 'ec-roses-70-other']);
+  assert.deepEqual(
+    ecRoses.locations[0].variants.map((variant) => variant.lengthCm),
+    [60, 70],
+  );
+
+  const gardenRoses = products.find((product) => product.name === 'GARDEN ROSES');
+  assert.ok(gardenRoses);
+  assert.equal(gardenRoses.category, 'roses');
+  assert.equal(gardenRoses.groupLabel, 'Garden Roses');
+  assert.deepEqual(gardenRoses.sourceProductIds, ['garden-roses-50', 'garden-roses-60-other']);
 });
 
 test('fetches every Fresa page with bearer auth and the required pagination', async () => {

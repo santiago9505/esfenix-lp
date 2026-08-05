@@ -147,22 +147,28 @@ hides the corresponding row and filter rather than showing a placeholder.
 
 ## Where the data comes from
 
-The catalog is fetched from Fresa in the browser using the configured
-`FRESA_CATALOG_API_URL` and `FRESA_CATALOG_API_KEY` variables:
+The catalog is fetched from its dedicated Fresa list integration in the
+browser using the configured integration ID, URL, and API key:
 
 ```text
 GET ${FRESA_CATALOG_API_URL}?limit=250&offset=0
 Authorization: Bearer ${FRESA_CATALOG_API_KEY}
 ```
 
+`FRESA_CATALOG_API_URL` must be the endpoint copied from the `Landing Page`
+integration, and `FRESA_CATALOG_INTEGRATION_ID` must match its source ID. The
+landing rejects a response whose integration ID does not match before it can
+be normalized as a product.
+
 The integration follows `page.nextOffset` while `hasMore` is true and
 deduplicates pages by record id. Fresa may return the products as
 `catalog.products` or as top-level `records`; both are normalized to the same
 internal model. Custom values are read only through the matching descriptors in
 `columns[].key` (or `catalog.columns[].key` in the wrapped response). Before
-normalizing, the landing requires the `Landing Page` source and product
-taxonomy columns; an active-client response is rejected even if it uses the
-same `records` shape. The catalog and active-client API keys must also differ.
+normalizing, the landing requires the configured catalog integration and
+product taxonomy columns; an active-client response is rejected even if it
+uses the same `records` shape. The catalog and active-client URLs, integration
+IDs, and API keys must remain paired and distinct.
 
 Categories come from an authorized Fresa category column or, when the catalog
 uses lists as categories, from `listName`:
@@ -192,8 +198,11 @@ Products come from Fresa, so the normal route is:
 The legacy workbook generation scripts are not used by the landing runtime.
 
 If the product needs a photo or file, attach it in Fresa. The landing uses its
-temporary `attachment.url` directly; if an image has no URL it renders the
-neutral placeholder.
+temporary `attachment.url` directly. When a product has no usable Fresa image,
+the local photography imported into `public/assets/images/flowers-fallback/`
+is used by variety where there is an exact match, or by the closest rose
+family when Fresa does not expose enough detail; a product with at least one
+usable Fresa image never mixes in local fallback photography.
 
 ### Modify a location
 
@@ -295,13 +304,17 @@ email first, and then builds the payload and hands it to
 continue so it can request a quote. The same screen is used by the quote CTA
 when no products were selected.
 
-The client source is configured separately from the product source, even when
-both use the same endpoint:
+The client source is configured separately from the product source, with its
+own endpoint, integration ID, and key:
 
 ```env
-FRESA_CLIENTS_API_URL=http://localhost:3000/api/integrations/catalog
+FRESA_CLIENTS_INTEGRATION_ID=replace-with-active-clients-integration-id
+FRESA_CLIENTS_API_URL=https://fresaai.app/api/integrations/lists/replace-with-active-clients-integration-id
 FRESA_CLIENTS_API_KEY=replace-with-a-rotated-fresa-active-clients-key
 ```
+
+The client integration ID must match the source returned by Fresa. A mismatch
+is treated as a configuration error, not as an unknown email.
 
 For an existing client, configure `FRESA_QUOTE_SESSION_ENDPOINT` with a
 server-side session bridge. It receives the payload by `POST`, looks up the
@@ -397,8 +410,10 @@ catalog.
 5. **`Bells of Irland`** is spelled that way in every source. Left as-is; worth
    a decision.
 
-6. **No product photography for 39 of 50 products.** Those render the neutral
-   placeholder. Register new images in `PRODUCT_IMAGES`.
+6. **Seed photography is incomplete.** The runtime first uses Fresa
+   attachments, then the local variety-matched fallback under
+   `public/assets/images/flowers-fallback/`; products with neither source keep
+   the neutral placeholder.
 
 7. **The Woodlands has no separate product list.** It is served from the Texas
    export while keeping its own service centre, which matches the Fresa form

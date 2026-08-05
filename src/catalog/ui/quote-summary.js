@@ -60,6 +60,8 @@ export function quoteBar(options) {
  *   onEdit: (item: QuoteItem) => void,
  *   onClear: () => void,
  *   onContinue: () => Promise<void>|void,
+ *   title?: string,
+ *   description?: string,
  *   onChangeLocation?: () => void,
  *   locationSelectNode?: Node|null,
  * }} options
@@ -92,8 +94,10 @@ export function openQuoteSummary(options) {
   });
 
   const modal = openModal({
-    title: 'Quote summary',
-    description: 'Review your selected products here, then complete the quote request step by step.',
+    title: options.title ?? 'Quote summary',
+    description:
+      options.description ??
+      'Review your selected products here, then complete the quote request step by step.',
     variant: 'drawer-right',
     content: [body, status],
     footer: [continueButton, clearButton],

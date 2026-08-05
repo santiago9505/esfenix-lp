@@ -102,7 +102,9 @@ export function getProductsForLocation(products, locationId) {
 }
 
 /**
- * Category order first, then Fresa's position, then by name.
+ * Category order first, then the catalogue's editorial order. Products that
+ * are not in the printed catalogue keep their Fresa position and remain
+ * visible after the known sequence.
  * @param {LocationProduct[]} products
  */
 function sortProducts(products) {
@@ -110,7 +112,9 @@ function sortProducts(products) {
     const byCategory = compareCategories(a.category, b.category);
     if (byCategory !== 0) return byCategory;
 
-    return (a.position ?? 0) - (b.position ?? 0) || a.name.localeCompare(b.name);
+    return (a.catalogOrder ?? Number.MAX_SAFE_INTEGER) - (b.catalogOrder ?? Number.MAX_SAFE_INTEGER) ||
+      (a.position ?? 0) - (b.position ?? 0) ||
+      a.name.localeCompare(b.name);
   });
 }
 
@@ -156,7 +160,7 @@ export function getCatalogSourcesForProduct(products, slug) {
  * @param {LocationProduct[]} products
  */
 export function buildCategoryTree(products) {
-  /** @type {Map<string, Map<string, { label: string, products: LocationProduct[] }>>} */
+  /** @type {Map<string, Map<string, { label: string, order: number, products: LocationProduct[] }>>} */
   const tree = new Map();
 
   for (const product of products) {
@@ -165,9 +169,15 @@ export function buildCategoryTree(products) {
 
     const groupId = product.group ?? product.category;
     if (!groups.has(groupId)) {
-      groups.set(groupId, { label: product.groupLabel ?? '', products: [] });
+      groups.set(groupId, {
+        label: product.groupLabel ?? '',
+        order: product.catalogOrder ?? Number.MAX_SAFE_INTEGER,
+        products: [],
+      });
     }
-    groups.get(groupId).products.push(product);
+    const group = groups.get(groupId);
+    group.order = Math.min(group.order, product.catalogOrder ?? Number.MAX_SAFE_INTEGER);
+    group.products.push(product);
   }
 
   return [...tree.entries()]
@@ -175,7 +185,7 @@ export function buildCategoryTree(products) {
     .map(([category, groups]) => ({
       category,
       groups: [...groups.entries()]
-        .sort(([, a], [, b]) => a.label.localeCompare(b.label))
+        .sort(([, a], [, b]) => a.order - b.order || a.label.localeCompare(b.label))
         .map(([id, group]) => ({ id, label: group.label, products: group.products })),
     }));
 }
