@@ -8,6 +8,8 @@ const imagesRoot = path.join(root, 'public', 'assets', 'images');
 const sourceVideo = path.join(imagesRoot, 'Hero-Video.mp4');
 const optimizedVideo = path.join(imagesRoot, 'Hero-Video.optimized.mp4');
 const mobileVideo = path.join(imagesRoot, 'Hero-Video.mobile.mp4');
+const fallbackImagesRoot = path.join(imagesRoot, 'flowers-fallback');
+const featureImages = ['variety', 'quality', 'trust', 'farm'];
 
 function walk(dir, files = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -46,6 +48,52 @@ async function optimizeImages() {
   }
 
   console.log(`Optimized ${written} images (${formatBytes(before)} -> ${formatBytes(after)})`);
+}
+
+async function optimizeFeatureImages() {
+  let written = 0;
+
+  for (const name of featureImages) {
+    const input = path.join(imagesRoot, `${name}.webp`);
+    const output = path.join(imagesRoot, `${name}-feature.webp`);
+    if (!fs.existsSync(input) || !isStale(input, output)) continue;
+
+    await sharp(input)
+      .resize({ width: 900, withoutEnlargement: true })
+      .webp({ quality: 78, effort: 6, smartSubsample: true })
+      .toFile(output);
+    written += 1;
+  }
+
+  console.log(written ? `Optimized ${written} feature images` : 'Feature images already optimized');
+}
+
+async function optimizeFallbackThumbnails() {
+  if (!fs.existsSync(fallbackImagesRoot)) return;
+
+  let written = 0;
+  for (const file of walkWebp(fallbackImagesRoot)) {
+    if (/-thumb\.webp$/i.test(file)) continue;
+    const output = file.replace(/\.webp$/i, '-thumb.webp');
+    if (!isStale(file, output)) continue;
+
+    await sharp(file)
+      .resize({ width: 240, height: 180, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 74, effort: 6, smartSubsample: true })
+      .toFile(output);
+    written += 1;
+  }
+
+  console.log(written ? `Optimized ${written} catalog thumbnails` : 'Catalog thumbnails already optimized');
+}
+
+function walkWebp(dir, files = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walkWebp(full, files);
+    else if (/\.webp$/i.test(entry.name)) files.push(full);
+  }
+  return files;
 }
 
 function optimizeVideo() {
@@ -98,4 +146,6 @@ function formatBytes(bytes) {
 }
 
 await optimizeImages();
+await optimizeFeatureImages();
+await optimizeFallbackThumbnails();
 optimizeVideo();

@@ -17,12 +17,12 @@ import { fileURLToPath } from 'node:url';
 
 import { LOCATIONS } from '../src/catalog/data/locations.js';
 import { FRESA_FORM } from '../src/catalog/data/fresa-form.js';
-import { FRESA_PRODUCT_ALIASES } from '../src/catalog/data/fresa-product-aliases.js';
+import { resolveFresaProduct } from '../src/catalog/core/fresa-mapping.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => JSON.parse(readFileSync(resolve(ROOT, p), 'utf8'));
 
-const catalog = read('src/catalog/data/products.generated.json');
+const catalog = read('public/data/catalog-snapshot.json');
 const fresa = FRESA_FORM;
 
 const normalize = (v) =>
@@ -38,7 +38,6 @@ let checked = 0;
 for (const location of LOCATIONS) {
   const source = location.catalogSource;
   const options = fresa.productOptions[source] ?? [];
-  const index = new Map(options.map((o) => [normalize(o), o]));
   if (!usedOptions.has(source)) usedOptions.set(source, new Set());
 
   for (const product of catalog.products) {
@@ -47,15 +46,8 @@ for (const location of LOCATIONS) {
 
     for (const variant of entry.variants) {
       checked += 1;
-      const alias = FRESA_PRODUCT_ALIASES[product.id];
-      const candidates = alias ? [...alias(variant)] : [];
-      if (variant.lengthCm !== null && variant.lengthCm !== undefined) {
-        candidates.push(`${product.name} - ${variant.lengthCm}cm`);
-      }
-      candidates.push(product.name);
-
-      const match = candidates.map((c) => index.get(normalize(c))).find(Boolean);
-      if (match) usedOptions.get(source).add(match);
+      const { option, candidates } = resolveFresaProduct(location.id, product, variant);
+      if (option) usedOptions.get(source).add(option);
       else {
         unmapped.push({
           location: location.id,

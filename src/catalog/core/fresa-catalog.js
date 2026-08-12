@@ -566,6 +566,16 @@ function buildVariants(raw, fields, columns, roleColumns) {
       .map(normalizeMeasure)
       .filter(Boolean),
   };
+  const explicitPriceColumns = [
+    roleColumns.stemPrice,
+    roleColumns.bunchPrice,
+    roleColumns.unitPrice,
+    roleColumns.packPrice,
+    roleColumns.boxPrice,
+  ].filter(Boolean);
+  const genericPriceColumn = explicitPriceColumns.length === 0
+    ? findGenericPriceColumn(columns, roleColumns)
+    : null;
   const prices = {
     stem: readColumnValue(fields, roleColumns.stemPrice),
     bunch: readColumnValue(fields, roleColumns.bunchPrice),
@@ -573,11 +583,17 @@ function buildVariants(raw, fields, columns, roleColumns) {
     pack: readColumnValue(fields, roleColumns.packPrice),
     box: readColumnValue(fields, roleColumns.boxPrice),
   };
+  if (genericPriceColumn) {
+    // Some Fresa lists expose one currency column such as `Wholesale amount`
+    // and keep the applicable measure in the sales-unit field. Keep that price
+    // private, but attach it to the internal measure used by the quote line.
+    const genericMeasure = values.measure[0] ?? 'unit';
+    prices[genericMeasure] = readColumnValue(fields, genericPriceColumn);
+  }
   const pricedMeasures = Object.entries(prices)
     .filter(([, value]) => value !== null && value !== undefined && value !== '')
     .map(([measure]) => measure);
-  const hasPriceDescriptor = ['stemPrice', 'bunchPrice', 'unitPrice', 'packPrice', 'boxPrice']
-    .some((role) => roleColumns[role]);
+  const hasPriceDescriptor = explicitPriceColumns.length > 0 || Boolean(genericPriceColumn);
   const availableMeasures = [...new Set([...values.measure, ...pricedMeasures])]
     .filter((measure) => {
       // When Fresa exposes a price column, an empty value means that metric is
@@ -678,6 +694,33 @@ function findColumn(columns, role) {
     }
   }
   return best;
+}
+
+/**
+ * Fresa also supports one generic currency field instead of one field per
+ * measure. It must be found only after the measure-specific roles are checked,
+ * otherwise a `stem_price` field could be mistaken for a generic amount.
+ *
+ * @param {Array<Record<string, unknown>>} columns
+ * @param {Record<string, Record<string, unknown>|null>} roleColumns
+ */
+function findGenericPriceColumn(columns, roleColumns) {
+  const usedKeys = new Set(
+    Object.values(roleColumns)
+      .filter(Boolean)
+      .map((column) => safeString(column.key)),
+  );
+  const genericLabel = /\b(?:wholesale|sale|selling)\s+(?:amount|price)\b|\b(?:amount|monto|rate|tarifa|price|precio)\b/;
+  const monetaryType = /currency|money|decimal|number|amount|moneda|dinero/;
+
+  return columns.find((column) => {
+    if (usedKeys.has(safeString(column.key))) return false;
+    const label = [column.key, column.field_key, column.field_name, column.name, column.label, column.title]
+      .map(normalizeLabel)
+      .join(' ');
+    const type = normalizeLabel(column.field_type ?? column.type ?? column.data_type);
+    return monetaryType.test(type) && genericLabel.test(label);
+  }) ?? null;
 }
 
 const ROLE_ALIASES = {

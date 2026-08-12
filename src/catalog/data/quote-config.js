@@ -1,29 +1,28 @@
 /**
  * Quote form configuration.
  *
- * To point the catalog at a different Fresa form, change QUOTE_FORM_URL. To
- * enable secure product and client prefill, set FRESA_QUOTE_SESSION_ENDPOINT
- * (see below). Nothing else in the catalog references the form.
+ * The public form URL is enough for the default API integration: the catalog
+ * derives GET /api/forms/:token and POST /api/forms/:token/submit from it.
  */
 
-/** The Fresa form the quote flows open. */
-export const QUOTE_FORM_URL = 'https://fresaai.app/f/0578f97716840e34cf5472d5';
-
 const env = typeof import.meta !== 'undefined' ? import.meta.env ?? {} : {};
+
+const PRODUCTION_FORM_URL = 'https://fresaai.app/f/0578f97716840e34cf5472d5';
+const LOCAL_FORM_URL = 'http://localhost:3000/f/0578f97716840e34cf5472d5';
+const isLocalCatalog = typeof window !== 'undefined'
+  && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+/** The live Fresa form. Local development follows the already-running app on port 3000. */
+export const QUOTE_FORM_URL = String(env.FRESA_QUOTE_FORM_URL ?? '').trim()
+  || (isLocalCatalog ? LOCAL_FORM_URL : PRODUCTION_FORM_URL);
 
 /**
  * Endpoint that exchanges a quote payload for a short-lived session id.
  *
  *   POST <endpoint>  { ...payload }  ->  { quoteSessionId, redirectUrl }
  *
- * Set this once a backend exists. Until then the catalog opens the form with
- * only non-identifying context in the URL and offers the visitor a copyable
- * summary of their selection, because the alternative — putting the product
- * list, email or address into visible query parameters — is not acceptable.
- *
- * Fresa publishes no documented prefill API at the time of writing. If it
- * gains one, prefer it over this endpoint and implement it as an adapter in
- * core/quote-integration.js.
+ * This legacy adapter remains supported for environments that already provide
+ * it. When unset, the public Fresa form API is used directly.
  *
  * @type {string|null}
  */

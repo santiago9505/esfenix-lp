@@ -6,8 +6,8 @@ import {
   getDateKeyInTimeZone,
   getFirstSelectableDate,
   hasOpenDeliverySlots,
-  hasRemainingWorkingTime,
   isDateSelectable,
+  isPickupDateSelectable,
   normalizeDeliveryDate,
   normalizeDeliveryValue,
 } from '../core/delivery-schedule.js';
@@ -40,28 +40,43 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  *   timeZone: string,
  *   mode?: 'window'|'date',
  *   bookedByStart?: Record<string, number>,
+ *   availabilityProvider?: ((dateKey: string) => Promise<Array<{ start: string, booked?: number }> )|null,
  *   onChange?: (selection: { dateTime: string, slot?: object, timeZone: string }) => void,
  * }} options
  */
-export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', bookedByStart, onChange }) {
+export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', bookedByStart, availabilityProvider = null, onChange }) {
   const now = new Date();
   const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en-US';
   const picksWindow = mode !== 'date';
-  const scheduleOptions = { now, timeZone, bookedByStart, requireOpenSlot: picksWindow };
+  let remoteBookedByStart = bookedByStart ?? {};
+  let availabilityState = picksWindow && availabilityProvider ? 'loading' : 'disabled';
+  const availabilityCache = new Map();
+  let availabilityRequest = 0;
   const currentDate = getDateKeyInTimeZone(now, timeZone);
-  const firstDate = getFirstSelectableDate(scheduleOptions);
+  const firstDate = getFirstSelectableDate(scheduleOptions());
   let selectedValue = picksWindow
-    ? normalizeDeliveryValue(value, scheduleOptions)
-    : normalizeDeliveryDate(value, scheduleOptions);
+    ? normalizeDeliveryValue(value, scheduleOptions())
+    : normalizeDeliveryDate(value, scheduleOptions());
   let selectedDate = selectedValue ? selectedValue.slice(0, 10) : firstDate;
   let visibleMonth = selectedDate.slice(0, 7);
   const host = el('div', { class: `cat-quote-schedule ${picksWindow ? '' : 'is-date-only'}` });
 
   render();
+  if (picksWindow && availabilityProvider) void loadAvailability(selectedDate);
   return host;
 
+  function scheduleOptions() {
+    return {
+      now,
+      timeZone,
+      bookedByStart: remoteBookedByStart,
+      mode: picksWindow ? 'delivery' : 'pickup',
+      requireOpenSlot: picksWindow,
+    };
+  }
+
   function render() {
-    const slots = picksWindow ? getDeliverySlots(selectedDate, scheduleOptions) : [];
+    const slots = picksWindow ? getDeliverySlots(selectedDate, scheduleOptions()) : [];
     replaceChildren(host, [
       el('div', { class: 'cat-quote-schedule-main' }, [
         calendar(),
@@ -72,6 +87,7 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
   }
 
   function calendar() {
+    const options = scheduleOptions();
     const monthStart = parseDateKey(`${visibleMonth}-01`);
     const monthLabel = new Intl.DateTimeFormat(locale, {
       month: 'long',
@@ -81,7 +97,8 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
     const monthKey = visibleMonth;
     const minMonth = currentDate.slice(0, 7);
     const maxMonth = monthKeyAfter(minMonth, 12);
-    const isDayUsable = picksWindow ? hasOpenDeliverySlots : hasRemainingWorkingTime;
+    const isDayUsable = picksWindow ? hasOpenDeliverySlots : isPickupDateSelectable;
+    const isDateSelectableForMode = picksWindow ? isDateSelectable : isPickupDateSelectable;
     const days = [];
     const startOffset = monthStart.getUTCDay();
     for (let index = 0; index < 42; index += 1) {
@@ -90,8 +107,8 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
       const dateKey = day.toISOString().slice(0, 10);
       const inMonth = dateKey.slice(0, 7) === monthKey;
       const selectable = inMonth
-        && isDateSelectable(dateKey, scheduleOptions)
-        && isDayUsable(dateKey, scheduleOptions);
+        && isDateSelectableForMode(dateKey, options)
+        && isDayUsable(dateKey, options);
       const classes = ['cat-quote-calendar-day'];
       if (!inMonth) classes.push('is-outside-month');
       if (!selectable) classes.push('is-unavailable');
@@ -141,32 +158,63 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
         ]),
       ]),
       el('div', { class: 'cat-quote-calendar-weekdays', 'aria-hidden': 'true' }, DAY_NAMES.map((day, index) => el('span', {
-        class: DELIVERY_SCHEDULE.weekdays.includes(index) ? '' : 'is-off',
+        class: DELIVERY_SCHEDULE.workingDays.includes(index) ? '' : 'is-off',
         text: day,
       }))),
       el('div', { class: 'cat-quote-calendar-grid' }, days),
       el('p', {
         class: 'cat-quote-calendar-hint',
-        text: `Weekdays only, ${formatTime(scheduleTime(DELIVERY_SCHEDULE.startMinutes), locale)} to ${formatTime(scheduleTime(DELIVERY_SCHEDULE.endMinutes), locale)}.`,
+        text: picksWindow
+          ? `Mon–Fri · ${formatTime(scheduleTime(DELIVERY_SCHEDULE.startMinutes), locale)}–${formatTime(scheduleTime(DELIVERY_SCHEDULE.endMinutes), locale)}; Sat–Sun · ${formatTime(scheduleTime(DELIVERY_SCHEDULE.startMinutes), locale)}–${formatTime(scheduleTime(DELIVERY_SCHEDULE.startMinutes + 2 * DELIVERY_SCHEDULE.slotMinutes), locale)}.`
+          : 'Monday–Sunday · at least 24 hours ahead.',
       }),
     ]);
   }
 
   function slotPicker(slots) {
     const selectedDateLabel = formatDate(selectedDate, { weekday: 'long', month: 'short', day: 'numeric' });
-    const openSlots = slots.filter((slot) => slot.available);
-    return el('section', { class: 'cat-quote-schedule-slots', 'aria-label': 'Choose a delivery time' }, [
+    const waitingForAvailability = Boolean(availabilityProvider) && availabilityState !== 'ready';
+    const visibleSlots = waitingForAvailability
+      ? []
+      : slots.filter((slot) => slot.status !== 'past' && slot.status !== 'too-soon' && slot.status !== 'closed');
+    const openSlots = waitingForAvailability ? [] : slots.filter((slot) => slot.available);
+    const selectedSlot = slots.find((slot) => slot.value === selectedValue);
+    return el('section', {
+      class: 'cat-quote-schedule-slots',
+      'aria-label': 'Choose a delivery time',
+    }, [
       step('2', 'Pick a 2-hour window'),
       el('div', { class: 'cat-quote-slots-head' }, [
         el('strong', { text: capitalize(selectedDateLabel) }),
         el('span', {
           class: 'cat-quote-slots-kicker',
-          text: openSlots.length
-            ? `${openSlots.length} of ${slots.length} windows open`
-            : 'No windows left',
+          text: waitingForAvailability
+            ? availabilityState === 'error' ? 'Delivery availability unavailable' : 'Checking delivery availability...'
+            : selectedSlot
+            ? 'Delivery window selected'
+            : openSlots.length
+              ? `${openSlots.length} of ${visibleSlots.length} windows open`
+              : visibleSlots.length
+                ? 'No eligible windows left'
+                : 'Choose another day',
         }),
       ]),
-      el('div', { class: 'cat-quote-slot-list' }, slots.map((slot) => {
+      waitingForAvailability
+        ? el('p', {
+            class: 'cat-quote-slot-empty',
+            role: 'status',
+            text: availabilityState === 'error'
+              ? 'Delivery availability could not be loaded. Try again or choose another day.'
+              : 'Checking delivery availability before showing windows...',
+          })
+        : !visibleSlots.length
+          ? el('p', {
+              class: 'cat-quote-slot-empty',
+              role: 'status',
+              text: 'No delivery window meets the 24-hour notice on this day. Choose another day.',
+            })
+          : null,
+      el('div', { class: 'cat-quote-slot-list' }, visibleSlots.map((slot) => {
         const selected = selectedValue === slot.value;
         return el('button', {
           type: 'button',
@@ -179,9 +227,9 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
           el('span', { class: `cat-quote-slot-capacity is-${slot.status}`, text: describeSlot(slot) }),
         ]);
       })),
-      openSlots.length
+      waitingForAvailability || openSlots.length || !visibleSlots.length
         ? null
-        : el('p', { class: 'cat-quote-slot-empty', text: 'Every window on this day is taken. Choose another day in the calendar.' }),
+        : el('p', { class: 'cat-quote-slot-empty', text: 'Every eligible window on this day is taken. Choose another day in the calendar.' }),
     ]);
   }
 
@@ -212,8 +260,8 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
               el('strong', { text: picksWindow ? 'No window selected yet' : 'No day selected yet' }),
               el('small', {
                 text: picksWindow
-                  ? `Each window takes up to ${DELIVERY_SCHEDULE.capacity} requests.`
-                  : 'Pick a weekday in the calendar.',
+                  ? 'Choose a delivery window before continuing.'
+                  : 'Pick a day at least 24 hours ahead.',
               }),
             ]),
       ]),
@@ -241,12 +289,50 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
     return slot.remaining === 1 ? '1 spot left' : `${slot.remaining} spots left`;
   }
 
+  async function loadAvailability(dateKey) {
+    if (!availabilityProvider || !picksWindow) return;
+    const cached = availabilityCache.get(dateKey);
+    if (cached) {
+      remoteBookedByStart = cached;
+      availabilityState = 'ready';
+      render();
+      return;
+    }
+
+    const requestId = ++availabilityRequest;
+    availabilityState = 'loading';
+    remoteBookedByStart = {};
+    render();
+    try {
+      const slots = await availabilityProvider(dateKey);
+      if (!Array.isArray(slots)) throw new Error('Availability returned an unexpected response.');
+      const counts = Object.fromEntries(slots
+        .filter((slot) => slot && typeof slot.start === 'string')
+        .map((slot) => [`${dateKey}T${slot.start}`, Number(slot.booked) || 0]));
+      availabilityCache.set(dateKey, counts);
+      if (requestId !== availabilityRequest || selectedDate !== dateKey) return;
+      remoteBookedByStart = counts;
+      availabilityState = 'ready';
+      render();
+    } catch {
+      if (requestId !== availabilityRequest || selectedDate !== dateKey) return;
+      remoteBookedByStart = {};
+      availabilityState = 'error';
+      render();
+    }
+  }
+
   function selectDate(dateKey) {
     selectedDate = dateKey;
     if (picksWindow) {
       // Changing day drops a window that belonged to the previous one.
       if (!selectedValue.startsWith(`${dateKey}T`)) selectedValue = '';
+      if (availabilityProvider) {
+        availabilityState = 'loading';
+        remoteBookedByStart = {};
+      }
       render();
+      if (availabilityProvider) void loadAvailability(dateKey);
       return;
     }
     selectedValue = dateKey;

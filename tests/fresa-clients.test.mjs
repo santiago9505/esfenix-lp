@@ -221,6 +221,36 @@ test('returns a recognized contact profile without persisting the source record'
   });
 });
 
+test('recognizes the VIP checkbox from the active client record', async () => {
+  const profile = await findActiveClient('vip@example.com', {
+    apiUrl: 'http://fresa.test/api/integrations/catalog',
+    apiKey: 'key',
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        source: { name: 'Clientes Activos' },
+        columns: [
+          ...columns,
+          { key: 'client_vip_internal', field_name: 'VIP', field_type: 'checkbox' },
+        ],
+        records: [{
+          id: 'vip-client',
+          fields: {
+            client_active_internal: true,
+            client_email_internal: 'vip@example.com',
+            client_vip_internal: true,
+          },
+        }],
+        page: { offset: 0, limit: 250, totalCount: 1, hasMore: false, nextOffset: null },
+      }),
+    }),
+  });
+
+  assert.equal(profile?.vip, true);
+});
+
 test('matches an active email even when optional contact fields are empty', async () => {
   const profile = await findActiveClient('known@example.com', {
     apiUrl: 'http://fresa.test/api/integrations/catalog',

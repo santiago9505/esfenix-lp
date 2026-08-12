@@ -89,11 +89,16 @@ for (const file of files) {
   usedNames.add(outputName);
 
   const outputPath = join(outputRoot, outputName);
-  await sharp(file)
+  const optimized = sharp(file)
     .rotate()
     .resize({ width: 1600, height: 1200, fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: 82, effort: 6, smartSubsample: true })
-    .toFile(outputPath);
+    .webp({ quality: 82, effort: 6, smartSubsample: true });
+  await optimized.toFile(outputPath);
+
+  await sharp(outputPath)
+    .resize({ width: 240, height: 180, fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 74, effort: 6, smartSubsample: true })
+    .toFile(outputPath.replace(/\.webp$/i, '-thumb.webp'));
 
   const classification = classify(stem);
   entries.push({

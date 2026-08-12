@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupProductsByCategory } from '../src/catalog/ui/product-list-picker.js';
+import { groupProductsByCategory, matchesProductSearch } from '../src/catalog/ui/product-list-picker.js';
 
 const product = (category, name) => ({ category, name });
 
@@ -18,4 +18,17 @@ test('product picker keeps all four categories and groups only available product
     ['Greens'],
     [],
   ]);
+});
+
+test('product picker search matches names and variant attributes, including accents', () => {
+  const searchableProduct = {
+    name: 'Garden Rose',
+    groupLabel: 'Rosas de jardín',
+    variants: [{ variety: 'Vendela', color: 'White', lengthCm: 60, availableMeasures: ['stem'] }],
+  };
+
+  assert.equal(matchesProductSearch(searchableProduct, 'garden'), true);
+  assert.equal(matchesProductSearch(searchableProduct, 'rosas jardin'), true);
+  assert.equal(matchesProductSearch(searchableProduct, 'vendela 60'), true);
+  assert.equal(matchesProductSearch(searchableProduct, 'orange'), false);
 });

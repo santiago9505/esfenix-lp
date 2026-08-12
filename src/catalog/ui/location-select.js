@@ -77,35 +77,71 @@ function serviceCenterNote(location) {
  * @param {{
  *   destination: import('../core/types').ShippingDestination|null,
  *   onChange: (destination: import('../core/types').ShippingDestination) => void,
+ *   includeZipCode?: boolean,
+ *   required?: boolean,
+ *   stateOptions?: Array<{ value: string, label: string }>,
  *   errors?: string[],
  * }} options
  */
 export function shippingDestinationFields(options) {
   const base = ++idCounter;
+  const includeZipCode = options.includeZipCode !== false;
   const value = options.destination ?? { state: '', city: '', zipCode: '' };
 
-  const read = (root) => ({
-    state: root.querySelector('[data-field="state"]').value.trim(),
-    city: root.querySelector('[data-field="city"]').value.trim(),
-    zipCode: root.querySelector('[data-field="zipCode"]').value.trim(),
-  });
+  const read = (root) => {
+    const readField = (field, fallback = '') => root.querySelector(`[data-field="${field}"]`)?.value.trim() ?? fallback;
+    return {
+      state: readField('state'),
+      city: readField('city'),
+      zipCode: includeZipCode ? readField('zipCode') : value.zipCode ?? '',
+    };
+  };
 
-  /** @param {{ field: string, label: string, autocomplete: string, inputmode?: string }} field */
+  /** @param {{ field: string, label: string, autocomplete: string, inputmode?: string, options?: Array<{ value: string, label: string }> }} field */
   const textField = (field) => {
     const id = `cat-${field.field}-${base}`;
+    const currentValue = value[field.field] ?? '';
+    const hasSelectedOption = field.options?.some(
+      (option) => option.value === currentValue || option.label === currentValue,
+    );
+    const control = field.options
+      ? el('select', {
+          id,
+          'data-field': field.field,
+          autocomplete: field.autocomplete,
+          required: options.required,
+          onChange(event) {
+            options.onChange(read(event.currentTarget.closest('.cat-destination')));
+          },
+        }, [
+          el('option', {
+            value: '',
+            text: 'Select a state',
+            disabled: true,
+            selected: !hasSelectedOption,
+          }),
+          ...field.options.map((option) => el('option', {
+            value: option.value,
+            text: option.label,
+            selected: option.value === currentValue || option.label === currentValue,
+          })),
+        ])
+      : el('input', {
+          id,
+          type: 'text',
+          'data-field': field.field,
+          value: currentValue,
+          autocomplete: field.autocomplete,
+          inputmode: field.inputmode,
+          required: options.required,
+          onInput(event) {
+            options.onChange(read(event.currentTarget.closest('.cat-destination')));
+          },
+        });
+
     return el('div', { class: 'cat-field' }, [
       el('label', { for: id, text: field.label }),
-      el('input', {
-        id,
-        type: 'text',
-        'data-field': field.field,
-        value: value[field.field] ?? '',
-        autocomplete: field.autocomplete,
-        inputmode: field.inputmode,
-        onInput(event) {
-          options.onChange(read(event.currentTarget.closest('.cat-destination')));
-        },
-      }),
+      control,
     ]);
   };
 
@@ -114,15 +150,22 @@ export function shippingDestinationFields(options) {
       class: 'cat-destination-intro',
       text: 'Tell us where your order would ship so the right team can help you.',
     }),
-    el('div', { class: 'cat-destination-grid' }, [
-      textField({ field: 'state', label: 'State', autocomplete: 'address-level1' }),
-      textField({ field: 'city', label: 'City', autocomplete: 'address-level2' }),
+    el('div', { class: `cat-destination-grid${includeZipCode ? '' : ' cat-destination-grid-two'}` }, [
       textField({
-        field: 'zipCode',
-        label: 'ZIP Code',
-        autocomplete: 'postal-code',
-        inputmode: 'numeric',
+        field: 'state',
+        label: 'State',
+        autocomplete: 'address-level1',
+        options: options.stateOptions,
       }),
+      textField({ field: 'city', label: 'City', autocomplete: 'address-level2' }),
+      includeZipCode
+        ? textField({
+            field: 'zipCode',
+            label: 'ZIP Code',
+            autocomplete: 'postal-code',
+            inputmode: 'numeric',
+          })
+        : null,
     ]),
     options.errors?.length
       ? el(

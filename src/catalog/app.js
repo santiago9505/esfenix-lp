@@ -54,6 +54,8 @@ export function createApp({ head, body }) {
   let loadError = null;
   /** @type {ReturnType<typeof openQuoteSummary>|null} */
   let summary = null;
+  /** @type {{ refresh?: () => void }|null} */
+  let activeQuoteView = null;
   let refreshTimer = null;
   let refreshRequest = null;
   let warmupTimer = null;
@@ -340,9 +342,9 @@ export function createApp({ head, body }) {
     render();
   }
 
-  /** Hands the completed internal form to the existing secure quote adapter. */
-  function submitQuoteForm(payload, openOptions) {
-    return integration.start(payload, openOptions);
+  /** Hands the completed internal form to the Fresa quote adapter. */
+  function submitQuoteForm(payload) {
+    return integration.start(payload);
   }
 
   /* ---------------------------------------------------------------- */
@@ -367,10 +369,11 @@ export function createApp({ head, body }) {
             onOpenProductPicker: openProductPicker,
             onSubmit: submitQuoteForm,
           })
-        : route.view === 'product'
-          ? renderProductView(ctx, route)
-          : renderCatalogView(ctx);
+          : route.view === 'product'
+            ? renderProductView(ctx, route)
+            : renderCatalogView(ctx);
 
+    activeQuoteView = route.view === 'quote' ? view : null;
     replaceChildren(head, view.head ? [view.head] : []);
     replaceChildren(body, view.body);
     initReveals(body);
@@ -428,10 +431,10 @@ export function createApp({ head, body }) {
   function scheduleCatalogWarmup() {
     if (!productsNeedRefresh() || warmupTimer !== null) return;
 
-    // Contact recognition has priority on the quote route. The bundled
-    // snapshot already has the product list, so let the much smaller client
-    // lookup finish before starting the full catalog transfer.
-    const delay = parseRoute().view === 'quote' ? 8_000 : 0;
+    // The bundled snapshot already has the product list. Start the live refresh
+    // immediately so the quote form can calculate Delivery progress as soon as
+    // Fresa returns the internal pricing metadata.
+    const delay = 0;
     warmupTimer = window.setTimeout(() => {
       warmupTimer = null;
       void refreshCatalog();
@@ -464,9 +467,13 @@ export function createApp({ head, body }) {
         filters = pruneFilters(locationProducts, filters);
         quoteStore.reconcile(locationProducts);
 
-        // Keep an in-progress contact or delivery form untouched. The fresh
-        // products are already in memory and appear on the next catalog view.
-        if (changed && parseRoute().view !== 'quote') render();
+        // Keep the quote form's local state and refresh only its current step so
+        // live pricing can update Delivery progress without interrupting input.
+        if (parseRoute().view === 'quote' && activeQuoteView?.refresh) {
+          activeQuoteView.refresh();
+        } else if (changed) {
+          render();
+        }
       } catch {
         // Keep the snapshot or last successful catalog visible. The next
         // interval retries without turning a transient Fresa error into a blank page.

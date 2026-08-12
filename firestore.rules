@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function validSlotShape() {
+      return request.resource.data.capacity == 2
+        && request.resource.data.booked is int
+        && request.resource.data.booked >= 1
+        && request.resource.data.booked <= 2
+        && request.resource.data.date is string
+        && request.resource.data.start is string;
+    }
+
+    match /deliverySlots/{slotId} {
+      allow read: if signedIn();
+      // A brand-new slot can only represent the first reservation.
+      allow create: if signedIn()
+        && validSlotShape()
+        && request.resource.data.booked == 1;
+      // Every update must add exactly one reservation and cannot change the
+      // identity of the slot or any other protected field.
+      allow update: if signedIn()
+        && validSlotShape()
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.start == resource.data.start
+        && request.resource.data.booked == resource.data.booked + 1
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['booked', 'updatedAt', 'end', 'capacity']);
+      allow delete: if false;
+    }
+
+    match /deliverySlotReservations/{reservationId} {
+      // Reservation documents are write-only from the browser. The slot
+      // document is the public aggregate used for availability reads.
+      allow read: if false;
+      allow create: if signedIn()
+        && reservationId == request.auth.uid + '_' + request.resource.data.slotKey
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.slotKey is string
+        && request.resource.data.date is string
+        && request.resource.data.start is string;
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { FresaCatalogError, fetchCatalogPages, normalizeCatalog } from '../src/catalog/core/fresa-catalog.js';
+import { getVariantPriceCents } from '../src/catalog/core/pricing.js';
 
 const columns = [
   { list_id: 'flowers', key: 'classification_01', field_name: 'Categoría', field_type: 'text', is_file: false },
@@ -62,6 +63,8 @@ test('normalizes Fresa columns and attachments without assuming field keys', () 
   assert.equal(products[0].locations[0].variants[0].variety, 'Freedom');
   assert.equal(products[0].locations[0].variants[0].color, 'Red');
   assert.equal(products[0].locations[0].variants[0].lengthCm, 60);
+  assert.deepEqual(products[0].locations[0].variants[0].availableMeasures, ['unit']);
+  assert.equal(getVariantPriceCents(products[0].locations[0].variants[0], 'unit'), 2_500_000);
   assert.equal(products[0].images[0].src, 'https://cdn/freedom.webp');
   assert.equal(products[0].images[1].src, null, 'missing image URLs become placeholders');
   assert.deepEqual(

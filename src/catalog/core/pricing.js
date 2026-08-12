@@ -88,10 +88,20 @@ export function getQuotePricing(items = [], products = []) {
     totalCents += unitPriceCents * quantity;
   }
 
+  const calculatedProgress = Math.min(100, Math.floor((totalCents / DELIVERY_MINIMUM_CENTS) * 100));
+  // An incomplete price set can never unlock Delivery. Keep the visual
+  // progress below 100% until every selected line has been confirmed.
+  const deliveryProgress = unknownItems.length > 0
+    ? Math.min(99, calculatedProgress)
+    : calculatedProgress;
+
   return {
     totalCents,
     hasUnknownPricing: unknownItems.length > 0,
     unknownItems,
+    // Keep the progress percentage separate from the total so the UI can show
+    // proximity to the threshold without exposing any amount to the visitor.
+    deliveryProgress,
     deliveryAllowed: unknownItems.length === 0 && totalCents >= DELIVERY_MINIMUM_CENTS,
   };
 }

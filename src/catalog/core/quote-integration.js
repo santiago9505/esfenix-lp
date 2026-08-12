@@ -11,8 +11,8 @@
  *            address and the product list travel in the request body — never in
  *            a query string.
  *
- *   direct   The safe fallback while no endpoint exists. It does not open the
- *            legacy Fresa form or claim that the request was submitted.
+ *   form-api The default. Reads the live public-form schema, converts product
+ *            labels to Fresa task ids, and submits the completed response.
  *
  * Failure never costs the visitor their selection: the caller keeps the quote
  * list and can retry.
@@ -20,13 +20,22 @@
 
 import { QUOTE_FORM_URL, QUOTE_SESSION_ENDPOINT } from '../data/quote-config.js';
 import { assertNoPricing, buildQuoteSummaryText } from './quote-payload.js';
+import {
+  buildFresaFormSubmission,
+  FresaFormConfigurationError,
+  resolveFresaFormApi,
+} from './fresa-form-submission.js';
 
 /**
- * @typedef {{ ok: true, mode: 'session'|'direct', url?: string, summary: string, sessionId?: string }} QuoteSuccess
- * @typedef {{ ok: false, mode: 'session'|'direct', error: string, summary: string }} QuoteFailure
+ * @typedef {{ ok: true, mode: 'session'|'form-api', url?: string, summary: string, sessionId?: string, taskId?: string, listId?: string }} QuoteSuccess
+ * @typedef {{ ok: false, mode: 'session'|'form-api', error: string, summary: string, code?: string }} QuoteFailure
  */
 
-const REQUEST_TIMEOUT_MS = 10000;
+// The public form hydrates live catalog relationships before validating and
+// creating subtasks. Local and cold production requests can legitimately take
+// more than ten seconds, so keep the user-facing request alive long enough for
+// Fresa to return the created task id.
+const REQUEST_TIMEOUT_MS = 45000;
 
 /**
  * @param {{
@@ -35,12 +44,14 @@ const REQUEST_TIMEOUT_MS = 10000;
  *   fetchImpl?: typeof fetch,
  *   openImpl?: (url: string) => (Window|null),
  *   timeoutMs?: number,
+ *   reserveDeliverySlotImpl?: (slot: object) => Promise<object>,
  * }} [options]
  */
 export function createQuoteIntegration(options = {}) {
   const formUrl = options.formUrl ?? QUOTE_FORM_URL;
   const sessionEndpoint =
     options.sessionEndpoint === undefined ? QUOTE_SESSION_ENDPOINT : options.sessionEndpoint;
+  const reserveDeliverySlotImpl = options.reserveDeliverySlotImpl;
   const doFetch = options.fetchImpl ?? ((...args) => globalThis.fetch(...args));
   const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
   const openUrl =
@@ -64,11 +75,11 @@ export function createQuoteIntegration(options = {}) {
   return {
     /** Which adapter a call to `start` would use. */
     mode() {
-      return sessionEndpoint ? 'session' : 'direct';
+      return sessionEndpoint ? 'session' : 'form-api';
     },
 
     /**
-     * Opens the quote form for the given payload.
+     * Submits the quote payload to Fresa.
      *
      * @param {ReturnType<typeof import('./quote-payload').buildQuotePayload>} payload
      * @param {{ targetWindow?: Window|null }} [openOptions]
@@ -93,16 +104,41 @@ export function createQuoteIntegration(options = {}) {
       }
 
       if (!sessionEndpoint) {
-        // This used to open QUOTE_FORM_URL as a fallback. That form belongs to
-        // the previous flow and must never receive a completed request. Keep
-        // the reserved tab closed and let the caller retain the quote list.
+        // The API flow does not navigate away or need a reserved browser tab.
         openOptions.targetWindow?.close?.();
-        return {
-          ok: false,
-          mode: 'direct',
-          error: 'Quote submission is not configured yet. No external form was opened, and your selection is still saved.',
+        return submitToFresaForm({
+          formUrl,
+          payload,
+          doFetch,
+          timeoutMs,
+          reserveSlot: reserveDeliverySlotImpl,
           summary,
-        };
+        });
+      }
+
+      if (payload.orderType === 'Delivery') {
+        if (!payload.deliverySlot) {
+          return {
+            ok: false,
+            mode: 'session',
+            code: 'DELIVERY_SLOT_MISSING',
+            error: 'Please choose an available delivery window before sending your request.',
+            summary,
+          };
+        }
+        const capacityResult = await reserveDeliveryCapacity({
+          payload,
+          reserveSlot: reserveDeliverySlotImpl,
+        });
+        if (!capacityResult.ok) {
+          return {
+            ok: false,
+            mode: 'session',
+            code: capacityResult.code,
+            error: capacityResult.error,
+            summary,
+          };
+        }
       }
 
       const controller = new AbortController();
@@ -167,6 +203,131 @@ export function createQuoteIntegration(options = {}) {
       }
     },
   };
+}
+
+async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserveSlot, summary }) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const { formApiUrl, submitUrl } = resolveFresaFormApi(formUrl);
+    const formResponse = await doFetch(formApiUrl, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    const formData = await readJson(formResponse);
+    if (!formResponse.ok || formData?.success !== true) {
+      return {
+        ok: false,
+        mode: 'form-api',
+        error: formData?.error || `Fresa could not load the quote form (${formResponse.status}).`,
+        summary,
+      };
+    }
+
+    const submission = buildFresaFormSubmission(payload, formData);
+
+    if (payload.orderType === 'Delivery') {
+      if (!payload.deliverySlot) {
+        return {
+          ok: false,
+          mode: 'form-api',
+          code: 'DELIVERY_SLOT_MISSING',
+          error: 'Please choose an available delivery window before sending your request.',
+          summary,
+        };
+      }
+      const capacityResult = await reserveDeliveryCapacity({ payload, reserveSlot });
+      if (!capacityResult.ok) {
+        return {
+          ok: false,
+          mode: 'form-api',
+          code: capacityResult.code,
+          error: capacityResult.error,
+          summary,
+        };
+      }
+    }
+
+    const response = await doFetch(submitUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ answers: submission.answers, meta: submission.meta }),
+      signal: controller.signal,
+    });
+    const data = await readJson(response);
+    if (!response.ok || data?.success !== true || typeof data?.taskId !== 'string') {
+      return {
+        ok: false,
+        mode: 'form-api',
+        error: data?.error || `Fresa could not record the quote request (${response.status}).`,
+        summary,
+      };
+    }
+
+    return {
+      ok: true,
+      mode: 'form-api',
+      taskId: data.taskId,
+      listId: submission.listId,
+      summary,
+    };
+  } catch (error) {
+    const aborted = error?.name === 'AbortError';
+    const configured = error instanceof FresaFormConfigurationError;
+    return {
+      ok: false,
+      mode: 'form-api',
+      ...(configured && error.code ? { code: error.code } : {}),
+      error: aborted
+        ? 'Fresa took too long to respond. Your selection is still saved.'
+        : configured
+          ? error.message
+          : 'We could not reach Fresa. Your selection is still saved.',
+      summary,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Reserves a Delivery window immediately before creating the external quote
+ * request. The Firestore client transaction owns the atomic increment; the
+ * server-side rules enforce the same two-slot ceiling for every browser.
+ */
+async function reserveDeliveryCapacity({ payload, reserveSlot }) {
+  const slot = payload.deliverySlot;
+  try {
+    const reserve = reserveSlot ?? (async (deliverySlot) => {
+      const module = await import('./delivery-capacity.js');
+      return module.reserveDeliverySlot(deliverySlot);
+    });
+    await reserve({
+      date: slot.date,
+      start: slot.start,
+      end: slot.end,
+      timeZone: payload.deliveryTimeZone ?? 'UTC',
+    });
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      code: error?.code ?? 'CAPACITY_UNAVAILABLE',
+      error: error?.code === 'SLOT_FULL'
+        ? 'That delivery window just filled up. Please choose another window.'
+        : 'Delivery capacity could not be confirmed. Please try again.',
+    };
+  }
 }
 
 /** The message shown when a quote flow fails. */

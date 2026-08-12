@@ -103,3 +103,26 @@ firebase deploy --only hosting
 ```
 
 Los assets referenciados por la pagina deben existir en `assets/` en la raiz del proyecto.
+
+## Delivery slot capacity
+
+La capacidad persistente de Delivery usa Firestore Standard directamente desde
+el navegador, con una transacción y reglas que limitan cada fecha + franja a
+dos reservas. Cada navegador obtiene una sesión de Firebase Anonymous Auth y
+guarda una reserva idempotente, por lo que un reintento no consume un segundo
+cupo. Pickup no lee ni reserva documentos de capacidad.
+
+Para habilitarlo en Firebase, activa Authentication > Sign-in method >
+Anonymous, despliega Firestore y Hosting:
+
+```sh
+firebase deploy --only firestore,hosting
+```
+
+No hay una Function ni una variable de endpoint para esta capacidad; el flujo
+funciona en el plan Spark mientras se mantenga dentro de las cuotas gratuitas.
+Las reglas impiden que el navegador suba `booked` por encima de 2 y la
+transacción protege el caso de dos visitantes confirmando al mismo tiempo.
+Como riesgo residual del plan Spark, el acceso anónimo necesita controles de
+abuso si la landing recibe tráfico automatizado; el código no expone credenciales
+de administrador.

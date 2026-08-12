@@ -115,6 +115,7 @@ export function createQuoteStore(defaultLocation) {
       const item = {
         id,
         productId: product.id,
+        sourceProductId: variant.sourceProductId ?? null,
         productName: product.name,
         category: product.category,
         selectedLocation: state.location,
@@ -129,7 +130,13 @@ export function createQuoteStore(defaultLocation) {
       const existing = state.items.find((entry) => entry.id === id);
       const items = existing
         ? state.items.map((entry) =>
-            entry.id === id ? { ...entry, quantity: entry.quantity + selection.quantity } : entry,
+            entry.id === id
+              ? {
+                  ...entry,
+                  sourceProductId: item.sourceProductId ?? entry.sourceProductId ?? null,
+                  quantity: entry.quantity + selection.quantity,
+                }
+              : entry,
           )
         : [...state.items, item];
 
@@ -193,21 +200,33 @@ export function createQuoteStore(defaultLocation) {
 
       const kept = [];
       const dropped = [];
+      let changed = false;
       for (const item of state.items) {
         const product = byId.get(item.productId);
-        const stillValid =
-          product &&
-          product.variants.some(
+        const matchingVariant =
+          product?.variants.find(
             (variant) =>
               (variant.variety ?? null) === item.variety &&
               (variant.color ?? null) === item.color &&
               (variant.lengthCm ?? null) === item.lengthCm &&
               (item.measure === null || (variant.availableMeasures ?? []).includes(item.measure)),
           );
-        (stillValid ? kept : dropped).push(item);
+        if (!matchingVariant) {
+          dropped.push(item);
+          changed = true;
+          continue;
+        }
+
+        const sourceProductId = matchingVariant.sourceProductId ?? item.sourceProductId ?? null;
+        if (sourceProductId !== (item.sourceProductId ?? null)) {
+          kept.push({ ...item, sourceProductId });
+          changed = true;
+        } else {
+          kept.push(item);
+        }
       }
 
-      if (dropped.length > 0) store.setState({ ...state, items: kept });
+      if (changed) store.setState({ ...state, items: kept });
       return dropped;
     },
   };

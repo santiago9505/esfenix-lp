@@ -34,6 +34,7 @@ const ACTIVE_EXACT_ALIASES = ['estado', 'estatus', 'status'];
 const FIRST_NAME_ALIASES = ['nombre contacto', 'first name', 'firstname', 'contact name', 'nombre'];
 const LAST_NAME_ALIASES = ['apellido contacto', 'last name', 'lastname', 'surname', 'apellido'];
 const FULL_NAME_ALIASES = ['nombre completo qb', 'nombre completo', 'full name', 'display name'];
+const VIP_ALIASES = ['vip', 'cliente vip', 'es vip', 'vip cliente', 'cliente preferencial', 'preferencial'];
 
 let cachedDirectory = null;
 let cacheExpiresAt = 0;
@@ -117,7 +118,7 @@ export async function isActiveClientEmail(email, options = {}) {
  *
  * @param {string} email
  * @param {{ force?: boolean, apiUrl?: string, apiKey?: string, fetchImpl?: typeof fetch }} [options]
- * @returns {Promise<{ email: string, firstName: string, lastName: string, phone: string, company: string, shipping: { address: string, city: string, state: string, zipCode: string, country: string } }|null>}
+ * @returns {Promise<{ email: string, firstName: string, lastName: string, phone: string, company: string, vip?: boolean, shipping: { address: string, city: string, state: string, zipCode: string, country: string } }|null>}
  */
 export async function findActiveClient(email, options = {}) {
   const normalized = normalizeEmail(email);
@@ -322,6 +323,9 @@ function clientProfile(email, record, columns) {
     lastName = parts.slice(1).join(' ');
   }
 
+  const vipColumn = findColumn(columns, VIP_ALIASES, { records: [record] });
+  const isVip = vipColumn ? isChecked(record.fields?.[vipColumn.key]) : false;
+
   return {
     email,
     firstName,
@@ -335,6 +339,7 @@ function clientProfile(email, record, columns) {
       zipCode: clientField(record, columns, ['envio codigo postal', 'shipping postal code', 'delivery postal code', 'zip code', 'postal code']),
       country: clientField(record, columns, ['envio pais', 'shipping country', 'delivery country']),
     },
+    ...(isVip ? { vip: true } : {}),
   };
 }
 
@@ -402,6 +407,12 @@ function clientField(record, columns, aliases) {
 function isActive(value) {
   if (value === true || value === 1) return true;
   return ['true', '1', 'active', 'activo', 'activa', 'yes', 'si'].includes(normalizeLabel(value));
+}
+
+/** @param {unknown} value */
+function isChecked(value) {
+  if (value === true || value === 1) return true;
+  return ['true', '1', 'yes', 'si', 'on', 'checked'].includes(normalizeLabel(value));
 }
 
 /** @param {unknown} value */

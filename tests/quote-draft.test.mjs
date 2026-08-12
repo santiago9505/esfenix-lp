@@ -21,6 +21,7 @@ test('a quote draft survives a new read and keeps the entered form state', () =>
     email: 'ana@example.com',
     recognized: false,
     clientLookup: 'not-found',
+    phoneCountry: 'US',
     contact: { firstName: 'Ana', lastName: 'Flower', phone: '5550100', company: 'Flowers Inc.' },
     orderType: 'Pickup',
     delivery: {
@@ -38,6 +39,7 @@ test('a quote draft survives a new read and keeps the entered form state', () =>
     email: 'ana@example.com',
     recognized: false,
     clientLookup: 'not-found',
+    phoneCountry: 'US',
     contact: { firstName: 'Ana', lastName: 'Flower', phone: '5550100', company: 'Flowers Inc.' },
     orderType: 'Pickup',
     delivery: {
@@ -65,10 +67,10 @@ test('malformed draft values are normalized to safe form defaults', () => {
     email: '',
     recognized: false,
     clientLookup: 'idle',
+    phoneCountry: 'US',
     contact: { firstName: '', lastName: '', phone: '', company: '' },
     orderType: 'Delivery',
     delivery: { dateTime: '', address: '', city: '', state: '', zipCode: '' },
     notes: '',
   });
 });
-

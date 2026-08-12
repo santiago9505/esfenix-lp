@@ -85,6 +85,7 @@ test('persists a live catalog for warm loads inside the revalidation window', as
     snapshotFetchImpl: async () => { throw new Error('snapshot should not be requested'); },
   });
   assert.equal(warm[0].id, 'live');
+  assert.equal(productsNeedRefresh(), true, 'warm product data must refresh private pricing metadata');
 
   resetProductCache();
   resetStorageProbe();

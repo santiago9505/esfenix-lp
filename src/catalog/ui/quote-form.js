@@ -7,8 +7,8 @@
  *
  * One step is visible at a time, centered, with nothing around it but the way
  * back to the catalog and the progress dots: the visitor should only ever have
- * one thing to answer. The portrait above the step comes from the selected
- * location (see data/advisors.js).
+ * one thing to answer. The optional portrait above the step is currently
+ * disabled; the original block is kept commented below for later use.
  */
 
 import { findActiveClient } from '../core/fresa-clients.js';
@@ -19,11 +19,21 @@ import { getQuotePricing } from '../core/pricing.js';
 import { describeQuoteItem } from '../core/format.js';
 import { maskPhoneForDisplay, maskTextForDisplay } from '../core/privacy.js';
 import { getCategoryLabel } from '../data/categories.js';
-import { resolveAdvisor } from '../data/advisors.js';
+import { readDeliverySlotAvailability } from '../core/delivery-capacity.js';
+// Temporarily disabled with the advisor portrait block below.
+// import { resolveAdvisor } from '../data/advisors.js';
+import { US_STATE_OPTIONS } from '../data/us-states.js';
+import {
+  DEFAULT_COUNTRY,
+  COUNTRY_CALLING_CODES,
+  dialCodeForCountry,
+  formatInternationalPhone,
+  splitPhoneNumber,
+} from '../data/country-calling-codes.js';
 import { resolveLocation } from '../data/locations.js';
 import { el, firstUsableImage, productMedia, replaceChildren } from './dom.js';
 import { deliverySchedulePicker } from './delivery-schedule.js';
-import { locationSelect } from './location-select.js';
+import { locationSelect, shippingDestinationFields } from './location-select.js';
 import { NO_PAYMENT_NOTE } from './states.js';
 import { openVariantPicker } from './variant-picker.js';
 
@@ -50,17 +60,24 @@ const CLIENT_LOOKUP_TIMEOUT_MS = 12_000;
  * @param {{
  *   onBack: () => void,
  *   onOpenProductPicker?: (options?: { onClose?: () => void }) => void,
- *   onSubmit: (payload: ReturnType<typeof buildQuotePayload>, options: { targetWindow: Window|null }) => Promise<any>,
+ *   onSubmit: (payload: ReturnType<typeof buildQuotePayload>) => Promise<any>,
  * }} options
  */
 export function renderQuoteFormView(ctx, options) {
   const existingDestination = ctx.locationStore.getShippingDestination() ?? {};
   const savedDraft = readQuoteDraft();
+  const savedContact = savedDraft?.contact ?? { firstName: '', lastName: '', phone: '', company: '' };
+  const savedPhone = splitPhoneNumber(
+    savedContact.phone,
+    savedDraft?.phoneCountry ? dialCodeForCountry(savedDraft.phoneCountry) : undefined,
+  );
   const state = {
     step: savedDraft?.step ?? 0,
     email: savedDraft?.email ?? '',
     recognized: savedDraft?.recognized ?? false,
-    contact: savedDraft?.contact ?? { firstName: '', lastName: '', phone: '', company: '' },
+    vip: false,
+    phoneCountry: savedDraft?.phoneCountry ?? savedPhone.countryCode,
+    contact: { ...savedContact, phone: savedPhone.nationalNumber },
     orderType: savedDraft?.orderType ?? 'Delivery',
     delivery: {
       dateTime: '',
@@ -70,6 +87,7 @@ export function renderQuoteFormView(ctx, options) {
       zipCode: existingDestination.zipCode ?? '',
       ...savedDraft?.delivery,
     },
+    editingShippingAddress: false,
     notes: savedDraft?.notes ?? '',
     lookupPending: false,
     clientLookup: savedDraft?.clientLookup ?? 'idle',
@@ -106,7 +124,17 @@ export function renderQuoteFormView(ctx, options) {
   ]);
 
   render(true);
-  return { head: null, body: [screen] };
+  return {
+    head: null,
+    body: [screen],
+    refresh() {
+      // Only the order-type step needs a live pricing repaint. Avoid replacing
+      // an active email lookup or an in-progress submission underneath the
+      // visitor.
+      if (state.step !== 3 || state.lookupPending || state.submitPending) return;
+      render();
+    },
+  };
 
   function render(shouldFocus = false) {
     // Only a real step change animates. Re-rendering after, say, a quantity
@@ -140,7 +168,14 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function persistDraft() {
-    writeQuoteDraft(state);
+    writeQuoteDraft({
+      ...state,
+      phoneCountry: state.phoneCountry,
+      contact: {
+        ...state.contact,
+        phone: formatInternationalPhone(dialCodeForCountry(state.phoneCountry), state.contact.phone),
+      },
+    });
   }
 
   /**
@@ -190,13 +225,14 @@ export function renderQuoteFormView(ctx, options) {
       ['Select your products', 'Review the products you selected and tell us where the request should be handled.'],
       ['How would you like to receive it?', 'Choose delivery or pickup so we can plan the next step.'],
       state.orderType === 'Delivery'
-        ? ['Where should we deliver?', 'Choose a preferred date and give us the information our team needs.']
+        ? ['Where should we deliver?', 'Choose a preferred date and confirm the shipping address for this request.']
         : ['When should we have it ready?', 'Choose the day you’ll collect your order and we’ll take it from there.'],
       ['Anything else we should know?', 'Add the details that will help us prepare the best quote.'],
     ][state.step];
 
     return el('div', { class: `cat-quote-step ${state.step === 2 ? 'is-wide' : ''} ${direction ? `is-entering is-${direction}` : ''}` }, [
-      advisorPortrait(state.step === 0),
+      // Temporarily hidden: no portrait or location label should appear here.
+      // advisorPortrait(state.step === 0),
       el('div', { class: 'cat-quote-step-heading' }, [
         el('h2', { id: 'cat-quote-title', text: config[0] }),
         config[1] ? el('p', { class: 'cat-quote-step-description', text: config[1] }) : null,
@@ -206,27 +242,27 @@ export function renderQuoteFormView(ctx, options) {
     ]);
   }
 
-  /**
-   * The location's face. Shown large on the first step — where the visitor is
-   * being asked for something before anything has been given back — and small
-   * afterwards so the flow keeps the same host without repeating itself.
-   *
-   * @param {boolean} large
-   */
-  function advisorPortrait(large) {
-    const advisor = resolveAdvisor(ctx.locationId);
-    return el('div', { class: `cat-quote-advisor ${large ? 'is-large' : ''}` }, [
-      el('img', {
-        class: 'cat-quote-advisor-photo',
-        src: advisor.src,
-        alt: advisor.alt,
-        width: large ? 96 : 56,
-        height: large ? 96 : 56,
-        decoding: 'async',
-      }),
-      large ? el('p', { class: 'cat-quote-advisor-caption', text: `Your ${advisor.locationLabel} team` }) : null,
-    ]);
-  }
+  // Temporarily disabled: keep the advisor portrait and location label ready
+  // to restore without rendering either one in the quote flow.
+  // /**
+  //  * The location's face. Shown large on the first step and small afterwards.
+  //  *
+  //  * @param {boolean} large
+  //  */
+  // function advisorPortrait(large) {
+  //   const advisor = resolveAdvisor(ctx.locationId);
+  //   return el('div', { class: `cat-quote-advisor ${large ? 'is-large' : ''}` }, [
+  //     el('img', {
+  //       class: 'cat-quote-advisor-photo',
+  //       src: advisor.src,
+  //       alt: advisor.alt,
+  //       width: large ? 96 : 56,
+  //       height: large ? 96 : 56,
+  //       decoding: 'async',
+  //     }),
+  //     large ? el('p', { class: 'cat-quote-advisor-caption', text: `Your ${advisor.locationLabel} team` }) : null,
+  //   ]);
+  // }
 
   function stepBody() {
     switch (state.step) {
@@ -289,7 +325,10 @@ export function renderQuoteFormView(ctx, options) {
         // truth; contact fields may be absent in an otherwise valid record.
         state.recognized = Boolean(profile);
         if (profile) {
-          state.contact = profile;
+          state.vip = profile.vip === true;
+          const profilePhone = splitPhoneNumber(profile.phone);
+          state.phoneCountry = profilePhone.countryCode;
+          state.contact = { ...profile, phone: profilePhone.nationalNumber };
           state.delivery = {
             ...state.delivery,
             address: profile.shipping?.address || '',
@@ -297,6 +336,7 @@ export function renderQuoteFormView(ctx, options) {
             state: profile.shipping?.state || existingDestination.state || '',
             zipCode: profile.shipping?.zipCode || '',
           };
+          state.editingShippingAddress = false;
         }
         state.step = 1;
         state.error = '';
@@ -332,13 +372,9 @@ export function renderQuoteFormView(ctx, options) {
               el('p', { text: 'We found your active client profile and filled in your contact details.' }),
             ]),
           ])
-        : el('div', { class: 'cat-quote-recognized cat-quote-not-recognized' }, [
-            el('span', { class: 'cat-quote-recognized-icon', text: 'i' }),
-            el('div', {}, [
-              el('strong', { text: state.clientLookup === 'unavailable' ? 'We could not verify this email yet' : 'We could not find this email in active clients' }),
-              el('p', { text: state.clientLookup === 'unavailable' ? 'Please enter your contact details below and continue with your quote.' : 'Please enter your contact details below to request a quote.' }),
-            ]),
-          ]),
+        // A new or unrecognized contact can still request a quote. Keep the
+        // contact form clear instead of showing an alert for that normal path.
+        : null,
       field({
         label: 'Email address',
         name: 'email',
@@ -355,7 +391,7 @@ export function renderQuoteFormView(ctx, options) {
         contactField('Last name', 'lastName', 'family-name', true),
       ]),
       el('div', { class: 'cat-quote-field-grid' }, [
-        contactField('Phone number', 'phone', 'tel', true, 'tel'),
+        phoneField(),
         contactField('Company', 'company', 'organization', false, 'text', 'Optional'),
       ]),
     ].filter(Boolean);
@@ -381,6 +417,8 @@ export function renderQuoteFormView(ctx, options) {
 
   function clearProfileData() {
     state.recognized = false;
+    state.vip = false;
+    state.phoneCountry = DEFAULT_COUNTRY;
     state.contact = { firstName: '', lastName: '', phone: '', company: '' };
     state.delivery = {
       ...state.delivery,
@@ -389,6 +427,7 @@ export function renderQuoteFormView(ctx, options) {
       state: existingDestination.state ?? '',
       zipCode: '',
     };
+    state.editingShippingAddress = false;
   }
 
   function contactField(label, name, autocomplete, required, type = 'text', help) {
@@ -416,7 +455,135 @@ export function renderQuoteFormView(ctx, options) {
     });
   }
 
+  function phoneField() {
+    const rawValue = state.contact.phone ?? '';
+    const phone = splitPhoneNumber(rawValue, dialCodeForCountry(state.phoneCountry));
+    const displayValue = state.recognized && rawValue
+      ? maskPhoneForDisplay(phone.nationalNumber)
+      : phone.nationalNumber;
+    const knownPhone = state.recognized && Boolean(rawValue);
+    const countryCode = el('span', {
+      class: 'cat-quote-country-trigger-code',
+      text: dialCodeForCountry(state.phoneCountry),
+    });
+    const hiddenCountry = el('input', {
+      type: 'hidden',
+      name: 'phoneCountry',
+      value: state.phoneCountry,
+    });
+    let isOpen = false;
+
+    const countryOptions = COUNTRY_CALLING_CODES.map((country) => el('button', {
+      type: 'button',
+      class: 'cat-quote-country-option',
+      role: 'option',
+      'aria-selected': String(country.code === state.phoneCountry),
+      onClick: () => selectCountry(country.code),
+    }, [
+      el('span', { class: 'cat-quote-country-option-name', text: country.name }),
+      el('span', { class: 'cat-quote-country-option-code', text: country.dialCode }),
+    ]));
+    const countryMenu = el('div', {
+      id: 'cat-quote-field-phone-country-menu',
+      class: 'cat-quote-country-menu',
+      role: 'listbox',
+      'aria-label': 'Country calling codes',
+      hidden: true,
+      onKeydown: handleCountryMenuKeydown,
+    }, countryOptions);
+    const countryTrigger = el('button', {
+      type: 'button',
+      class: 'cat-quote-country-trigger',
+      'aria-label': 'Country calling code',
+      'aria-controls': 'cat-quote-field-phone-country-menu',
+      'aria-expanded': 'false',
+      'aria-haspopup': 'listbox',
+      disabled: knownPhone,
+      onClick: () => setCountryMenuOpen(!isOpen),
+      onKeydown: (event) => {
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+        event.preventDefault();
+        setCountryMenuOpen(true);
+        focusCountryOption(0);
+      },
+    }, [
+      countryCode,
+      el('span', { class: 'cat-quote-country-trigger-chevron', 'aria-hidden': 'true' }),
+    ]);
+    const countryPicker = el('div', {
+      class: `cat-quote-country-picker${knownPhone ? ' is-readonly' : ''}`,
+      onFocusout: (event) => {
+        if (!countryPicker.contains(event.relatedTarget)) setCountryMenuOpen(false);
+      },
+    }, [countryTrigger, countryMenu, hiddenCountry]);
+
+    function setCountryMenuOpen(open) {
+      isOpen = open && !knownPhone;
+      countryMenu.hidden = !isOpen;
+      countryTrigger.setAttribute('aria-expanded', String(isOpen));
+      countryPicker.classList.toggle('is-open', isOpen);
+    }
+
+    function focusCountryOption(offset) {
+      const active = countryOptions.indexOf(document.activeElement);
+      const current = active >= 0
+        ? active
+        : countryOptions.findIndex((option) => option.getAttribute('aria-selected') === 'true');
+      const next = Math.min(Math.max(current + offset, 0), countryOptions.length - 1);
+      countryOptions[next]?.focus();
+    }
+
+    function handleCountryMenuKeydown(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setCountryMenuOpen(false);
+        countryTrigger.focus();
+        return;
+      }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        focusCountryOption(event.key === 'ArrowUp' ? -1 : 1);
+      }
+    }
+
+    function selectCountry(code) {
+      state.phoneCountry = code;
+      hiddenCountry.value = code;
+      countryCode.textContent = dialCodeForCountry(code);
+      countryOptions.forEach((option, index) => {
+        const selected = COUNTRY_CALLING_CODES[index].code === code;
+        option.setAttribute('aria-selected', String(selected));
+      });
+      persistDraft();
+      setCountryMenuOpen(false);
+      countryTrigger.focus();
+    }
+
+    return el('div', { class: 'cat-quote-field cat-quote-phone-field' }, [
+      el('label', { for: 'cat-quote-field-phone', text: 'Phone number' }),
+      el('div', { class: 'cat-quote-phone-control' }, [
+        countryPicker,
+        el('input', {
+          id: 'cat-quote-field-phone',
+          name: 'phone',
+          type: 'tel',
+          value: displayValue,
+          placeholder: state.phoneCountry === DEFAULT_COUNTRY ? '(555) 123-4567' : 'Phone number',
+          autocomplete: knownPhone ? 'off' : 'tel-national',
+          inputmode: 'tel',
+          required: true,
+          readonly: knownPhone,
+          onInput: (event) => {
+            state.contact.phone = event.currentTarget.value;
+            persistDraft();
+          },
+        }),
+      ]),
+    ]);
+  }
+
   function productsStep() {
+    syncShippingDestination();
     const items = ctx.quoteStore.getItems();
     const productRows = items.length > 0
       ? el('ul', { class: 'cat-quote-product-list' }, items.map(productRow))
@@ -442,6 +609,19 @@ export function renderQuoteFormView(ctx, options) {
           describeServiceCenter: true,
           onRequestChange: (next) => ctx.requestLocationChange(next, { onCancel: () => render() }),
         }),
+        ctx.location.requiresShippingDestination
+          ? shippingDestinationFields({
+              destination: ctx.locationStore.getShippingDestination(),
+              includeZipCode: false,
+              required: true,
+              stateOptions: US_STATE_OPTIONS,
+              onChange: (value) => {
+                ctx.locationStore.setShippingDestination(value);
+                syncShippingDestination(value);
+                persistDraft();
+              },
+            })
+          : null,
       ]),
       el('div', { class: 'cat-quote-form-section' }, [
         el('div', { class: 'cat-quote-section-label' }, [
@@ -464,6 +644,13 @@ export function renderQuoteFormView(ctx, options) {
       ]),
       stepActions('Continue to order type'),
     ]);
+  }
+
+  /** Keep the later delivery step in sync with the location asked for here. */
+  function syncShippingDestination(destination = ctx.locationStore.getShippingDestination()) {
+    if (!destination) return;
+    state.delivery.city = destination.city ?? '';
+    state.delivery.state = destination.state ?? '';
   }
 
   function productRow(item) {
@@ -560,7 +747,7 @@ export function renderQuoteFormView(ctx, options) {
 
   function orderTypeStep() {
     const pricing = currentQuotePricing();
-    if (!pricing.deliveryAllowed && state.orderType === 'Delivery') {
+    if (!isDeliveryAllowed(pricing) && state.orderType === 'Delivery') {
       state.orderType = 'Pickup';
       persistDraft();
     }
@@ -572,12 +759,13 @@ export function renderQuoteFormView(ctx, options) {
         // The choice is radio buttons, which already write to state.orderType
         // as they change; there is nothing left to read here.
         const latestPricing = currentQuotePricing();
-        if (!latestPricing.deliveryAllowed) state.orderType = 'Pickup';
+        if (!isDeliveryAllowed(latestPricing)) state.orderType = 'Pickup';
         state.step = 4;
         state.error = '';
         render(true);
       },
     }, [
+      state.vip ? null : deliveryEligibilityNote(pricing),
       el('div', { class: 'cat-quote-choice-list' }, [
         choice('Delivery', 'We’ll deliver to the address you provide.'),
         choice('Pickup', 'You’ll collect the flowers from our team.'),
@@ -590,9 +778,46 @@ export function renderQuoteFormView(ctx, options) {
     return getQuotePricing(ctx.quoteStore.getItems(), ctx.products);
   }
 
+  function isDeliveryAllowed(pricing = currentQuotePricing()) {
+    return state.vip || pricing.deliveryAllowed;
+  }
+
+  function deliveryEligibilityNote(pricing) {
+    const eligible = isDeliveryAllowed(pricing);
+    const progress = state.vip ? 100 : pricing.deliveryProgress;
+    const description = state.vip
+      ? 'VIP clients can choose delivery without the $150 minimum order.'
+      : eligible
+        ? 'Delivery is available for this selection.'
+        : `Your selection is ${progress}% toward the $150 minimum for Delivery.`;
+
+    return el('div', {
+      class: `cat-quote-delivery-eligibility ${eligible ? 'is-available' : ''}`,
+      role: 'status',
+      'aria-live': 'polite',
+    }, [
+      el('div', { class: 'cat-quote-delivery-eligibility-head' }, [
+        el('strong', { text: state.vip ? 'VIP delivery available' : 'Delivery progress' }),
+        el('span', {
+          class: 'cat-quote-delivery-eligibility-percent',
+          text: `${progress}% complete`,
+        }),
+      ]),
+      el('p', { text: description }),
+      el('div', {
+        class: 'cat-quote-delivery-progress',
+        role: 'progressbar',
+        'aria-label': 'Delivery eligibility progress',
+        'aria-valuemin': '0',
+        'aria-valuemax': '100',
+        'aria-valuenow': String(progress),
+      }, [el('span', { class: 'cat-quote-delivery-progress-bar', style: `width:${progress}%` })]),
+    ]);
+  }
+
   function choice(value, description) {
     const id = `cat-order-${value.toLowerCase()}`;
-    const disabled = value === 'Delivery' && !currentQuotePricing().deliveryAllowed;
+    const disabled = value === 'Delivery' && !isDeliveryAllowed();
     return el('label', { class: `cat-quote-choice ${state.orderType === value ? 'is-selected' : ''} ${disabled ? 'is-disabled' : ''}` }, [
       el('input', {
         type: 'radio',
@@ -620,7 +845,11 @@ export function renderQuoteFormView(ctx, options) {
     // through the schedule picker rather than a free-form date that could ask
     // for a Sunday at 11 PM. Only delivery reserves a two-hour window: for
     // pickup nothing is held against capacity, so only the day is asked for.
-    const scheduleOptions = { now: new Date(), timeZone: clientTimeZone };
+    const scheduleOptions = {
+      now: new Date(),
+      timeZone: clientTimeZone,
+      mode: isDelivery ? 'delivery' : 'pickup',
+    };
     const validValue = isDelivery
       ? normalizeDeliveryValue(state.delivery.dateTime, scheduleOptions)
       : normalizeDeliveryDate(state.delivery.dateTime, scheduleOptions);
@@ -634,6 +863,29 @@ export function renderQuoteFormView(ctx, options) {
       state.delivery.state,
       state.delivery.zipCode,
     ].some(Boolean);
+    const shippingAddressNotice = el('div', { class: 'cat-quote-info-note cat-quote-shipping-address-note' }, [
+      el('strong', { text: 'Shipping address' }),
+      el('p', {
+        text: hasSavedShipping
+          ? state.editingShippingAddress
+            ? 'Update the saved address below for this delivery.'
+            : 'We filled in your saved shipping address for this delivery.'
+          : 'Enter the address where this order should be delivered.',
+      }),
+      hasSavedShipping && !state.editingShippingAddress
+        ? el('button', {
+            type: 'button',
+            class: 'btn btn-light cat-quote-edit-address',
+            text: 'Update shipping address',
+            onClick: () => {
+              state.editingShippingAddress = true;
+              state.error = '';
+              render();
+              window.setTimeout(() => formHost.querySelector('[name="address"]')?.focus(), 0);
+            },
+          })
+        : null,
+    ]);
     const scheduleInput = el('input', {
       type: 'hidden',
       name: 'dateTime',
@@ -643,12 +895,13 @@ export function renderQuoteFormView(ctx, options) {
     const scheduleField = el('div', { class: 'cat-quote-field cat-quote-schedule-field' }, [
       el('div', { class: 'cat-quote-schedule-label' }, [
         el('label', { text: isDelivery ? 'Preferred delivery date and time' : 'Preferred pickup date' }),
-        el('span', { text: isDelivery ? 'Mon–Fri · 8:00 AM–4:00 PM' : 'Mon–Fri' }),
+        el('span', { text: isDelivery ? 'Mon–Fri · 8:00 AM–4:00 PM; Sat–Sun · 8:00 AM–12:00 PM' : 'Mon–Sun · 24-hour notice' }),
       ]),
       deliverySchedulePicker({
         value: state.delivery.dateTime,
         timeZone: clientTimeZone,
         mode: isDelivery ? 'window' : 'date',
+        availabilityProvider: isDelivery ? readDeliverySlotAvailability : null,
         onChange: (selection) => {
           state.delivery.dateTime = selection.dateTime;
           state.delivery.slot = selection.slot;
@@ -668,10 +921,19 @@ export function renderQuoteFormView(ctx, options) {
       class: 'cat-quote-step-form',
       onSubmit: (event) => {
         event.preventDefault();
-        if (!state.delivery.dateTime) {
+        const currentScheduleOptions = {
+          now: new Date(),
+          timeZone: clientTimeZone,
+          mode: isDelivery ? 'delivery' : 'pickup',
+        };
+        const validValue = isDelivery
+          ? normalizeDeliveryValue(state.delivery.dateTime, currentScheduleOptions)
+          : normalizeDeliveryDate(state.delivery.dateTime, currentScheduleOptions);
+        state.delivery.dateTime = validValue;
+        if (!validValue) {
           state.error = isDelivery
-            ? 'Choose a delivery date and time window to continue.'
-            : 'Choose a pickup date to continue.';
+            ? 'Choose an available delivery date and time window to continue.'
+            : 'Choose an available pickup date at least 24 hours ahead.';
           render(true);
           return;
         }
@@ -688,10 +950,8 @@ export function renderQuoteFormView(ctx, options) {
       scheduleField,
       isDelivery
         ? el('div', { class: 'cat-quote-delivery-fields' }, [
-            hasSavedShipping
-              ? el('p', { class: 'cat-quote-email-confirmed', text: 'We filled in your saved delivery address. You can edit any missing details.' })
-              : null,
-            deliveryField('Address', 'address', 'street-address', true),
+            shippingAddressNotice,
+            deliveryField('Shipping address', 'address', 'street-address', true),
             el('div', { class: 'cat-quote-field-grid' }, [
               deliveryField('City', 'city', 'address-level2', true),
               deliveryField('State', 'state', 'address-level1', true),
@@ -716,7 +976,7 @@ export function renderQuoteFormView(ctx, options) {
       autocomplete,
       inputmode,
       required,
-      readonly: state.recognized && Boolean(value),
+      readonly: state.recognized && !state.editingShippingAddress && Boolean(value),
     });
   }
 
@@ -734,18 +994,50 @@ export function renderQuoteFormView(ctx, options) {
         event.preventDefault();
         state.notes = event.currentTarget.querySelector('textarea[name="notes"]').value.trim();
         persistDraft();
-        const targetWindow = reserveQuoteWindow();
+
+        const pricing = currentQuotePricing();
+        const orderType = isDeliveryAllowed(pricing) && state.orderType === 'Delivery'
+          ? 'Delivery'
+          : 'Pickup';
+        const currentScheduleOptions = {
+          now: new Date(),
+          timeZone: ctx.clientTimeZone ?? 'UTC',
+          mode: orderType === 'Delivery' ? 'delivery' : 'pickup',
+        };
+        const validDateTime = orderType === 'Delivery'
+          ? normalizeDeliveryValue(state.delivery.dateTime, currentScheduleOptions)
+          : normalizeDeliveryDate(state.delivery.dateTime, currentScheduleOptions);
+        if (!validDateTime) {
+          state.orderType = orderType;
+          state.delivery.dateTime = '';
+          state.error = orderType === 'Delivery'
+            ? 'Please choose an available delivery date and time window again.'
+            : 'Please choose an available pickup date at least 24 hours ahead again.';
+          state.step = 4;
+          render(true);
+          return;
+        }
+        state.delivery.dateTime = validDateTime;
+        state.delivery.slot = orderType === 'Delivery'
+          ? getDeliverySlots(validDateTime.slice(0, 10), currentScheduleOptions)
+            .find((slot) => slot.value === validDateTime)
+          : undefined;
+        if (orderType === 'Delivery' && !state.delivery.slot) {
+          state.orderType = orderType;
+          state.delivery.dateTime = '';
+          state.error = 'Please choose an available delivery date and time window again.';
+          state.step = 4;
+          render(true);
+          return;
+        }
+
         state.submitPending = true;
         button.disabled = true;
         button.textContent = 'Sending request…';
         state.error = '';
 
-        const pricing = currentQuotePricing();
         // Re-check at the final boundary so a quantity/product change cannot
-        // submit Delivery below the Fresa minimum.
-        const orderType = pricing.deliveryAllowed && state.orderType === 'Delivery'
-          ? 'Delivery'
-          : 'Pickup';
+        // submit Delivery below the Fresa minimum unless the client is VIP.
         state.orderType = orderType;
 
         const payload = buildQuotePayload({
@@ -753,11 +1045,11 @@ export function renderQuoteFormView(ctx, options) {
           items: ctx.quoteStore.getItems(),
           email: state.email,
           contact: state.contact,
+          phoneCountryCode: dialCodeForCountry(state.phoneCountry),
+          vip: state.vip,
           orderType,
           delivery: {
             ...state.delivery,
-            // Both order types now book a window, so the window is meaningless
-            // to the receiving team without the clock it was chosen in.
             timeZone: ctx.clientTimeZone ?? 'UTC',
           },
           shippingDestination: ctx.locationStore.getShippingDestination(),
@@ -765,17 +1057,20 @@ export function renderQuoteFormView(ctx, options) {
         });
 
         try {
-          const result = await options.onSubmit(payload, { targetWindow });
+          const result = await options.onSubmit(payload);
           if (result?.ok) {
             ctx.quoteStore.clear();
             clearQuoteDraft();
             state.result = result;
           } else {
-            targetWindow?.close?.();
+            if (result?.code === 'SLOT_FULL') {
+              state.delivery.dateTime = '';
+              state.delivery.slot = undefined;
+              state.step = 4;
+            }
             state.error = result?.error || 'We could not send your quote request. Please try again.';
           }
         } catch {
-          targetWindow?.close?.();
           state.error = 'We could not send your quote request. Please try again.';
         } finally {
           state.submitPending = false;
@@ -857,6 +1152,8 @@ export function renderQuoteFormView(ctx, options) {
       // in state and only read fields that the visitor was allowed to edit.
       if (input && !input.readOnly) state.contact[name] = input.value.trim();
     });
+    const country = root.querySelector('[name="phoneCountry"]');
+    if (country && !country.disabled) state.phoneCountry = country.value;
   }
 
   function readDelivery(root) {
@@ -874,14 +1171,4 @@ function withTimeout(promise, timeoutMs) {
     promise,
     new Promise((_, reject) => window.setTimeout(() => reject(new Error('Client lookup timed out.')), timeoutMs)),
   ]);
-}
-
-function reserveQuoteWindow() {
-  try {
-    const target = window.open('', '_blank');
-    if (target) target.opener = null;
-    return target;
-  } catch {
-    return null;
-  }
 }

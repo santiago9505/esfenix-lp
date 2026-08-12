@@ -17,5 +17,8 @@
   "devDependencies": {
     "sharp": "^0.35.2",
     "vite": "^8.1.1"
+  },
+  "dependencies": {
+    "firebase": "^12.17.1"
   }
 }

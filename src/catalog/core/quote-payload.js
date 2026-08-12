@@ -23,6 +23,7 @@ import {
   unrepresentedDetails,
 } from './fresa-mapping.js';
 import { locationServiceMap, resolveLocation } from '../data/locations.js';
+import { formatInternationalPhone } from '../data/country-calling-codes.js';
 import { describeQuoteItem } from './format.js';
 
 /**
@@ -43,6 +44,8 @@ function locationCode(locationId) {
  *   shippingDestination?: ShippingDestination|null,
  *   email?: string,
  *   contact?: { firstName?: string, lastName?: string, phone?: string, company?: string }|null,
+ *   phoneCountryCode?: string,
+ *   vip?: boolean,
  *   orderType?: string|null,
  *   delivery?: { address?: string, city?: string, state?: string, zipCode?: string, dateTime?: string, timeZone?: string, slot?: { date?: string, start?: string, end?: string, capacity?: number } }|null,
  *   notes?: string,
@@ -60,6 +63,7 @@ export function buildQuotePayload(input) {
     selectedLocation: locationCode(location.id),
     serviceCenter: locationServiceMap[location.id] ?? location.serviceCenter,
     email: String(input.email ?? '').trim(),
+    vip: input.vip === true,
     products: items.map((item) => ({
       productId: item.productId,
       productName: item.productName,
@@ -84,7 +88,9 @@ export function buildQuotePayload(input) {
     payload.contact = {
       firstName: String(input.contact.firstName ?? '').trim(),
       lastName: String(input.contact.lastName ?? '').trim(),
-      phone: String(input.contact.phone ?? '').trim(),
+      phone: input.phoneCountryCode
+        ? formatInternationalPhone(input.phoneCountryCode, input.contact.phone)
+        : String(input.contact.phone ?? '').trim(),
       company: String(input.contact.company ?? '').trim(),
     };
   }
@@ -125,7 +131,7 @@ export function buildQuotePayload(input) {
  * @param {QuotePayload} payload
  */
 function buildFresaBlock(items, location, payload) {
-  /** @type {Map<string, { product: string, quantity: number, details: string[] }>} */
+  /** @type {Map<string, { product: string, sourceProductId: string|null, quantity: number, measure: string|null, details: string[] }>} */
   const rows = new Map();
   /** @type {Array<{ item: QuoteItem, tried: string[] }>} */
   const unmapped = [];
@@ -136,8 +142,15 @@ function buildFresaBlock(items, location, payload) {
       unmapped.push({ item, tried: candidates });
       continue;
     }
-    if (!rows.has(option)) rows.set(option, { product: option, quantity: 0, details: [] });
-    const row = rows.get(option);
+    const measure = String(item.measure ?? '').trim().toLowerCase() || null;
+    const sourceProductId = String(item.sourceProductId ?? '').trim() || null;
+    // Keep different canonical Fresa products on different rows even when the
+    // public form displays the same broad label (for example, two EC Rose
+    // varieties at the same length). Each row becomes its own product subtask
+    // and can therefore receive the correct database name and SKU.
+    const rowKey = `${option}\u0000${measure ?? ''}\u0000${sourceProductId ?? ''}`;
+    if (!rows.has(rowKey)) rows.set(rowKey, { product: option, sourceProductId, quantity: 0, measure, details: [] });
+    const row = rows.get(rowKey);
     row.quantity += item.quantity;
 
     const extra = unrepresentedDetails(item);
@@ -149,7 +162,12 @@ function buildFresaBlock(items, location, payload) {
     // Step 2 — Ubicacion
     location: fresaLocationLabel(location.id),
     // Step 2 — repeating {Producto, Quantity} rows
-    products: [...rows.values()].map((row) => ({ product: row.product, quantity: row.quantity })),
+    products: [...rows.values()].map((row) => ({
+      product: row.product,
+      quantity: row.quantity,
+      measure: row.measure,
+      ...(row.sourceProductId ? { sourceProductId: row.sourceProductId } : {}),
+    })),
     // Step 3 — Type of Order. The catalog does not ask; the visitor picks it.
     orderType: payload.orderType,
     // Step 4 — Delivery information
@@ -175,7 +193,7 @@ function buildFresaBlock(items, location, payload) {
  *
  * @param {QuoteItem[]} items
  * @param {import('./types').LocationConfig} location
- * @param {Map<string, { product: string, quantity: number, details: string[] }>} rows
+ * @param {Map<string, { product: string, quantity: number, measure: string|null, details: string[] }>} rows
  * @param {Array<{ item: QuoteItem, tried: string[] }>} unmapped
  * @param {string} extraNotes
  */

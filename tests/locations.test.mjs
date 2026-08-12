@@ -10,11 +10,19 @@ import {
   locationServiceMap,
   resolveLocation,
 } from '../src/catalog/data/locations.js';
+import { US_STATE_OPTIONS } from '../src/catalog/data/us-states.js';
 
 test('every selectable location is configured once', () => {
   const ids = LOCATIONS.map((l) => l.id);
   assert.equal(new Set(ids).size, ids.length, 'no duplicate ids');
   assert.deepEqual(ids.sort(), ['dmv', 'houston', 'other', 'seattle', 'the-woodlands']);
+});
+
+test('U.S. shipping state options cover all states and Washington DC', () => {
+  assert.equal(US_STATE_OPTIONS.length, 51);
+  assert.equal(new Set(US_STATE_OPTIONS.map((option) => option.value)).size, 51);
+  assert.equal(US_STATE_OPTIONS.find((option) => option.value === 'CA').label, 'California');
+  assert.equal(US_STATE_OPTIONS.find((option) => option.value === 'DC').label, 'District of Columbia');
 });
 
 test('each location maps to its service centre', () => {
@@ -49,6 +57,7 @@ test('catalog sources are limited to the lists that actually exist', () => {
 });
 
 test('unknown values resolve to the default rather than throwing', () => {
+  assert.equal(DEFAULT_LOCATION_ID, 'other');
   assert.equal(isKnownLocation('atlantis'), false);
   assert.equal(getLocation('atlantis'), null);
   assert.equal(resolveLocation('atlantis').id, DEFAULT_LOCATION_ID);

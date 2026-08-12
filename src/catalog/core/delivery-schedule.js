@@ -13,6 +13,9 @@ export const DELIVERY_SCHEDULE = Object.freeze({
   slotMinutes: 2 * 60,
   capacity: 2,
   weekdays: Object.freeze([1, 2, 3, 4, 5]),
+  weekendDays: Object.freeze([0, 6]),
+  workingDays: Object.freeze([0, 1, 2, 3, 4, 5, 6]),
+  minimumNoticeMs: 24 * 60 * 60 * 1000,
 });
 
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,7 +27,26 @@ export function isDeliveryDate(dateKey) {
   const date = new Date(`${dateKey}T12:00:00Z`);
   return !Number.isNaN(date.getTime())
     && date.toISOString().slice(0, 10) === dateKey
-    && DELIVERY_SCHEDULE.weekdays.includes(date.getUTCDay());
+    && DELIVERY_SCHEDULE.workingDays.includes(date.getUTCDay());
+}
+
+/**
+ * Pickup is date-only in the current form, so its notice is measured against
+ * the beginning of the pickup day (08:00 in the customer's timezone). This
+ * keeps a date from being offered when its earliest possible pickup would be
+ * less than 24 hours away.
+ *
+ * @param {string} dateKey
+ * @param {{ now?: Date, timeZone: string }} options
+ */
+export function isPickupDateSelectable(dateKey, { now = new Date(), timeZone } = {}) {
+  if (!isDeliveryDate(dateKey)) return false;
+  const pickupStart = wallClockToDate(
+    dateKey,
+    minutesToTime(DELIVERY_SCHEDULE.startMinutes),
+    timeZone,
+  );
+  return pickupStart.getTime() - now.getTime() >= DELIVERY_SCHEDULE.minimumNoticeMs;
 }
 
 /** @param {string} time */
@@ -47,7 +69,7 @@ export function isDateSelectable(dateKey, { now = new Date(), timeZone }) {
 }
 
 /**
- * Creates the four two-hour delivery windows in the configured working day.
+ * Creates the two-hour delivery windows for the selected day.
  *
  * `bookedByStart` is the seam for a live availability source: a map of slot
  * value (`2026-08-13T10:00`) to how many requests already hold that window.
@@ -59,6 +81,7 @@ export function isDateSelectable(dateKey, { now = new Date(), timeZone }) {
  *
  *   open    selectable
  *   past    the window already started (or is starting now) today
+ *   too-soon the window ends less than 24 hours from now
  *   full    capacity is taken
  *   closed  the whole day is outside the delivery calendar
  *
@@ -71,11 +94,7 @@ export function getDeliverySlots(dateKey, { now = new Date(), timeZone, bookedBy
   const selectableDate = isDateSelectable(dateKey, { now, timeZone });
 
   const slots = [];
-  for (
-    let start = DELIVERY_SCHEDULE.startMinutes;
-    start < DELIVERY_SCHEDULE.endMinutes;
-    start += DELIVERY_SCHEDULE.slotMinutes
-  ) {
+  for (const start of slotStartsForDate(dateKey)) {
     const end = start + DELIVERY_SCHEDULE.slotMinutes;
     const startTime = minutesToTime(start);
     const endTime = minutesToTime(end);
@@ -83,8 +102,10 @@ export function getDeliverySlots(dateKey, { now = new Date(), timeZone, bookedBy
     const booked = readBookedCount(bookedByStart, value);
     const remaining = Math.max(0, DELIVERY_SCHEDULE.capacity - booked);
     const passed = dateKey === today && start <= nowMinutes;
+    const hasMinimumNotice = hasMinimumNoticeForSlot(dateKey, endTime, now, timeZone);
     const status = !selectableDate ? 'closed'
       : passed ? 'past'
+      : !hasMinimumNotice ? 'too-soon'
       : remaining === 0 ? 'full'
       : 'open';
     slots.push({
@@ -148,22 +169,26 @@ export function hasRemainingWorkingTime(dateKey, options) {
  */
 export function normalizeDeliveryDate(value, options) {
   const dateKey = String(value ?? '').split('T')[0];
-  if (!isDateSelectable(dateKey, options) || !hasRemainingWorkingTime(dateKey, options)) return '';
+  const selectable = options?.mode === 'pickup'
+    ? isPickupDateSelectable(dateKey, options)
+    : isDateSelectable(dateKey, options);
+  if (!selectable || !hasRemainingWorkingTime(dateKey, options)) return '';
   return dateKey;
 }
 
 /**
- * Picks today when a future weekday remains, otherwise the next open weekday.
- * @param {{ now?: Date, timeZone: string, bookedByStart?: Record<string, number>, requireOpenSlot?: boolean }} options
+ * Picks the first usable date in the delivery or pickup calendar.
+ * @param {{ now?: Date, timeZone: string, bookedByStart?: Record<string, number>, requireOpenSlot?: boolean, mode?: 'delivery'|'pickup' }} options
  */
 export function getFirstSelectableDate(options) {
-  const { now = new Date(), timeZone, requireOpenSlot = true } = options;
+  const { now = new Date(), timeZone, requireOpenSlot = true, mode = 'delivery' } = options;
   const isUsable = requireOpenSlot ? hasOpenDeliverySlots : hasRemainingWorkingTime;
+  const isDateUsable = mode === 'pickup' ? isPickupDateSelectable : isDateSelectable;
   const candidate = new Date(now.getTime());
   for (let offset = 0; offset <= 370; offset += 1) {
     if (offset > 0) candidate.setUTCDate(candidate.getUTCDate() + 1);
     const dateKey = getDateKeyInTimeZone(candidate, timeZone);
-    if (isDateSelectable(dateKey, options) && isUsable(dateKey, options)) {
+    if (isDateUsable(dateKey, options) && isUsable(dateKey, options)) {
       return dateKey;
     }
   }
@@ -211,6 +236,49 @@ export function formatTimeRange(start, end, locale = 'en-US') {
     ? from.slice(0, from.length - fromMeridiem.length).trim()
     : from;
   return `${shortFrom} – ${to}`;
+}
+
+/** @param {string} dateKey */
+function slotStartsForDate(dateKey) {
+  const day = new Date(`${dateKey}T12:00:00Z`).getUTCDay();
+  const lastStart = DELIVERY_SCHEDULE.weekendDays.includes(day)
+    ? DELIVERY_SCHEDULE.startMinutes + DELIVERY_SCHEDULE.slotMinutes
+    : DELIVERY_SCHEDULE.endMinutes - DELIVERY_SCHEDULE.slotMinutes;
+  const starts = [];
+  for (let start = DELIVERY_SCHEDULE.startMinutes; start <= lastStart; start += DELIVERY_SCHEDULE.slotMinutes) {
+    starts.push(start);
+  }
+  return starts;
+}
+
+/** @param {string} dateKey @param {string} endTime @param {Date} now @param {string} timeZone */
+function hasMinimumNoticeForSlot(dateKey, endTime, now, timeZone) {
+  const slotEnd = wallClockToDate(dateKey, endTime, timeZone);
+  return slotEnd.getTime() - now.getTime() >= DELIVERY_SCHEDULE.minimumNoticeMs;
+}
+
+/**
+ * Converts a wall-clock date/time in a named timezone to an instant without
+ * depending on the browser's local timezone. The schedule values are all
+ * regular daytime hours, so this also avoids DST transition edge cases for
+ * the configured windows.
+ *
+ * @param {string} dateKey @param {string} time @param {string} timeZone
+ */
+function wallClockToDate(dateKey, time, timeZone) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const [hours, minutes] = time.split(':').map(Number);
+  const targetUtc = Date.UTC(year, month - 1, day, hours, minutes);
+  const target = new Date(targetUtc);
+  const parts = formatParts(target, timeZone, ['year', 'month', 'day', 'hour', 'minute']);
+  const formattedUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+  );
+  return new Date(targetUtc + (targetUtc - formattedUtc));
 }
 
 /** @param {Date} date @param {string} timeZone @param {string[]} keys */

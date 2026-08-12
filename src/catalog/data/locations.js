@@ -77,7 +77,10 @@ export const locationCatalogMap = Object.fromEntries(
   LOCATIONS.map((location) => [location.id, location.catalogSource]),
 );
 
-export const DEFAULT_LOCATION_ID = 'houston';
+// Visitors without a saved or URL-selected location start here. This keeps
+// the catalog on the Houston-served product list while asking for the actual
+// shipping destination in the quote flow.
+export const DEFAULT_LOCATION_ID = 'other';
 
 /**
  * @param {string|null|undefined} id

@@ -16,6 +16,7 @@
 
 import { FRESA_FORM } from '../data/fresa-form.js';
 import { FRESA_PRODUCT_ALIASES } from '../data/fresa-product-aliases.js';
+import { resolveCatalogFamily } from '../data/catalog-taxonomy.js';
 import { locationCatalogMap } from '../data/locations.js';
 
 /**
@@ -29,6 +30,11 @@ function normalize(value) {
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** @param {string} value */
+function slug(value) {
+  return normalize(value).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 /** @type {Map<string, Map<string, string>>} */
@@ -67,17 +73,26 @@ export function resolveFresaProduct(locationId, product, variant) {
   const catalogSource = locationCatalogMap[locationId] ?? locationId;
   const index = optionIndex(catalogSource);
 
-  const alias = FRESA_PRODUCT_ALIASES[product.id];
+  const family = resolveCatalogFamily(product.name);
+  const canonicalName = family?.groupLabel ?? product.name;
+  const alias = [product.id, family?.group, slug(product.name), slug(canonicalName)]
+    .filter(Boolean)
+    .map((key) => FRESA_PRODUCT_ALIASES[key])
+    .find(Boolean);
   const candidates = alias ? alias(variant) : [];
 
   // Grouped families can still map to length-qualified Fresa options. Keep
   // several harmless label shapes because the form vocabulary may use either
   // `Product 60`, `Product 60cm`, or `Product - 60cm`.
   if (variant.lengthCm !== null && variant.lengthCm !== undefined) {
+    candidates.push(`${canonicalName} ${variant.lengthCm}`);
+    candidates.push(`${canonicalName} ${variant.lengthCm}cm`);
+    candidates.push(`${canonicalName} - ${variant.lengthCm}cm`);
     candidates.push(`${product.name} ${variant.lengthCm}`);
     candidates.push(`${product.name} ${variant.lengthCm}cm`);
     candidates.push(`${product.name} - ${variant.lengthCm}cm`);
   }
+  candidates.push(canonicalName);
   candidates.push(product.name);
 
   for (const candidate of candidates) {

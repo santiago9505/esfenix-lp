@@ -11,7 +11,7 @@ import { breadcrumbs } from './ui/breadcrumbs.js';
 import { buildFacets, countActiveFilters, filterProducts } from './core/facets.js';
 import { el } from './ui/dom.js';
 import { filterPanel, filterTrigger, openFilterDrawer, updateDrawer } from './ui/filters.js';
-import { locationSelect, shippingDestinationFields } from './ui/location-select.js';
+import { locationSelect } from './ui/location-select.js';
 import { productCard } from './ui/product-card.js';
 
 /**
@@ -66,13 +66,6 @@ export function renderCatalogView(ctx) {
  * @param {import('./core/types').Facet[]} facets
  */
 function toolbar(ctx, resultCount, activeCount, facets) {
-  const destination = ctx.location.requiresShippingDestination
-    ? shippingDestinationFields({
-        destination: ctx.locationStore.getShippingDestination(),
-        onChange: (value) => ctx.locationStore.setShippingDestination(value),
-      })
-    : null;
-
   return el('div', { class: 'cat-toolbar' }, [
     el('div', { class: 'cat-toolbar-row' }, [
       locationSelect({
@@ -92,7 +85,6 @@ function toolbar(ctx, resultCount, activeCount, facets) {
         }),
       ]),
     ]),
-    destination,
   ]);
 }
 

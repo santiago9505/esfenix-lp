@@ -61,6 +61,7 @@ test('delivery is enabled only when the priced total reaches $150', () => {
     variants: product.locations[0].variants,
   }]);
   assert.equal(pricing.totalCents, 15120);
+  assert.equal(pricing.deliveryProgress, 100);
   assert.equal(pricing.deliveryAllowed, true);
 
   const justBelowMinimum = getQuotePricing([{ ...item, quantity: 178 }], [{
@@ -68,6 +69,7 @@ test('delivery is enabled only when the priced total reaches $150', () => {
     variants: product.locations[0].variants,
   }]);
   assert.equal(justBelowMinimum.totalCents, 14952);
+  assert.equal(justBelowMinimum.deliveryProgress, 99);
   assert.equal(justBelowMinimum.deliveryAllowed, false);
 
   const underMinimum = getQuotePricing([{ ...item, quantity: 100 }], [{
@@ -75,6 +77,7 @@ test('delivery is enabled only when the priced total reaches $150', () => {
     variants: product.locations[0].variants,
   }]);
   assert.equal(underMinimum.totalCents, 8400);
+  assert.equal(underMinimum.deliveryProgress, 56);
   assert.equal(underMinimum.deliveryAllowed, false);
   assert.equal(DELIVERY_MINIMUM_CENTS, 15000);
 });
@@ -92,6 +95,7 @@ test('an empty metric price is treated as unavailable and keeps the order on pic
   }], [{ id: product.id, variants: product.locations[0].variants }]);
 
   assert.equal(pricing.hasUnknownPricing, true);
+  assert.equal(pricing.deliveryProgress, 0);
   assert.equal(pricing.deliveryAllowed, false);
   assert.equal(priceToCents(''), null);
   assert.equal(priceToCents('$1.25'), 125);

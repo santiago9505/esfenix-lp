@@ -83,6 +83,16 @@ test('the internal quote form carries contact, order and delivery details', () =
   assert.equal(payload.fresa.delivery.dateTime, '2026-08-08T12:00');
 });
 
+test('the selected country calling code is included once in the phone payload', () => {
+  const payload = buildQuotePayload({
+    locationId: 'houston',
+    contact: { firstName: 'Ana', lastName: 'Flower', phone: '350 576 5962', company: '' },
+    phoneCountryCode: '+57',
+  });
+
+  assert.equal(payload.contact.phone, '+57 350 576 5962');
+});
+
 test('delivery metadata preserves the customer timezone and slot capacity', () => {
   const payload = buildQuotePayload({
     locationId: 'houston',
@@ -234,8 +244,12 @@ test('lines that collapse to one form option are merged, and the detail is kept 
     ],
   });
 
-  // The form's product rows are {Producto, Quantity} only.
-  assert.deepEqual(payload.fresa.products, [{ product: 'Ecuadorian Roses - 60cm', quantity: 40 }]);
+  // Rows with the same Fresa product and measure are safely consolidated.
+  assert.deepEqual(payload.fresa.products, [{
+    product: 'Ecuadorian Roses - 60cm',
+    quantity: 40,
+    measure: 'stem',
+  }]);
 
   // Nothing is lost: the breakdown moves to the field that can hold it.
   assert.match(payload.fresa.notes, /Freedom/);
@@ -245,6 +259,55 @@ test('lines that collapse to one form option are merged, and the detail is kept 
 
   // And the catalog's own representation still has both lines in full.
   assert.equal(payload.products.length, 2);
+});
+
+test('different Fresa source products stay in separate subtask rows', () => {
+  const payload = buildQuotePayload({
+    locationId: 'houston',
+    items: [
+      line({
+        id: 'freedom',
+        productId: 'ecuadorian-roses',
+        sourceProductId: '11111111-1111-4111-8111-111111111111',
+        productName: 'Ecuadorian Roses',
+        category: 'roses',
+        selectedLocation: 'houston',
+        serviceCenter: 'HOUSTON',
+        variety: 'Freedom',
+        lengthCm: 60,
+        measure: 'stem',
+        quantity: 25,
+      }),
+      line({
+        id: 'vendela',
+        productId: 'ecuadorian-roses',
+        sourceProductId: '22222222-2222-4222-8222-222222222222',
+        productName: 'Ecuadorian Roses',
+        category: 'roses',
+        selectedLocation: 'houston',
+        serviceCenter: 'HOUSTON',
+        variety: 'Vendela',
+        lengthCm: 60,
+        measure: 'stem',
+        quantity: 25,
+      }),
+    ],
+  });
+
+  assert.deepEqual(payload.fresa.products, [
+    {
+      product: 'Ecuadorian Roses - 60cm',
+      quantity: 25,
+      measure: 'stem',
+      sourceProductId: '11111111-1111-4111-8111-111111111111',
+    },
+    {
+      product: 'Ecuadorian Roses - 60cm',
+      quantity: 25,
+      measure: 'stem',
+      sourceProductId: '22222222-2222-4222-8222-222222222222',
+    },
+  ]);
 });
 
 test('products the form does not list are reported and described in the notes', () => {

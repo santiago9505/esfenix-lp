@@ -67,7 +67,15 @@ export function loadProducts(options = {}) {
   if (productsCache) return Promise.resolve(productsCache);
 
   const persisted = readPersistedProducts();
-  if (persisted) return Promise.resolve(rememberProducts(persisted.products, persisted.savedAt));
+  if (persisted) {
+    // Prices are deliberately kept in the in-memory pricing module and are not
+    // persisted with the public product model. Treat a warm product cache like
+    // the snapshot until Fresa refreshes it, otherwise Delivery progress would
+    // stay unavailable after a page reload.
+    const products = rememberProducts(persisted.products, persisted.savedAt);
+    productsAreSnapshot = true;
+    return Promise.resolve(products);
+  }
   if (initialProductsPromise) return initialProductsPromise;
 
   initialProductsPromise = loadProductSnapshot(options)

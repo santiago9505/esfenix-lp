@@ -7,6 +7,7 @@
  */
 
 import { read, remove, write } from './storage.js';
+import { DEFAULT_COUNTRY, COUNTRY_CALLING_CODES } from '../data/country-calling-codes.js';
 
 const STORAGE_KEY = 'quote-draft';
 const MAX_STEP = 5;
@@ -25,6 +26,11 @@ function step(value) {
 /** @param {unknown} value */
 function lookupState(value) {
   return LOOKUP_STATES.has(value) ? value : 'idle';
+}
+
+/** @param {unknown} value */
+function country(value) {
+  return COUNTRY_CALLING_CODES.some((entry) => entry.code === value) ? value : DEFAULT_COUNTRY;
 }
 
 /** @param {unknown} value */
@@ -56,6 +62,7 @@ function delivery(value) {
  * @property {string} email
  * @property {boolean} recognized
  * @property {'idle'|'checking'|'found'|'not-found'|'unavailable'} clientLookup
+ * @property {string} phoneCountry
  * @property {{ firstName: string, lastName: string, phone: string, company: string }} contact
  * @property {'Delivery'|'Pickup'} orderType
  * @property {{ dateTime: string, address: string, city: string, state: string, zipCode: string }} delivery
@@ -77,6 +84,7 @@ export function readQuoteDraft() {
     email: text(stored.email),
     recognized: stored.recognized === true,
     clientLookup: lookupState(stored.clientLookup),
+    phoneCountry: country(stored.phoneCountry),
     contact: contact(stored.contact),
     orderType: stored.orderType === 'Pickup' ? 'Pickup' : 'Delivery',
     delivery: delivery(stored.delivery),
@@ -95,6 +103,7 @@ export function writeQuoteDraft(draft) {
     email: text(draft.email),
     recognized: draft.recognized === true,
     clientLookup: lookupState(draft.clientLookup),
+    phoneCountry: country(draft.phoneCountry),
     contact: contact(draft.contact),
     orderType: draft.orderType === 'Pickup' ? 'Pickup' : 'Delivery',
     delivery: delivery(draft.delivery),
@@ -106,4 +115,3 @@ export function writeQuoteDraft(draft) {
 export function clearQuoteDraft() {
   remove(STORAGE_KEY);
 }
-

@@ -47,7 +47,7 @@ export interface ProductAttachment {
 
 export interface ProductVariant {
   id: string;
-  sourceProductId?: string;
+  sourceProductId?: string | null;
   sourceProductIds?: string[];
 
   variety?: string | null;
@@ -111,6 +111,8 @@ export interface QuoteItem {
   id: string;
 
   productId: string;
+  /** Exact Fresa task backing the selected catalog variant. */
+  sourceProductId?: string | null;
   productName: string;
   category: ProductCategory;
 
@@ -172,6 +174,7 @@ export interface QuotePayload {
   selectedLocation: string;
   serviceCenter: string;
   email: string;
+  vip: boolean;
   contact?: {
     firstName: string;
     lastName: string;

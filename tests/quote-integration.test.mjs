@@ -28,6 +28,77 @@ function payloadWithProducts() {
   });
 }
 
+function readyPickupPayload() {
+  return buildQuotePayload({
+    locationId: 'other',
+    shippingDestination: { state: 'FL', city: 'Miami', zipCode: '33101' },
+    email: 'buyer@example.com',
+    contact: { firstName: 'Ana', lastName: 'Flower', phone: '+1 555 0100', company: 'Flowers Inc.' },
+    orderType: 'Pickup',
+    delivery: { dateTime: '2026-08-14' },
+    items: [
+      {
+        id: 'a',
+        productId: 'sunflowers',
+        productName: 'Sunflowers',
+        category: 'other-flowers',
+        selectedLocation: 'other',
+        serviceCenter: 'HOUSTON',
+        variety: null,
+        color: null,
+        lengthCm: null,
+        measure: 'bunch',
+        quantity: 5,
+      },
+    ],
+  });
+}
+
+function publicFormResponse() {
+  const fields = [
+    { id: 'email', label: 'Email', type: 'email' },
+    { id: 'vip', label: 'VIP?', type: 'checkbox' },
+    { id: 'first', label: 'First Name', type: 'short_text' },
+    { id: 'last', label: 'Last Name', type: 'short_text' },
+    { id: 'phone', label: 'Phone Number', type: 'phone' },
+    { id: 'location', label: 'Location', type: 'select', options: [{ value: 'nation_wide', label: 'NATION WIDE' }] },
+    {
+      id: 'products',
+      label: 'Products TX - NATION WIDE',
+      type: 'catalog_items',
+      actionRules: [{ enabled: true, conditions: [
+        { sourceFieldId: 'location', operator: 'equals', value: 'nation_wide' },
+        { sourceFieldId: 'vip', operator: 'is_false' },
+      ] }],
+      catalogConfig: {
+        items: [{
+          value: 'product-task-id',
+          label: 'Sunflowers',
+          referenceValues: { bunch_price: 12 },
+        }],
+      },
+    },
+    { id: 'orderType', label: 'Type of Order', type: 'select', options: [{ value: 'pickup', label: 'Pickup' }] },
+    { id: 'pickup', label: 'pickup', type: 'date' },
+    { id: 'notes', label: 'Notes for the seller', type: 'long_text' },
+  ];
+  return { success: true, listId: 'quote-list', form: { enabled: true, fields } };
+}
+
+function deliveryPayloadWithSlot(orderType = 'Delivery') {
+  const payload = payloadWithProducts();
+  payload.orderType = orderType;
+  payload.deliveryDateTime = '2026-08-10T08:00';
+  payload.deliveryTimeZone = 'UTC';
+  payload.deliverySlot = {
+    date: '2026-08-10',
+    start: '08:00',
+    end: '10:00',
+    capacity: 2,
+  };
+  return payload;
+}
+
 /** Records what the integration tried to open. */
 function recorder() {
   const opened = [];
@@ -40,32 +111,55 @@ function recorder() {
   };
 }
 
-test('without an endpoint the legacy form is not opened', async () => {
+test('without a legacy session endpoint the response is submitted through the Fresa form API', async () => {
+  const calls = [];
   const integration = createQuoteIntegration({
     formUrl: FORM_URL,
     sessionEndpoint: null,
+    async fetchImpl(url, options) {
+      calls.push({ url, options });
+      if (options.method === 'GET') {
+        return { ok: true, status: 200, json: async () => publicFormResponse() };
+      }
+      return { ok: true, status: 200, json: async () => ({ success: true, taskId: 'created-task' }) };
+    },
   });
 
-  assert.equal(integration.mode(), 'direct');
+  assert.equal(integration.mode(), 'form-api');
 
-  const result = await integration.start(payloadWithProducts());
-  assert.equal(result.ok, false);
-  assert.equal(result.mode, 'direct');
-  assert.match(result.error, /not configured/i);
+  const result = await integration.start(readyPickupPayload());
+  assert.equal(result.ok, true);
+  assert.equal(result.mode, 'form-api');
+  assert.equal(result.taskId, 'created-task');
+  assert.equal(calls[0].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5');
+  assert.equal(calls[1].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5/submit');
+  const body = JSON.parse(calls[1].options.body);
+  assert.deepEqual(body.answers.products, [{
+    productId: 'product-task-id',
+    quantity: 5,
+    size: null,
+    measure: 'bunch',
+  }]);
 });
 
-test('without an endpoint the selection summary is retained for the next integration', async () => {
+test('a failing Fresa form API keeps the quote summary and does not open a tab', async () => {
   const open = recorder();
   const integration = createQuoteIntegration({
     formUrl: FORM_URL,
     sessionEndpoint: null,
     openImpl: open.open,
+    fetchImpl: async () => ({
+      ok: false,
+      status: 503,
+      json: async () => ({ success: false, error: 'Fresa unavailable' }),
+    }),
   });
 
-  const result = await integration.start(payloadWithProducts());
+  const result = await integration.start(readyPickupPayload());
   assert.equal(result.ok, false);
+  assert.match(result.error, /unavailable/i);
   assert.match(result.summary, /Sunflowers/);
-  assert.equal(open.opened.length, 0, 'the legacy form is never opened');
+  assert.equal(open.opened.length, 0, 'the API flow never opens another tab');
 });
 
 test('with an endpoint the payload is POSTed and the returned URL is opened', async () => {
@@ -103,6 +197,66 @@ test('with an endpoint the payload is POSTed and the returned URL is opened', as
   const body = JSON.parse(seen.options.body);
   assert.equal(body.delivery.zipCode, '33101');
   assert.equal(body.fresa.products.length, 1);
+});
+
+test('Delivery reserves capacity before the quote session and Pickup skips it', async () => {
+  const open = recorder();
+  const calls = [];
+  const reservations = [];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: '/api/quote-sessions',
+    openImpl: open.open,
+    reserveDeliverySlotImpl: async (slot) => {
+      reservations.push(slot);
+      return { booked: 1, remaining: 1 };
+    },
+    async fetchImpl(url, options) {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ quoteSessionId: 'capacity-session', redirectUrl: `${FORM_URL}?quoteSession=capacity-session` }),
+      };
+    },
+  });
+
+  const deliveryResult = await integration.start(deliveryPayloadWithSlot());
+  assert.equal(deliveryResult.ok, true);
+  assert.deepEqual(calls.map(({ url }) => url), ['/api/quote-sessions']);
+  assert.deepEqual(reservations, [{
+    date: '2026-08-10',
+    start: '08:00',
+    end: '10:00',
+    timeZone: 'UTC',
+  }]);
+
+  calls.length = 0;
+  const pickupResult = await integration.start(deliveryPayloadWithSlot('Pickup'));
+  assert.equal(pickupResult.ok, true);
+  assert.deepEqual(calls.map(({ url }) => url), ['/api/quote-sessions']);
+  assert.equal(reservations.length, 1, 'Pickup does not consume Delivery capacity');
+});
+
+test('a full Delivery window stops before creating a quote session', async () => {
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: '/api/quote-sessions',
+    openImpl: () => ({}),
+    reserveDeliverySlotImpl: async () => {
+      const error = new Error('full');
+      error.code = 'SLOT_FULL';
+      throw error;
+    },
+    async fetchImpl(url) {
+      throw new Error('quote session should not be called');
+    },
+  });
+
+  const result = await integration.start(deliveryPayloadWithSlot());
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'SLOT_FULL');
+  assert.match(result.error, /filled up/i);
 });
 
 test('a redirect to another host is refused', async () => {

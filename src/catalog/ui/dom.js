@@ -182,11 +182,14 @@ export function productMedia(image, options) {
     });
   }
 
+  const width = options.width ?? 640;
+  const src = thumbnailSource(image.src, width);
+
   return el('div', { class: `${className} cat-media-img` }, [
     el('img', {
-      src: image.src,
+      src,
       alt: image.alt || options.label,
-      width: options.width ?? 640,
+      width,
       height: options.height ?? 480,
       loading: options.eager ? 'eager' : 'lazy',
       decoding: 'async',
@@ -203,6 +206,18 @@ export function productMedia(image, options) {
       },
     }),
   ]);
+}
+
+/**
+ * Local fallback photos are often displayed as 96–160px thumbnails while the
+ * source is prepared for the full product gallery. Use a dedicated small
+ * derivative for those slots; remote Fresa URLs continue unchanged.
+ * @param {string} src
+ * @param {number} width
+ */
+function thumbnailSource(src, width) {
+  if (width > 240 || !/^\/assets\/images\/flowers-fallback\/[^?#]+\.webp$/i.test(src)) return src;
+  return src.replace(/\.webp$/i, '-thumb.webp');
 }
 
 /**
