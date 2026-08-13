@@ -24,6 +24,14 @@ for (const carousel of document.querySelectorAll('[data-feature-carousel]')) {
   let currentIndex = 0;
   let pendingRequest = 0;
 
+  // The three added photos are landscape shots inside a portrait card. Keep
+  // their full frame a little farther back so people and the van are not cut
+  // off by the card edges. The original farm photo keeps its existing crop.
+  const updateFraming = (index) => {
+    carousel.classList.toggle('is-carousel-wide', index > 0);
+  };
+  updateFraming(currentIndex);
+
   const showSlide = (step) => {
     const nextIndex = (currentIndex + step + slides.length) % slides.length;
     const slide = slides[nextIndex];
@@ -34,6 +42,7 @@ for (const carousel of document.querySelectorAll('[data-feature-carousel]')) {
       if (request !== pendingRequest) return;
       currentIndex = nextIndex;
       carousel.style.setProperty('--bg', `url('${slide.src}')`);
+      updateFraming(currentIndex);
       if (status) status.textContent = `Image ${currentIndex + 1} of ${slides.length}: ${slide.description}`;
     };
 
