@@ -385,7 +385,7 @@ function attachmentLinks(product) {
             class: 'tlink',
             href: file.url,
             target: '_blank',
-            rel: 'noreferrer',
+            rel: 'noopener noreferrer',
             text: file.name || 'Download file',
           }),
         ]),

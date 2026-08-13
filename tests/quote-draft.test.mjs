@@ -11,6 +11,8 @@ beforeEach(async () => {
   draft = await import('../src/catalog/core/quote-draft.js');
   const storage = await import('../src/catalog/core/storage.js');
   storage.resetStorageProbe();
+  const sessionStorage = await import('../src/catalog/core/session-storage.js');
+  sessionStorage.resetSessionStorageProbe();
 });
 
 afterEach(resetBrowserEnv);
@@ -51,6 +53,8 @@ test('a quote draft survives a new read and keeps the entered form state', () =>
     },
     notes: 'Please call before delivery.',
   });
+  assert.equal(env.storage.length, 0, 'personal data is never written to localStorage');
+  assert.equal(env.sessionStorage.length, 1, 'the resumable draft is scoped to this tab');
 });
 
 test('clearing a quote draft removes it without affecting storage availability', () => {
@@ -60,7 +64,10 @@ test('clearing a quote draft removes it without affecting storage availability',
 });
 
 test('malformed draft values are normalized to safe form defaults', () => {
-  env.storage.setItem('esfenix.catalog.quote-draft', JSON.stringify({ step: 99, orderType: 'Unknown', contact: { firstName: 42 } }));
+  env.sessionStorage.setItem('esfenix.session.quote-draft', JSON.stringify({
+    expiresAt: Date.now() + 60_000,
+    value: { step: 99, orderType: 'Unknown', contact: { firstName: 42 } },
+  }));
 
   assert.deepEqual(draft.readQuoteDraft(), {
     step: 5,

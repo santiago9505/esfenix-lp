@@ -23,6 +23,8 @@ import { locationServiceMap, resolveLocation } from '../data/locations.js';
  */
 
 const STORAGE_KEY = 'quote';
+const MAX_QUOTE_LINES = 100;
+const MAX_QUANTITY = 10_000;
 
 /**
  * @typedef {{ location: string, items: QuoteItem[] }} QuoteState
@@ -128,6 +130,12 @@ export function createQuoteStore(defaultLocation) {
       };
 
       const existing = state.items.find((entry) => entry.id === id);
+      if (!existing && state.items.length >= MAX_QUOTE_LINES) {
+        return { ok: false, errors: [`A quote can contain up to ${MAX_QUOTE_LINES} product lines.`] };
+      }
+      if (existing && existing.quantity + selection.quantity > MAX_QUANTITY) {
+        return { ok: false, errors: [`Quantity cannot exceed ${MAX_QUANTITY}.`] };
+      }
       const items = existing
         ? state.items.map((entry) =>
             entry.id === id
@@ -150,8 +158,8 @@ export function createQuoteStore(defaultLocation) {
      * @returns {{ ok: boolean, errors?: string[] }}
      */
     setQuantity(id, quantity) {
-      if (!Number.isInteger(quantity) || quantity < 1) {
-        return { ok: false, errors: ['Quantity must be a whole number greater than zero.'] };
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
+        return { ok: false, errors: [`Quantity must be a whole number from 1 to ${MAX_QUANTITY}.`] };
       }
       const state = store.getState();
       store.setState({
@@ -262,8 +270,8 @@ export function validateSelection(product, selection) {
   }
 
   const quantity = selection?.quantity;
-  if (!Number.isInteger(quantity) || quantity < 1) {
-    errors.push('Quantity must be a whole number greater than zero.');
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
+    errors.push(`Quantity must be a whole number from 1 to ${MAX_QUANTITY}.`);
   }
 
   if (variant) {

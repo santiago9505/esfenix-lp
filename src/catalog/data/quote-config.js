@@ -13,7 +13,7 @@ const isLocalCatalog = typeof window !== 'undefined'
   && ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 /** The live Fresa form. Local development follows the already-running app on port 3000. */
-export const QUOTE_FORM_URL = String(env.FRESA_QUOTE_FORM_URL ?? '').trim()
+export const QUOTE_FORM_URL = String(env.VITE_FRESA_QUOTE_FORM_URL ?? '').trim()
   || (isLocalCatalog ? LOCAL_FORM_URL : PRODUCTION_FORM_URL);
 
 /**
@@ -26,7 +26,7 @@ export const QUOTE_FORM_URL = String(env.FRESA_QUOTE_FORM_URL ?? '').trim()
  *
  * @type {string|null}
  */
-export const QUOTE_SESSION_ENDPOINT = String(env.FRESA_QUOTE_SESSION_ENDPOINT ?? '').trim() || null;
+export const QUOTE_SESSION_ENDPOINT = String(env.VITE_FRESA_QUOTE_SESSION_ENDPOINT ?? '').trim() || null;
 
 /** Identifies where a request came from, in the payload's `source` field. */
 export const QUOTE_SOURCE = 'esfenix-product-catalog';

@@ -46,7 +46,7 @@ export function openModal(options) {
           type: 'button',
           class: 'cat-modal-close',
           'aria-label': options.closeLabel ?? 'Close',
-          html: '<span aria-hidden="true">×</span>',
+          text: '×',
           onClick: () => close(),
         }),
       ]),

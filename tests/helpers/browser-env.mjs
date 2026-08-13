@@ -28,11 +28,12 @@ export function createStorage({ throwOnWrite = false } = {}) {
 }
 
 /**
- * @param {{ url?: string, storage?: ReturnType<typeof createStorage> }} [options]
+ * @param {{ url?: string, storage?: ReturnType<typeof createStorage>, sessionStorage?: ReturnType<typeof createStorage> }} [options]
  */
 export function installBrowserEnv(options = {}) {
   const url = new URL(options.url ?? 'http://localhost/catalog');
   const storage = options.storage ?? createStorage();
+  const sessionStorage = options.sessionStorage ?? createStorage();
 
   const location = {
     get href() {
@@ -66,6 +67,7 @@ export function installBrowserEnv(options = {}) {
 
   const win = {
     localStorage: storage,
+    sessionStorage,
     location,
     history,
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
@@ -82,10 +84,12 @@ export function installBrowserEnv(options = {}) {
 
   globalThis.window = win;
   globalThis.localStorage = storage;
+  globalThis.sessionStorage = sessionStorage;
 
   return {
     window: win,
     storage,
+    sessionStorage,
     /** @param {string} next */
     setUrl(next) {
       const resolved = new URL(next, url);
@@ -99,6 +103,7 @@ export function installBrowserEnv(options = {}) {
 export function resetBrowserEnv() {
   delete globalThis.window;
   delete globalThis.localStorage;
+  delete globalThis.sessionStorage;
 }
 
 /** Loads the generated catalog data without going through the app's loader. */

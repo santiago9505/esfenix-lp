@@ -40,7 +40,7 @@ catalog.html                     one entry for both routes
 
 | Store | Holds | Persisted in |
 |---|---|---|
-| `location-store.js` | selected location, shipping destination | URL + `localStorage` |
+| `location-store.js` | selected location, shipping destination | URL + `localStorage` for the non-personal selection; `sessionStorage` for the destination |
 | filters (in `app.js`) | the active facet selection | URL |
 | `quote-store.js` | the selected products | `localStorage` |
 
@@ -80,7 +80,7 @@ is not Houston, and it asks where the order would ship.
 | `src/catalog/core/types.d.ts` | The domain model |
 | `src/catalog/core/repository.js` | Product loading and queries |
 | `src/catalog/core/fresa-catalog.js` | Fresa fetch, pagination and normalization |
-| `src/catalog/core/fresa-clients.js` | Active-client email validation and pagination |
+| `src/catalog/core/fresa-clients.js` | Same-origin active-client lookup client |
 | `src/catalog/core/facets.js` | Filtering and facet computation |
 | `src/catalog/core/quote-store.js` | The quote list and its validation |
 | `src/catalog/core/location-store.js` | Selected location and destination |
@@ -103,7 +103,8 @@ is not Houston, and it asks where the order would ship.
 | `scripts/lib/xlsx-reader.mjs` | Minimal `.xlsx` reader (Node built-ins only) |
 | `scripts/check-fresa-map.mjs` | Verifies every product maps to a form option |
 | `scripts/vite-plugin-html-partials.mjs` | `<!--#include name-->` support |
-| `tests/*.test.mjs` | 78 tests, `node --test`, no dependencies |
+| `functions/` | Same-origin Fresa proxy, catalog sanitizer, private pricing and client lookup |
+| `tests/*.test.mjs` | Automated unit and integration tests with `node --test` |
 
 ### Modified
 
@@ -147,20 +148,19 @@ hides the corresponding row and filter rather than showing a placeholder.
 
 ## Where the data comes from
 
-The catalog is fetched from its dedicated Fresa list integration in the
-browser using the configured integration ID, URL, and API key:
+The browser fetches a sanitized catalog from the same-origin endpoint:
 
 ```text
-GET ${FRESA_CATALOG_API_URL}?limit=250&offset=0
-Authorization: Bearer ${FRESA_CATALOG_API_KEY}
+GET /api/catalog
 ```
 
-`FRESA_CATALOG_API_URL` must be the endpoint copied from the `Landing Page`
-integration, and `FRESA_CATALOG_INTEGRATION_ID` must match its source ID. The
-landing rejects a response whose integration ID does not match before it can
-be normalized as a product.
+The Cloud Function owns `FRESA_CATALOG_API_URL`, the integration ID and the
+secret API key. It validates the `Landing Page` source, follows pagination,
+removes non-approved fields and replaces price values with availability
+booleans before any response reaches the browser. The response is CDN-cacheable
+and the bundled snapshot keeps the first render independent from Fresa latency.
 
-The integration follows `page.nextOffset` while `hasMore` is true and
+On the server, the integration follows `page.nextOffset` while `hasMore` is true and
 deduplicates pages by record id. Fresa may return the products as
 `catalog.products` or as top-level `records`; both are normalized to the same
 internal model. Custom values are read only through the matching descriptors in
@@ -316,17 +316,19 @@ FRESA_CLIENTS_API_KEY=replace-with-a-rotated-fresa-active-clients-key
 The client integration ID must match the source returned by Fresa. A mismatch
 is treated as a configuration error, not as an unknown email.
 
-For an existing client, configure `FRESA_QUOTE_SESSION_ENDPOINT` with a
-server-side session bridge. It receives the payload by `POST`, looks up the
-client privately, and returns a short-lived `redirectUrl` for the prefilled
-Fresa form. Personal data is never put in the URL or persisted by the landing;
-only the selected location is allowed as URL context.
+Active-client lookup is always a same-origin `POST /api/clients/lookup`. The
+server loads and briefly caches the private directory, but returns at most the
+single matching active profile. The browser never receives the directory or
+its bearer key. An optional existing session bridge can be configured with
+`VITE_FRESA_QUOTE_SESSION_ENDPOINT`; it receives the final payload by `POST`
+and returns a short-lived `redirectUrl`. Personal data is never put in the URL
+or persisted beyond the current tab session.
 
-The optional client integration can identify the authorized email and active
-columns from their Fresa descriptors, follows `page.nextOffset`, compares
-emails case-insensitively, and keeps only normalized emails in memory for 60
-seconds. It does not persist or expose the client records, and its availability
-does not block quote requests.
+The server identifies the authorized email and active columns from their Fresa
+descriptors, follows `page.nextOffset`, compares emails case-insensitively and
+caches the normalized directory in function memory for 60 seconds. It does not
+persist or expose the directory, and its availability does not block quote
+requests.
 
 The payload keeps the catalog's own representation **and** a `fresa` block
 holding the same request in the form's terms:

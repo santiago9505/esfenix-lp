@@ -6,7 +6,7 @@
  * transient request state and the eventual result.
  */
 
-import { read, remove, write } from './storage.js';
+import { readSession, removeSession, writeSession } from './session-storage.js';
 import { DEFAULT_COUNTRY, COUNTRY_CALLING_CODES } from '../data/country-calling-codes.js';
 
 const STORAGE_KEY = 'quote-draft';
@@ -14,8 +14,8 @@ const MAX_STEP = 5;
 const LOOKUP_STATES = new Set(['idle', 'checking', 'found', 'not-found', 'unavailable']);
 
 /** @param {unknown} value */
-function text(value) {
-  return typeof value === 'string' ? value : '';
+function text(value, maxLength = 2000) {
+  return typeof value === 'string' ? value.slice(0, maxLength) : '';
 }
 
 /** @param {unknown} value */
@@ -37,10 +37,10 @@ function country(value) {
 function contact(value) {
   const source = value && typeof value === 'object' ? value : {};
   return {
-    firstName: text(source.firstName),
-    lastName: text(source.lastName),
-    phone: text(source.phone),
-    company: text(source.company),
+    firstName: text(source.firstName, 80),
+    lastName: text(source.lastName, 80),
+    phone: text(source.phone, 40),
+    company: text(source.company, 120),
   };
 }
 
@@ -48,11 +48,11 @@ function contact(value) {
 function delivery(value) {
   const source = value && typeof value === 'object' ? value : {};
   return {
-    dateTime: text(source.dateTime),
-    address: text(source.address),
-    city: text(source.city),
-    state: text(source.state),
-    zipCode: text(source.zipCode),
+    dateTime: text(source.dateTime, 64),
+    address: text(source.address, 160),
+    city: text(source.city, 80),
+    state: text(source.state, 80),
+    zipCode: text(source.zipCode, 20),
   };
 }
 
@@ -76,19 +76,19 @@ function delivery(value) {
  * @returns {QuoteDraft|null}
  */
 export function readQuoteDraft() {
-  const stored = read(STORAGE_KEY, null);
+  const stored = readSession(STORAGE_KEY, null);
   if (!stored || typeof stored !== 'object') return null;
 
   return {
     step: step(stored.step),
-    email: text(stored.email),
+    email: text(stored.email, 254),
     recognized: stored.recognized === true,
     clientLookup: lookupState(stored.clientLookup),
     phoneCountry: country(stored.phoneCountry),
     contact: contact(stored.contact),
     orderType: stored.orderType === 'Pickup' ? 'Pickup' : 'Delivery',
     delivery: delivery(stored.delivery),
-    notes: text(stored.notes),
+    notes: text(stored.notes, 2000),
   };
 }
 
@@ -98,20 +98,20 @@ export function readQuoteDraft() {
  * @param {Partial<QuoteDraft>} draft
  */
 export function writeQuoteDraft(draft) {
-  write(STORAGE_KEY, {
+  writeSession(STORAGE_KEY, {
     step: step(draft.step),
-    email: text(draft.email),
+    email: text(draft.email, 254),
     recognized: draft.recognized === true,
     clientLookup: lookupState(draft.clientLookup),
     phoneCountry: country(draft.phoneCountry),
     contact: contact(draft.contact),
     orderType: draft.orderType === 'Pickup' ? 'Pickup' : 'Delivery',
     delivery: delivery(draft.delivery),
-    notes: text(draft.notes),
+    notes: text(draft.notes, 2000),
   });
 }
 
 /** Removes the draft after a quote request succeeds. */
 export function clearQuoteDraft() {
-  remove(STORAGE_KEY);
+  removeSession(STORAGE_KEY);
 }

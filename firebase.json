@@ -2,6 +2,10 @@
   "firestore": {
     "rules": "firestore.rules"
   },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs22"
+  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -10,6 +14,30 @@
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/api/catalog",
+        "function": {
+          "functionId": "fresaCatalog",
+          "region": "us-central1",
+          "pinTag": true
+        }
+      },
+      {
+        "source": "/api/clients/lookup",
+        "function": {
+          "functionId": "fresaClientLookup",
+          "region": "us-central1",
+          "pinTag": true
+        }
+      },
+      {
+        "source": "/api/quotes/pricing",
+        "function": {
+          "functionId": "fresaQuotePricing",
+          "region": "us-central1",
+          "pinTag": true
+        }
+      },
       {
         "source": "/catalog",
         "destination": "/catalog.html"
@@ -21,6 +49,63 @@
       {
         "source": "**",
         "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains; preload" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "X-Frame-Options", "value": "DENY" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+          { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
+          { "key": "Cross-Origin-Resource-Policy", "value": "same-site" },
+          { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src 'none'; script-src 'self' 'sha256-qhn1mn83hQIm7eLCODKKIuZ6dAmsovbQmncf4LOqLlk=' 'sha256-w2jozKhlEWb9ZU6+VfJBV34ziXyJDcjJDc1nkyB5RdY='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://fresaai.app https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com; form-action 'self' https://fresaai.app; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests" }
+        ]
+      },
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          { "key": "Cache-Control", "value": "public,max-age=31536000,immutable" }
+        ]
+      },
+      {
+        "source": "**/*.@(webp|svg|png|jpg|jpeg|mp4|woff2)",
+        "headers": [
+          { "key": "Cache-Control", "value": "public,max-age=2592000,stale-while-revalidate=86400" }
+        ]
+      },
+      {
+        "source": "/data/catalog-snapshot.json",
+        "headers": [
+          { "key": "Cache-Control", "value": "public,max-age=300,stale-while-revalidate=3600" }
+        ]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      },
+      {
+        "source": "/",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      },
+      {
+        "source": "/catalog",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      },
+      {
+        "source": "/catalog/**",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
       }
     ]
   }

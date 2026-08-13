@@ -56,32 +56,30 @@ FRESA_CATALOG_API_KEY=replace-with-a-rotated-fresa-catalog-key
 FRESA_CLIENTS_INTEGRATION_ID=replace-with-active-clients-integration-id
 FRESA_CLIENTS_API_URL=https://fresaai.app/api/integrations/lists/replace-with-active-clients-integration-id
 FRESA_CLIENTS_API_KEY=replace-with-a-rotated-fresa-active-clients-key
-FRESA_QUOTE_SESSION_ENDPOINT=https://your-domain.example/api/quote-sessions
+VITE_FRESA_QUOTE_SESSION_ENDPOINT=https://your-domain.example/api/quote-sessions
 ```
 
-La consulta usa `Authorization: Bearer ...`, sigue `page.nextOffset` (o
-`catalog.page.nextOffset` en la respuesta envuelta) hasta completar la
-paginacion y revalida el catalogo cada 60 segundos. La URL, el ID y la llave
-de cada fuente se configuran como una pareja; las columnas se
-interpretan desde `catalog.columns[].key` o `columns[].key`; las imagenes y archivos
-usan directamente `attachment.url` y no se convierten ni se descargan desde
-otra ruta. En produccion, rota la API key de prueba y permite el dominio de la
-landing en CORS de Fresa.
+Las credenciales `FRESA_*` son exclusivas de Cloud Functions y nunca entran al
+bundle del navegador. El endpoint same-origin `/api/catalog` consulta Fresa,
+pagina la fuente, elimina campos privados y valores de precio, y mantiene una
+respuesta CDN cacheable. La pagina pinta primero el snapshot local y revalida
+en segundo plano, de modo que Fresa nunca bloquea el primer render.
 
 Antes de abrir el formulario de cotizacion, la landing solicita el correo del
 visitante y lo envia al flujo de cotizacion. La disponibilidad de la API de
 clientes no bloquea el acceso al formulario: un correo nuevo o uno que no pueda
-ser encontrado tambien puede solicitar una cotizacion. La landing no guarda ni
-expone la lista de clientes; `FRESA_CLIENTS_API_URL` y
-`FRESA_CLIENTS_API_KEY` quedan disponibles para la integracion segura del
-servidor que prellena datos cuando exista un cliente.
+ser encontrado tambien puede solicitar una cotizacion. La landing no descarga
+ni expone la lista de clientes. Envia un unico correo a
+`/api/clients/lookup`; la Function consulta el directorio en memoria, limita la
+tasa de solicitudes y devuelve como maximo el perfil coincidente.
 
-Para prellenar de forma segura los datos de un cliente existente, configura
-`FRESA_QUOTE_SESSION_ENDPOINT`. Ese endpoint recibe el payload por `POST`, usa
-el correo para buscar los datos privados en el servidor y devuelve una URL
-temporal del formulario de Fresa. Los datos personales no se guardan en
-`localStorage` ni se incluyen en la URL; la ubicación sí se puede enviar como
-contexto de la solicitud.
+La consulta segura de clientes ya funciona mediante `/api/clients/lookup`. Si
+ademas existe un puente de sesiones propio, se puede configurar
+`VITE_FRESA_QUOTE_SESSION_ENDPOINT`: recibe el payload final por `POST` y
+devuelve una URL temporal del formulario de Fresa. Los datos personales no se guardan en
+`localStorage` ni se incluyen en la URL. El borrador vive en `sessionStorage`,
+expira a los 30 minutos y desaparece al cerrar la pestaña; la selección de
+productos, que no contiene PII, sí puede persistir como wishlist.
 
 `listName` o una columna autorizada de categoria conservan la clasificacion
 actual. Si se necesita una nueva clasificacion, debe autorizarse esa columna o
@@ -96,11 +94,24 @@ npm run check:fresa-map
 
 ## Firebase Hosting
 
-La configuracion de hosting usa `dist/` como carpeta publica. Despues de seleccionar el proyecto de Firebase, puedes desplegar con:
+La configuracion de hosting usa `dist/` como carpeta publica. Configura los
+secretos privados antes del primer despliegue:
 
 ```sh
-firebase deploy --only hosting
+firebase functions:secrets:set FRESA_CATALOG_API_KEY
+firebase functions:secrets:set FRESA_CLIENTS_API_KEY
 ```
+
+Las URLs e IDs se solicitan como parametros durante el primer deploy de las
+Functions. Despues de seleccionar el proyecto de Firebase, despliega backend y
+hosting juntos:
+
+```sh
+firebase deploy --only functions,hosting
+```
+
+El build verifica automaticamente que ningun secreto de `.env.local` haya
+entrado a `dist/` y que todos los scripts inline esten autorizados por la CSP.
 
 Los assets referenciados por la pagina deben existir en `assets/` en la raiz del proyecto.
 
@@ -116,7 +127,7 @@ Para habilitarlo en Firebase, activa Authentication > Sign-in method >
 Anonymous, despliega Firestore y Hosting:
 
 ```sh
-firebase deploy --only firestore,hosting
+firebase deploy --only functions,firestore,hosting
 ```
 
 No hay una Function ni una variable de endpoint para esta capacidad; el flujo

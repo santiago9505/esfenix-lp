@@ -1,3 +1,5 @@
+import './feature-carousel.js';
+
 /**
  * Landing-page wiring for interactions that also exist in the catalog.
  *
@@ -9,6 +11,32 @@
 
 import { createQuoteStore } from '../catalog/core/quote-store.js';
 import { openQuoteSummary } from '../catalog/ui/quote-summary.js';
+
+function startHeroVideoWhenReady() {
+  const video = document.querySelector('[data-hero-video]');
+  if (!video) return;
+  const connection = navigator.connection ?? navigator.mozConnection ?? navigator.webkitConnection;
+  if (connection?.saveData || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const start = () => {
+    for (const source of video.querySelectorAll('source[data-src]')) {
+      source.src = source.dataset.src;
+      source.removeAttribute('data-src');
+    }
+    video.load();
+    video.play().catch(() => {
+      // The optimized poster remains visible if autoplay is unavailable.
+    });
+  };
+
+  const schedule = () => {
+    if ('requestIdleCallback' in window) window.requestIdleCallback(start, { timeout: 1200 });
+    else window.setTimeout(start, 250);
+  };
+
+  if (document.readyState === 'complete') schedule();
+  else window.addEventListener('load', schedule, { once: true });
+}
 
 const quoteStore = createQuoteStore('other');
 let summary = null;
@@ -83,3 +111,4 @@ quoteStore.subscribe((state) => {
 
 updateWishlistCount();
 bindLandingCtas();
+startHeroVideoWhenReady();

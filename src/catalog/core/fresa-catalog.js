@@ -16,11 +16,9 @@ import { slugify } from './slug.js';
 import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
 import { rememberVariantPrices } from './pricing.js';
 
-const env = typeof import.meta !== 'undefined' ? import.meta.env ?? {} : {};
-
-export const FRESA_CATALOG_API_URL = String(env.FRESA_CATALOG_API_URL ?? '').trim();
-export const FRESA_CATALOG_API_KEY = String(env.FRESA_CATALOG_API_KEY ?? '').trim();
-export const FRESA_CATALOG_INTEGRATION_ID = String(env.FRESA_CATALOG_INTEGRATION_ID ?? '').trim();
+export const FRESA_CATALOG_API_URL = '/api/catalog';
+export const FRESA_CATALOG_API_KEY = '';
+export const FRESA_CATALOG_INTEGRATION_ID = '';
 // Fresa attachment URLs are signed for one hour. Revalidate halfway through
 // that window so a warm browser avoids repeatedly downloading the full source
 // while every cached URL is still valid.
@@ -108,17 +106,10 @@ export async function fetchCatalogPages({
   const baseUrl = String(apiUrl ?? '').trim();
   const token = String(apiKey ?? '').trim();
 
-  if (!baseUrl || !token) {
+  if (!baseUrl) {
     throw new FresaCatalogError(
       0,
-      'Fresa catalog is not configured. Set FRESA_CATALOG_API_URL and FRESA_CATALOG_API_KEY.',
-    );
-  }
-  const clientsApiKey = String(env.FRESA_CLIENTS_API_KEY ?? '').trim();
-  if (clientsApiKey && token === clientsApiKey) {
-    throw new FresaCatalogError(
-      0,
-      'The catalog API key must be different from the active-client API key.',
+      'The catalog endpoint is not configured.',
     );
   }
   if (typeof fetchImpl !== 'function') {
@@ -132,17 +123,20 @@ export async function fetchCatalogPages({
 
   while (!visitedOffsets.has(offset)) {
     visitedOffsets.add(offset);
-    const url = new URL(baseUrl);
+    const url = new URL(
+      baseUrl,
+      typeof window === 'undefined' || !window.location?.href
+        ? 'http://localhost/'
+        : window.location.href,
+    );
     url.searchParams.set('limit', String(PAGE_LIMIT));
     url.searchParams.set('offset', String(offset));
 
     let response;
     try {
       response = await fetchImpl(url.toString(), {
-        headers: { Authorization: `Bearer ${token}` },
-        // Keep signed attachment responses out of browser/CDN caches while the
-        // catalog is revalidated in memory before signed URLs expire.
-        cache: 'no-store',
+        headers: token ? { Authorization: `Bearer ${token}` } : { Accept: 'application/json' },
+        cache: token ? 'no-store' : 'no-cache',
       });
     } catch (error) {
       throw new FresaCatalogError(0, 'Fresa catalog is temporarily unavailable.', error);
@@ -245,7 +239,7 @@ function assertCatalogSource(source, columns) {
   }
 
   const hasCatalogTaxonomy = Array.isArray(columns) && columns.some((column) => {
-    const label = [column?.key, column?.field_key, column?.field_name]
+    const label = [column?.key, column?.field_key, column?.field_name, column?.client_role]
       .map(normalizeLabel)
       .join(' ');
     return /category|categoria|type product|tipo producto|classification|clasificacion/.test(label);
@@ -679,6 +673,7 @@ function findColumn(columns, role) {
   for (const column of columns) {
     const key = safeString(column.key);
     if (!key) continue;
+    if (safeString(column.client_role) === role) return column;
     const labels = [key, column.field_key, column.field_name].map(normalizeLabel).filter(Boolean);
     let score = 0;
     for (const label of labels) {
@@ -715,6 +710,7 @@ function findGenericPriceColumn(columns, roleColumns) {
 
   return columns.find((column) => {
     if (usedKeys.has(safeString(column.key))) return false;
+    if (safeString(column.client_role) === 'genericPrice') return true;
     const label = [column.key, column.field_key, column.field_name, column.name, column.label, column.title]
       .map(normalizeLabel)
       .join(' ');

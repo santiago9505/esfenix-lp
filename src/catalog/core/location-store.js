@@ -14,6 +14,7 @@
 
 import { createStore } from './store.js';
 import { read, write } from './storage.js';
+import { readSession, writeSession } from './session-storage.js';
 import { DEFAULT_LOCATION_ID, isKnownLocation, resolveLocation } from '../data/locations.js';
 import { readLocationFromUrl } from './url-state.js';
 
@@ -43,13 +44,13 @@ export function createLocationStore() {
   const store = createStore(
     /** @type {LocationState} */ ({
       locationId: initialId,
-      shippingDestination: normalizeDestination(read(DESTINATION_KEY, null)),
+      shippingDestination: normalizeDestination(readSession(DESTINATION_KEY, null)),
     }),
   );
 
   store.subscribe((state) => {
     write(LOCATION_KEY, state.locationId);
-    write(DESTINATION_KEY, state.shippingDestination);
+    writeSession(DESTINATION_KEY, state.shippingDestination);
   });
 
   return {

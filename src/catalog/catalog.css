@@ -10,9 +10,20 @@
 .catalog-page .cat-root{padding-top:124px;padding-bottom:96px;min-height:70vh}
 
 /* The catalog has no hero, so the header keeps its solid look at all times.
-   These pair with the `solid` class catalog.html adds during parse. */
+   These rules apply during parse, with no inline script and no style flash. */
+.catalog-page header{padding:6px 0;background:rgba(252,249,246,.9);backdrop-filter:blur(16px);border-bottom-color:var(--c-line);box-shadow:0 1px 0 var(--c-line)}
+.catalog-page header::before{opacity:0}
 .catalog-page header .nav{height:92px}
 .catalog-page header .logo-img{height:74px}
+.catalog-page header .nav-links a{color:var(--c-muted)}
+.catalog-page header .nav-links a::after{background:#8924a0}
+.catalog-page header .nav-links a:hover{color:var(--c-text)}
+.catalog-page header .nav-cart{color:var(--c-forest);border-color:var(--c-line);background:rgba(255,255,255,.74)}
+.catalog-page header .nav-cart:hover{color:var(--accent);background:#f7eafa;border-color:#edc7e9}
+.catalog-page header .nav-cart-icon-white{display:none}
+.catalog-page header .nav-cart-icon-color{display:block}
+.catalog-page header .nav-cta{background:var(--btn-bg);color:var(--btn-fg);border-color:transparent;box-shadow:var(--shadow-sm)}
+.catalog-page header .burger{color:var(--c-text)}
 
 /* base.css styles the site header and footer with bare element selectors — the
    header is fixed, full width and on z-index 60. Any <header> or <footer> used
@@ -170,7 +181,7 @@
 .cat-grid{--cat-card-min:260px;display:grid;gap:22px;grid-template-columns:repeat(2,1fr)}
 @media(min-width:760px){.cat-grid{grid-template-columns:repeat(auto-fill,minmax(var(--cat-card-min),1fr))}}
 
-.cat-card{position:relative;display:flex;flex-direction:column;background:var(--c-white);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-sm);transition:transform var(--d3) var(--e),box-shadow var(--d3) var(--e)}
+.cat-card{position:relative;display:flex;flex-direction:column;background:var(--c-white);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-sm);transition:transform var(--d3) var(--e),box-shadow var(--d3) var(--e);content-visibility:auto;contain-intrinsic-size:auto 430px}
 .cat-card:hover{transform:translateY(-5px);box-shadow:var(--shadow)}
 .cat-card:focus-within{box-shadow:var(--shadow),0 0 0 3px var(--c-sage)}
 

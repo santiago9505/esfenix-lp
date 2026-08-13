@@ -11,12 +11,11 @@
  * source-specific responses.
  */
 
-const env = typeof import.meta !== 'undefined' ? import.meta.env ?? {} : {};
-
-export const FRESA_CLIENTS_API_URL = String(env.FRESA_CLIENTS_API_URL ?? '').trim();
-export const FRESA_CLIENTS_API_KEY = String(env.FRESA_CLIENTS_API_KEY ?? '').trim();
-export const FRESA_CLIENTS_INTEGRATION_ID = String(env.FRESA_CLIENTS_INTEGRATION_ID ?? '').trim();
-export const FRESA_CLIENTS_SOURCE_NAME = String(env.FRESA_CLIENTS_SOURCE_NAME ?? 'Clientes Activos').trim();
+export const FRESA_CLIENT_LOOKUP_URL = '/api/clients/lookup';
+export const FRESA_CLIENTS_API_URL = '';
+export const FRESA_CLIENTS_API_KEY = '';
+export const FRESA_CLIENTS_INTEGRATION_ID = '';
+export const FRESA_CLIENTS_SOURCE_NAME = 'Clientes Activos';
 export const FRESA_CLIENTS_REVALIDATE_MS = 60_000;
 
 // The directory is small enough to arrive in a single response, and asking for
@@ -124,8 +123,36 @@ export async function findActiveClient(email, options = {}) {
   const normalized = normalizeEmail(email);
   if (!normalized) return null;
 
+  // Explicit raw options are retained for the build-time utilities and unit
+  // tests. Browsers use the same-origin lookup endpoint and never receive a
+  // Fresa URL, API key, or the complete client directory.
+  if (!options.apiUrl && !options.apiKey) {
+    return requestClientProfile(normalized, options);
+  }
+
   const { profiles } = await loadClientDirectory(options);
   return profiles.get(normalized) ?? null;
+}
+
+async function requestClientProfile(email, options = {}) {
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+  if (typeof fetchImpl !== 'function') {
+    throw new FresaClientsError(0, 'Client validation is not available in this environment.');
+  }
+  let response;
+  try {
+    response = await fetchImpl(options.lookupUrl ?? FRESA_CLIENT_LOOKUP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ email }),
+      cache: 'no-store',
+    });
+  } catch (error) {
+    throw new FresaClientsError(0, 'We could not reach the client lookup service.', error);
+  }
+  if (!response.ok) throw new FresaClientsError(response.status, clientApiError(response.status));
+  const data = await response.json();
+  return data?.profile && typeof data.profile === 'object' ? data.profile : null;
 }
 
 /** @param {string} value */
