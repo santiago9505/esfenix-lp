@@ -19,7 +19,6 @@ import {
   getProductsForLocation,
   loadProducts,
   productExistsAnywhere,
-  productsNeedRefresh,
 } from './core/repository.js';
 import { catalogHref, productHref, readFiltersFromUrl, syncUrl } from './core/url-state.js';
 import { confirmLocationChange } from './ui/modal.js';
@@ -37,7 +36,6 @@ import { renderCatalogView } from './catalog-page.js';
 import { renderProductView } from './product-page.js';
 import { resolveLocation } from './data/locations.js';
 import { initReveals } from './ui/site-chrome.js';
-import { FRESA_CATALOG_REVALIDATE_MS } from './core/fresa-catalog.js';
 import { getClientTimeZone } from './core/timezone.js';
 
 export function createApp({ head, body }) {
@@ -54,11 +52,6 @@ export function createApp({ head, body }) {
   let loadError = null;
   /** @type {ReturnType<typeof openQuoteSummary>|null} */
   let summary = null;
-  /** @type {{ refresh?: () => void }|null} */
-  let activeQuoteView = null;
-  let refreshTimer = null;
-  let refreshRequest = null;
-  let warmupTimer = null;
 
   const ctx = {
     get products() {
@@ -373,7 +366,6 @@ export function createApp({ head, body }) {
             ? renderProductView(ctx, route)
             : renderCatalogView(ctx);
 
-    activeQuoteView = route.view === 'quote' ? view : null;
     replaceChildren(head, view.head ? [view.head] : []);
     replaceChildren(body, view.body);
     initReveals(body);
@@ -424,84 +416,6 @@ export function createApp({ head, body }) {
 
     render();
     bindGlobalQuoteCtas();
-    scheduleCatalogRefresh();
-    scheduleCatalogWarmup();
-  }
-
-  function scheduleCatalogWarmup() {
-    if (!productsNeedRefresh() || warmupTimer !== null) return;
-
-    // The bundled snapshot already has the product list. Start the live refresh
-    // immediately so the quote form can calculate Delivery progress as soon as
-    // Fresa returns the internal pricing metadata.
-    const delay = 0;
-    warmupTimer = window.setTimeout(() => {
-      warmupTimer = null;
-      void refreshCatalog();
-    }, delay);
-  }
-
-  /**
-   * Revalidates Fresa without interrupting a usable catalog when the remote
-   * service has a temporary failure. Attachment URLs are refreshed with the
-   * same request, so they are never persisted as permanent product data.
-   */
-  function scheduleCatalogRefresh() {
-    if (refreshTimer !== null) return;
-    refreshTimer = window.setInterval(() => {
-      void refreshCatalog();
-    }, FRESA_CATALOG_REVALIDATE_MS);
-  }
-
-  /** Refreshes live data without making the first render wait for Fresa. */
-  function refreshCatalog() {
-    if (refreshRequest) return refreshRequest;
-
-    refreshRequest = (async () => {
-      try {
-        const nextProducts = await loadProducts({ force: true });
-        const changed = catalogSignature(nextProducts) !== catalogSignature(allProducts);
-
-        allProducts = nextProducts;
-        locationProducts = getProductsForLocation(allProducts, locationStore.getId());
-        filters = pruneFilters(locationProducts, filters);
-        quoteStore.reconcile(locationProducts);
-
-        // Keep the quote form's local state and refresh only its current step so
-        // live pricing can update Delivery progress without interrupting input.
-        if (parseRoute().view === 'quote' && activeQuoteView?.refresh) {
-          activeQuoteView.refresh();
-        } else if (changed) {
-          render();
-        }
-      } catch {
-        // Keep the snapshot or last successful catalog visible. The next
-        // interval retries without turning a transient Fresa error into a blank page.
-      } finally {
-        refreshRequest = null;
-      }
-    })();
-
-    return refreshRequest;
-  }
-
-  /** @param {import('./core/types').Product[]} products */
-  function catalogSignature(products) {
-    return JSON.stringify(
-      products.map((product) => ({
-        id: product.id,
-        position: product.position,
-        variants: product.locations?.flatMap((entry) =>
-          entry.variants.map((variant) => ({
-            id: variant.id,
-            variety: variant.variety,
-            color: variant.color,
-            lengthCm: variant.lengthCm,
-            images: (variant.images ?? []).map((image) => image.url ?? image.src ?? null),
-          })),
-        ),
-      })),
-    );
   }
 
   /**

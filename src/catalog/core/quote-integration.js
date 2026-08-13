@@ -301,17 +301,14 @@ async function readJson(response) {
 }
 
 /**
- * Reserves a Delivery window immediately before creating the external quote
- * request. The Firestore client transaction owns the atomic increment; the
- * server-side rules enforce the same two-slot ceiling for every browser.
+ * Runs an optional capacity adapter immediately before creating the external
+ * quote request. The basic static plan intentionally has no adapter, so a
+ * delivery window remains a preference that the Esfenix team confirms later.
  */
 async function reserveDeliveryCapacity({ payload, reserveSlot }) {
   const slot = payload.deliverySlot;
   try {
-    const reserve = reserveSlot ?? (async (deliverySlot) => {
-      const module = await import('./delivery-capacity.js');
-      return module.reserveDeliverySlot(deliverySlot);
-    });
+    const reserve = reserveSlot ?? (async () => ({ ok: true, untracked: true }));
     await reserve({
       date: slot.date,
       start: slot.start,

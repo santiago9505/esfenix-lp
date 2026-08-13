@@ -26,7 +26,10 @@ export const QUOTE_FORM_URL = String(env.VITE_FRESA_QUOTE_FORM_URL ?? '').trim()
  *
  * @type {string|null}
  */
-export const QUOTE_SESSION_ENDPOINT = String(env.VITE_FRESA_QUOTE_SESSION_ENDPOINT ?? '').trim() || null;
+// No custom session backend is used in the basic-plan deployment. The quote
+// integration still accepts an injected adapter in tests/future hosting, but
+// production always submits through the public Fresa form API.
+export const QUOTE_SESSION_ENDPOINT = null;
 
 /** Identifies where a request came from, in the payload's `source` field. */
 export const QUOTE_SOURCE = 'esfenix-product-catalog';

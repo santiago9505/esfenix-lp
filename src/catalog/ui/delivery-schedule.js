@@ -50,6 +50,7 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
   const picksWindow = mode !== 'date';
   let remoteBookedByStart = bookedByStart ?? {};
   let availabilityState = picksWindow && availabilityProvider ? 'loading' : 'disabled';
+  const tracksCapacity = Boolean(availabilityProvider || bookedByStart);
   const availabilityCache = new Map();
   let availabilityRequest = 0;
   const currentDate = getDateKeyInTimeZone(now, timeZone);
@@ -193,7 +194,9 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
             : selectedSlot
             ? 'Delivery window selected'
             : openSlots.length
-              ? `${openSlots.length} of ${visibleSlots.length} windows open`
+              ? tracksCapacity
+                ? `${openSlots.length} of ${visibleSlots.length} windows open`
+                : `${openSlots.length} windows available to request`
               : visibleSlots.length
                 ? 'No eligible windows left'
                 : 'Choose another day',
@@ -283,6 +286,7 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
 
   /** @param {{ status: string, remaining: number }} slot */
   function describeSlot(slot) {
+    if (!tracksCapacity && slot.status === 'open') return 'Available to request';
     if (slot.status === 'past') return 'Passed';
     if (slot.status === 'full') return 'Full';
     if (slot.status === 'closed') return 'Closed';

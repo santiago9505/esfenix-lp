@@ -11,13 +11,10 @@
  * disabled; the original block is kept commented below for later use.
  */
 
-import { findActiveClient } from '../core/fresa-clients.js';
 import { getDeliverySlots, normalizeDeliveryDate, normalizeDeliveryValue } from '../core/delivery-schedule.js';
 import { buildQuotePayload } from '../core/quote-payload.js';
 import { clearQuoteDraft, readQuoteDraft, writeQuoteDraft } from '../core/quote-draft.js';
-import { getQuotePricing, getQuotePricingRemote, quotePricingKey } from '../core/pricing.js';
 import { describeQuoteItem } from '../core/format.js';
-import { maskPhoneForDisplay, maskTextForDisplay } from '../core/privacy.js';
 import { getCategoryLabel } from '../data/categories.js';
 // Temporarily disabled with the advisor portrait block below.
 // import { resolveAdvisor } from '../data/advisors.js';
@@ -48,26 +45,9 @@ const STEPS = [
 /** The step whose rail label follows the chosen order type. */
 const DELIVERY_STEP_INDEX = 4;
 
-// The client directory may need more than one request when Fresa paginates
-// the active-client list, and a failed page is retried once. Keep the lookup
-// bounded, but do not classify a known email as a new contact while the list
-// is still being read.
-const CLIENT_LOOKUP_TIMEOUT_MS = 12_000;
-let deliveryCapacityModulePromise = null;
-
-function preloadDeliveryCapacity() {
-  deliveryCapacityModulePromise ??= import('../core/delivery-capacity.js').catch((error) => {
-    deliveryCapacityModulePromise = null;
-    throw error;
-  });
-  return deliveryCapacityModulePromise;
-}
-
-async function readDeliverySlotAvailability(...args) {
-  const module = await preloadDeliveryCapacity();
-  return module.readDeliverySlotAvailability(...args);
-}
-
+// The basic-plan flow deliberately keeps contact data in the current tab and
+// sends it directly to the public Fresa quote form. There is no client
+// directory lookup or profile database.
 /**
  * @param {ReturnType<typeof import('../app.js').createApp>['ctx']} ctx
  * @param {{
@@ -87,8 +67,6 @@ export function renderQuoteFormView(ctx, options) {
   const state = {
     step: savedDraft?.step ?? 0,
     email: savedDraft?.email ?? '',
-    recognized: savedDraft?.recognized ?? false,
-    vip: false,
     phoneCountry: savedDraft?.phoneCountry ?? savedPhone.countryCode,
     contact: { ...savedContact, phone: savedPhone.nationalNumber },
     orderType: savedDraft?.orderType ?? 'Delivery',
@@ -102,13 +80,7 @@ export function renderQuoteFormView(ctx, options) {
     },
     editingShippingAddress: false,
     notes: savedDraft?.notes ?? '',
-    lookupPending: false,
-    clientLookup: savedDraft?.clientLookup ?? 'idle',
     submitPending: false,
-    pricing: null,
-    pricingKey: '',
-    pricingPending: false,
-    pricingPromise: null,
     error: '',
     result: null,
   };
@@ -145,10 +117,7 @@ export function renderQuoteFormView(ctx, options) {
     head: null,
     body: [screen],
     refresh() {
-      // Only the order-type step needs a live pricing repaint. Avoid replacing
-      // an active email lookup or an in-progress submission underneath the
-      // visitor.
-      if (state.step !== 3 || state.lookupPending || state.submitPending) return;
+      if (state.submitPending) return;
       render();
     },
   };
@@ -238,7 +207,7 @@ export function renderQuoteFormView(ctx, options) {
   function currentStep(direction) {
     const config = [
       ['What’s the best email for you?', ''],
-      ['Tell us a little about you', state.recognized ? 'We found your Esfenix profile and filled in your contact details.' : 'These details help our team get your quote right.'],
+      ['Tell us a little about you', 'These details help our team get your quote right.'],
       ['Select your products', 'Review the products you selected and tell us where the request should be handled.'],
       ['How would you like to receive it?', 'Choose delivery or pickup so we can plan the next step.'],
       state.orderType === 'Delivery'
@@ -302,8 +271,8 @@ export function renderQuoteFormView(ctx, options) {
     const button = el('button', {
       type: 'submit',
       class: 'btn btn-primary cat-quote-submit',
-      disabled: state.lookupPending,
-      text: state.lookupPending ? 'Looking for you…' : 'Let’s do this',
+      disabled: state.submitPending,
+      text: 'Let’s do this',
     });
 
     return el('form', {
@@ -316,45 +285,10 @@ export function renderQuoteFormView(ctx, options) {
           return;
         }
         state.email = input.value.trim();
-        state.lookupPending = true;
-        state.clientLookup = 'checking';
         // A visitor can go back and submit a different email. Clear the
-        // previous profile before looking up the new one so contact and
-        // shipping data from two people can never be mixed.
+        // previous contact data so two people can never be mixed.
         clearProfileData();
         persistDraft();
-        button.disabled = true;
-        button.textContent = 'Looking for you…';
-
-        let profile = null;
-        let lookupFailed = false;
-        try {
-          profile = await withTimeout(findActiveClient(state.email), CLIENT_LOOKUP_TIMEOUT_MS);
-        } catch {
-          lookupFailed = true;
-          profile = null;
-        }
-
-        state.lookupPending = false;
-        state.clientLookup = lookupFailed ? 'unavailable' : profile ? 'found' : 'not-found';
-        // `findActiveClient` only returns a profile after the normalized email
-        // matched an active Fresa record. The email match is the source of
-        // truth; contact fields may be absent in an otherwise valid record.
-        state.recognized = Boolean(profile);
-        if (profile) {
-          state.vip = profile.vip === true;
-          const profilePhone = splitPhoneNumber(profile.phone);
-          state.phoneCountry = profilePhone.countryCode;
-          state.contact = { ...profile, phone: profilePhone.nationalNumber };
-          state.delivery = {
-            ...state.delivery,
-            address: profile.shipping?.address || '',
-            city: profile.shipping?.city || existingDestination.city || '',
-            state: profile.shipping?.state || existingDestination.state || '',
-            zipCode: profile.shipping?.zipCode || '',
-          };
-          state.editingShippingAddress = false;
-        }
         state.step = 1;
         state.error = '';
         render(true);
@@ -377,22 +311,7 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function contactStep() {
-    const welcomeName = [state.contact.firstName, state.contact.lastName]
-      .filter(Boolean)
-      .map(maskTextForDisplay)
-      .join(' ');
     const fields = [
-      state.recognized
-        ? el('div', { class: 'cat-quote-recognized' }, [
-            el('span', { class: 'cat-quote-recognized-icon', text: '✓' }),
-            el('div', {}, [
-              el('strong', { text: welcomeName ? `Welcome back, ${welcomeName}!` : 'Welcome back!' }),
-              el('p', { text: 'We found your active client profile and filled in your contact details.' }),
-            ]),
-          ])
-        // A new or unrecognized contact can still request a quote. Keep the
-        // contact form clear instead of showing an alert for that normal path.
-        : null,
       field({
         label: 'Email address',
         name: 'email',
@@ -402,9 +321,6 @@ export function renderQuoteFormView(ctx, options) {
         maxlength: '254',
         readonly: true,
       }),
-      state.recognized
-        ? el('p', { class: 'cat-quote-email-confirmed', text: 'Some profile details are masked for your privacy.' })
-        : null,
       el('div', { class: 'cat-quote-field-grid' }, [
         contactField('First name', 'firstName', 'given-name', true),
         contactField('Last name', 'lastName', 'family-name', true),
@@ -413,7 +329,7 @@ export function renderQuoteFormView(ctx, options) {
         phoneField(),
         contactField('Company', 'company', 'organization', false, 'text', 'Optional'),
       ]),
-    ].filter(Boolean);
+    ];
 
     return el('form', {
       class: 'cat-quote-step-form',
@@ -435,8 +351,6 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function clearProfileData() {
-    state.recognized = false;
-    state.vip = false;
     state.phoneCountry = DEFAULT_COUNTRY;
     state.contact = { firstName: '', lastName: '', phone: '', company: '' };
     state.delivery = {
@@ -451,37 +365,23 @@ export function renderQuoteFormView(ctx, options) {
 
   function contactField(label, name, autocomplete, required, type = 'text', help) {
     const value = state.contact[name] ?? '';
-    const masksText = ['firstName', 'lastName', 'company'].includes(name);
-    const displayValue = state.recognized && value
-      ? name === 'phone'
-        ? maskPhoneForDisplay(value)
-        : masksText
-          ? maskTextForDisplay(value)
-          : value
-      : value;
     return field({
       label,
       name,
       type,
-      value: displayValue,
-      autocomplete: state.recognized && value ? 'off' : autocomplete,
+      value,
+      autocomplete,
       maxlength: name === 'company' ? '120' : '80',
       required,
       help,
-      // Known values are displayed as a confirmation of what Fresa returned.
-      // Empty values remain editable so an incomplete Fresa record does not
-      // prevent the visitor from finishing the quote.
-      readonly: state.recognized && Boolean(value),
     });
   }
 
   function phoneField() {
     const rawValue = state.contact.phone ?? '';
     const phone = splitPhoneNumber(rawValue, dialCodeForCountry(state.phoneCountry));
-    const displayValue = state.recognized && rawValue
-      ? maskPhoneForDisplay(phone.nationalNumber)
-      : phone.nationalNumber;
-    const knownPhone = state.recognized && Boolean(rawValue);
+    const displayValue = phone.nationalNumber;
+    const knownPhone = false;
     const countryCode = el('span', {
       class: 'cat-quote-country-trigger-code',
       text: dialCodeForCountry(state.phoneCountry),
@@ -768,30 +668,18 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function orderTypeStep() {
-    const pricing = currentQuotePricing();
-    scheduleQuotePricingRefresh();
-    if (!isDeliveryAllowed(pricing) && state.orderType === 'Delivery') {
-      state.orderType = 'Pickup';
-      persistDraft();
-    }
-    if (state.orderType === 'Delivery' && isDeliveryAllowed(pricing)) {
-      void preloadDeliveryCapacity().catch(() => {});
-    }
-
     return el('form', {
       class: 'cat-quote-step-form',
       onSubmit: (event) => {
         event.preventDefault();
         // The choice is radio buttons, which already write to state.orderType
         // as they change; there is nothing left to read here.
-        const latestPricing = currentQuotePricing();
-        if (!isDeliveryAllowed(latestPricing)) state.orderType = 'Pickup';
         state.step = 4;
         state.error = '';
         render(true);
       },
     }, [
-      state.vip ? null : deliveryEligibilityNote(pricing),
+      deliveryEligibilityNote(),
       el('div', { class: 'cat-quote-choice-list' }, [
         choice('Delivery', 'We’ll deliver to the address you provide.'),
         choice('Pickup', 'You’ll collect the flowers from our team.'),
@@ -800,95 +688,22 @@ export function renderQuoteFormView(ctx, options) {
     ]);
   }
 
-  function currentQuotePricing() {
-    const items = ctx.quoteStore.getItems();
-    const key = quotePricingKey(items);
-    return state.pricing && state.pricingKey === key
-      ? state.pricing
-      : getQuotePricing(items, ctx.products);
-  }
-
-  function scheduleQuotePricingRefresh() {
-    if (state.vip || state.pricingPending) return;
-    const key = quotePricingKey(ctx.quoteStore.getItems());
-    if (state.pricing && state.pricingKey === key) return;
-    queueMicrotask(async () => {
-      try {
-        await refreshQuotePricing();
-      } catch {
-        // Pickup remains available when the private pricing service is down.
-      }
-      if (state.step === 3 && !state.result) render();
-    });
-  }
-
-  async function refreshQuotePricing({ force = false } = {}) {
-    if (state.vip) return currentQuotePricing();
-    const items = ctx.quoteStore.getItems();
-    const key = quotePricingKey(items);
-    if (!force && state.pricing && state.pricingKey === key) return state.pricing;
-    if (!force && state.pricingPending && state.pricingKey === key && state.pricingPromise) {
-      return state.pricingPromise;
-    }
-
-    state.pricingKey = key;
-    state.pricingPending = true;
-    const request = getQuotePricingRemote(items, { force });
-    state.pricingPromise = request;
-    try {
-      const pricing = await request;
-      if (state.pricingKey === key) state.pricing = pricing;
-      return pricing;
-    } finally {
-      if (state.pricingPromise === request) {
-        state.pricingPending = false;
-        state.pricingPromise = null;
-      }
-    }
-  }
-
-  function isDeliveryAllowed(pricing = currentQuotePricing()) {
-    return state.vip || pricing.deliveryAllowed;
-  }
-
-  function deliveryEligibilityNote(pricing) {
-    const eligible = isDeliveryAllowed(pricing);
-    const progress = state.vip ? 100 : pricing.deliveryProgress;
-    const description = state.pricingPending && !state.vip
-      ? 'Checking this selection securely…'
-      : state.vip
-      ? 'VIP clients can choose delivery without the $150 minimum order.'
-      : eligible
-        ? 'Delivery is available for this selection.'
-        : `Your selection is ${progress}% toward the $150 minimum for Delivery.`;
-
+  function deliveryEligibilityNote() {
     return el('div', {
-      class: `cat-quote-delivery-eligibility ${eligible ? 'is-available' : ''}`,
+      class: 'cat-quote-delivery-eligibility',
       role: 'status',
       'aria-live': 'polite',
     }, [
       el('div', { class: 'cat-quote-delivery-eligibility-head' }, [
-        el('strong', { text: state.vip ? 'VIP delivery available' : state.pricingPending ? 'Checking delivery' : 'Delivery progress' }),
-        el('span', {
-          class: 'cat-quote-delivery-eligibility-percent',
-          text: `${progress}% complete`,
-        }),
+        el('strong', { text: 'Delivery subject to confirmation' }),
       ]),
-      el('p', { text: description }),
-      el('div', {
-        class: 'cat-quote-delivery-progress',
-        role: 'progressbar',
-        'aria-label': 'Delivery eligibility progress',
-        'aria-valuemin': '0',
-        'aria-valuemax': '100',
-        'aria-valuenow': String(progress),
-      }, [el('span', { class: 'cat-quote-delivery-progress-bar', style: `width:${progress}%` })]),
+      el('p', { text: 'Choose a preferred window. Our team will confirm availability, minimum order and final delivery details with your quote.' }),
     ]);
   }
 
   function choice(value, description) {
     const id = `cat-order-${value.toLowerCase()}`;
-    const disabled = value === 'Delivery' && !isDeliveryAllowed();
+    const disabled = false;
     return el('label', { class: `cat-quote-choice ${state.orderType === value ? 'is-selected' : ''} ${disabled ? 'is-disabled' : ''}` }, [
       el('input', {
         type: 'radio',
@@ -899,7 +714,6 @@ export function renderQuoteFormView(ctx, options) {
         onChange: () => {
           if (disabled) return;
           state.orderType = value;
-          if (value === 'Delivery') void preloadDeliveryCapacity().catch(() => {});
           persistDraft();
           render();
         },
@@ -913,10 +727,9 @@ export function renderQuoteFormView(ctx, options) {
   function deliveryStep() {
     const isDelivery = state.orderType === 'Delivery';
     const clientTimeZone = ctx.clientTimeZone ?? 'UTC';
-    // Both order types run on the same working calendar, so both are booked
-    // through the schedule picker rather than a free-form date that could ask
-    // for a Sunday at 11 PM. Only delivery reserves a two-hour window: for
-    // pickup nothing is held against capacity, so only the day is asked for.
+    // Both order types use the same working calendar. Delivery windows are
+    // preferences only in the static plan; the team confirms availability
+    // after reviewing the request.
     const scheduleOptions = {
       now: new Date(),
       timeZone: clientTimeZone,
@@ -929,12 +742,7 @@ export function renderQuoteFormView(ctx, options) {
     state.delivery.slot = isDelivery && validValue
       ? getDeliverySlots(validValue.slice(0, 10), scheduleOptions).find((slot) => slot.value === validValue)
       : undefined;
-    const hasSavedShipping = state.recognized && [
-      state.delivery.address,
-      state.delivery.city,
-      state.delivery.state,
-      state.delivery.zipCode,
-    ].some(Boolean);
+    const hasSavedShipping = false;
     const shippingAddressNotice = el('div', { class: 'cat-quote-info-note cat-quote-shipping-address-note' }, [
       el('strong', { text: 'Shipping address' }),
       el('p', {
@@ -973,7 +781,7 @@ export function renderQuoteFormView(ctx, options) {
         value: state.delivery.dateTime,
         timeZone: clientTimeZone,
         mode: isDelivery ? 'window' : 'date',
-        availabilityProvider: isDelivery ? readDeliverySlotAvailability : null,
+        availabilityProvider: null,
         onChange: (selection) => {
           state.delivery.dateTime = selection.dateTime;
           state.delivery.slot = selection.slot;
@@ -985,7 +793,7 @@ export function renderQuoteFormView(ctx, options) {
       scheduleInput,
       el('small', {
         text: isDelivery
-          ? 'Pick a two-hour window. Each window accepts up to 2 delivery requests.'
+          ? 'Pick a preferred two-hour window. Our team will confirm the final delivery time.'
           : 'Pick the day you’d like to collect your order. We’ll agree the exact time with you.',
       }),
     ]);
@@ -1049,7 +857,6 @@ export function renderQuoteFormView(ctx, options) {
       inputmode,
       maxlength: name === 'address' ? '160' : name === 'zipCode' ? '20' : '80',
       required,
-      readonly: state.recognized && !state.editingShippingAddress && Boolean(value),
     });
   }
 
@@ -1068,10 +875,7 @@ export function renderQuoteFormView(ctx, options) {
         state.notes = event.currentTarget.querySelector('textarea[name="notes"]').value.trim();
         persistDraft();
 
-        const pricing = currentQuotePricing();
-        const orderType = isDeliveryAllowed(pricing) && state.orderType === 'Delivery'
-          ? 'Delivery'
-          : 'Pickup';
+        const orderType = state.orderType === 'Delivery' ? 'Delivery' : 'Pickup';
         const currentScheduleOptions = {
           now: new Date(),
           timeZone: ctx.clientTimeZone ?? 'UTC',
@@ -1109,28 +913,7 @@ export function renderQuoteFormView(ctx, options) {
         button.textContent = 'Sending request…';
         state.error = '';
 
-        // Re-check at the final boundary so a quantity/product change cannot
-        // submit Delivery below the Fresa minimum unless the client is VIP.
         state.orderType = orderType;
-
-        if (orderType === 'Delivery' && !state.vip) {
-          try {
-            const finalPricing = await refreshQuotePricing({ force: true });
-            if (!finalPricing.deliveryAllowed) {
-              state.submitPending = false;
-              state.error = 'This selection does not yet meet the Delivery minimum. Please update it or choose Pickup.';
-              state.step = 3;
-              render(true);
-              return;
-            }
-          } catch {
-            state.submitPending = false;
-            state.error = 'Delivery eligibility could not be confirmed securely. Please try again or choose Pickup.';
-            state.step = 3;
-            render(true);
-            return;
-          }
-        }
 
         const payload = buildQuotePayload({
           locationId: ctx.locationId,
@@ -1138,7 +921,6 @@ export function renderQuoteFormView(ctx, options) {
           email: state.email,
           contact: state.contact,
           phoneCountryCode: dialCodeForCountry(state.phoneCountry),
-          vip: state.vip,
           orderType,
           delivery: {
             ...state.delivery,
@@ -1241,8 +1023,6 @@ export function renderQuoteFormView(ctx, options) {
     const fields = ['firstName', 'lastName', 'phone', 'company'];
     fields.forEach((name) => {
       const input = root.querySelector(`[name="${name}"]`);
-      // A recognized value may be masked in the input. Keep the original value
-      // in state and only read fields that the visitor was allowed to edit.
       if (input && !input.readOnly) state.contact[name] = input.value.trim();
     });
     const country = root.querySelector('[name="phoneCountry"]');
@@ -1256,12 +1036,4 @@ export function renderQuoteFormView(ctx, options) {
     state.delivery.state = root.querySelector('[name="state"]')?.value.trim() ?? '';
     state.delivery.zipCode = root.querySelector('[name="zipCode"]')?.value.trim() ?? '';
   }
-}
-
-/** @param {Promise<any>} promise @param {number} timeoutMs */
-function withTimeout(promise, timeoutMs) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => window.setTimeout(() => reject(new Error('Client lookup timed out.')), timeoutMs)),
-  ]);
 }

@@ -6,14 +6,6 @@ import {
   productsNeedRefresh,
   resetProductCache,
 } from '../src/catalog/core/repository.js';
-import { resetStorageProbe } from '../src/catalog/core/storage.js';
-
-class MemoryStorage {
-  #values = new Map();
-  getItem(key) { return this.#values.has(key) ? this.#values.get(key) : null; }
-  setItem(key, value) { this.#values.set(key, String(value)); }
-  removeItem(key) { this.#values.delete(key); }
-}
 
 function normalizedProduct(id) {
   return {
@@ -26,9 +18,7 @@ function normalizedProduct(id) {
   };
 }
 
-test('renders the bundled snapshot immediately and marks it for background refresh', async () => {
-  globalThis.window = { localStorage: new MemoryStorage() };
-  resetStorageProbe();
+test('loads the checked-in snapshot and never schedules a remote refresh', async () => {
   resetProductCache();
 
   const products = await loadProducts({
@@ -40,54 +30,25 @@ test('renders the bundled snapshot immediately and marks it for background refre
 
   assert.equal(products[0].id, 'snapshot');
   assert.equal(products[0].description, null, 'snapshot price descriptions are hidden before rendering');
-  assert.equal(productsNeedRefresh(), true);
-
+  assert.equal(productsNeedRefresh(), false);
   resetProductCache();
-  resetStorageProbe();
-  delete globalThis.window;
 });
 
-test('persists a live catalog for warm loads inside the revalidation window', async () => {
-  globalThis.window = { localStorage: new MemoryStorage() };
-  resetStorageProbe();
+test('force-like options cannot switch the browser to a remote catalog', async () => {
   resetProductCache();
 
-  const live = await loadProducts({
+  const products = await loadProducts({
     force: true,
-    apiUrl: 'https://fresa.example/api/integrations/lists/catalog',
-    apiKey: 'catalog-key',
-    fetchImpl: async () => ({
+    apiUrl: 'https://example.invalid/api/catalog',
+    apiKey: 'must-not-be-used',
+    fetchImpl: async () => { throw new Error('remote catalog must never be requested'); },
+    snapshotFetchImpl: async () => ({
       ok: true,
-      status: 200,
-      async json() {
-        return {
-          success: true,
-          source: { id: 'landing', name: 'Landing Page' },
-          columns: [{ list_id: 'flowers', key: 'type_product', field_name: 'type_product', field_type: 'select' }],
-          records: [{
-            id: 'live',
-            listId: 'flowers',
-            listName: 'Products',
-            name: 'Live product',
-            fields: { type_product: 'Other Flowers' },
-          }],
-          page: { offset: 0, limit: 1000, totalCount: 1, hasMore: false, nextOffset: null },
-        };
-      },
+      async json() { return { version: 1, products: [normalizedProduct('static')] }; },
     }),
   });
 
-  assert.equal(live[0].id, 'live');
+  assert.equal(products[0].id, 'static');
   assert.equal(productsNeedRefresh(), false);
-
-  resetProductCache({ persistent: false });
-  const warm = await loadProducts({
-    snapshotFetchImpl: async () => { throw new Error('snapshot should not be requested'); },
-  });
-  assert.equal(warm[0].id, 'live');
-  assert.equal(productsNeedRefresh(), true, 'warm product data must refresh private pricing metadata');
-
   resetProductCache();
-  resetStorageProbe();
-  delete globalThis.window;
 });

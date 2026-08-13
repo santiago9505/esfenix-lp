@@ -28,8 +28,7 @@ function snapshotProduct(product) {
   return {
     ...product,
     // Attachment URLs expire and local image references are highly repetitive.
-    // Ship neither: the browser rebuilds local fallbacks from its bundled map,
-    // then the background Fresa refresh supplies current remote attachments.
+    // Ship neither: the browser rebuilds local fallbacks from its bundled map.
     images: [],
     files: [],
     locations: (product.locations ?? []).map((location) => ({

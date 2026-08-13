@@ -79,8 +79,7 @@ is not Houston, and it asks where the order would ship.
 | `src/catalog/catalog.css` | Catalog styles, built on the shared tokens |
 | `src/catalog/core/types.d.ts` | The domain model |
 | `src/catalog/core/repository.js` | Product loading and queries |
-| `src/catalog/core/fresa-catalog.js` | Fresa fetch, pagination and normalization |
-| `src/catalog/core/fresa-clients.js` | Same-origin active-client lookup client |
+| `src/catalog/core/fresa-catalog.js` | Build-time Fresa fetch, pagination and normalization |
 | `src/catalog/core/facets.js` | Filtering and facet computation |
 | `src/catalog/core/quote-store.js` | The quote list and its validation |
 | `src/catalog/core/location-store.js` | Selected location and destination |
@@ -103,7 +102,6 @@ is not Houston, and it asks where the order would ship.
 | `scripts/lib/xlsx-reader.mjs` | Minimal `.xlsx` reader (Node built-ins only) |
 | `scripts/check-fresa-map.mjs` | Verifies every product maps to a form option |
 | `scripts/vite-plugin-html-partials.mjs` | `<!--#include name-->` support |
-| `functions/` | Same-origin Fresa proxy, catalog sanitizer, private pricing and client lookup |
 | `tests/*.test.mjs` | Automated unit and integration tests with `node --test` |
 
 ### Modified
@@ -148,27 +146,25 @@ hides the corresponding row and filter rather than showing a placeholder.
 
 ## Where the data comes from
 
-The browser fetches a sanitized catalog from the same-origin endpoint:
+The browser fetches the checked-in, price-free snapshot:
 
 ```text
-GET /api/catalog
+GET /data/catalog-snapshot.json
 ```
 
-The Cloud Function owns `FRESA_CATALOG_API_URL`, the integration ID and the
-secret API key. It validates the `Landing Page` source, follows pagination,
-removes non-approved fields and replaces price values with availability
-booleans before any response reaches the browser. The response is CDN-cacheable
-and the bundled snapshot keeps the first render independent from Fresa latency.
+`npm run snapshot:catalog` is the only step that calls Fresa. It uses the
+private `FRESA_CATALOG_API_URL` and `FRESA_CATALOG_API_KEY` from local
+environment variables, follows pagination, removes non-approved fields and
+prices, and writes the result to `public/data/catalog-snapshot.json`. Those
+credentials never enter `dist/`, and production has no catalog proxy or
+database to operate.
 
-On the server, the integration follows `page.nextOffset` while `hasMore` is true and
-deduplicates pages by record id. Fresa may return the products as
-`catalog.products` or as top-level `records`; both are normalized to the same
-internal model. Custom values are read only through the matching descriptors in
-`columns[].key` (or `catalog.columns[].key` in the wrapped response). Before
-normalizing, the landing requires the configured catalog integration and
-product taxonomy columns; an active-client response is rejected even if it
-uses the same `records` shape. The catalog and active-client URLs, integration
-IDs, and API keys must remain paired and distinct.
+The generator follows `page.nextOffset` while `hasMore` is true and deduplicates
+pages by record id. Fresa may return the products as `catalog.products` or as
+top-level `records`; both are normalized to the same internal model. Custom
+values are read only through the matching descriptors in `columns[].key` (or
+`catalog.columns[].key` in the wrapped response), and the product taxonomy is
+validated before the snapshot is written.
 
 Categories come from an authorized Fresa category column or, when the catalog
 uses lists as categories, from `listName`:
@@ -182,7 +178,8 @@ uses lists as categories, from `listName`:
 
 The interface keeps the current category presentation and never invents a
 missing category. If a new grouping is needed, authorize the corresponding
-column or list in Fresa.
+column or list in Fresa. The snapshot generator also rejects a response that
+looks like an unrelated client directory before writing it.
 
 ---
 
@@ -193,7 +190,8 @@ column or list in Fresa.
 Products come from Fresa, so the normal route is:
 
 1. Publish or update the product in the authorized Fresa catalog.
-2. Run `npm test`.
+2. Run `npm run snapshot:catalog` locally.
+3. Run `npm test` and `npm run build`.
 
 The legacy workbook generation scripts are not used by the landing runtime.
 
@@ -264,17 +262,11 @@ If the new form has a different product list, re-capture its vocabulary into
 `src/catalog/data/fresa-form.js` (`locationOptions` and `productOptions` per
 catalog source), then run `npm run check:fresa-map` to see what no longer maps.
 
-### Enable product prefill
+### Product prefill and client lookup
 
-Set `QUOTE_SESSION_ENDPOINT` in the same file once a backend exists:
-
-```
-POST <endpoint>  { …payload }  →  { quoteSessionId, redirectUrl }
-```
-
-The catalog then POSTs the payload and opens the returned URL. It only opens a
-URL on the form's own host, so a misconfigured endpoint cannot become an open
-redirect. Nothing else needs to change.
+These features are intentionally disabled in the basic-plan deployment. The
+visitor enters contact details in the quote form; no active-client directory,
+custom session endpoint, or profile database is queried.
 
 ---
 
@@ -304,31 +296,11 @@ email first, and then builds the payload and hands it to
 continue so it can request a quote. The same screen is used by the quote CTA
 when no products were selected.
 
-The client source is configured separately from the product source, with its
-own endpoint, integration ID, and key:
-
-```env
-FRESA_CLIENTS_INTEGRATION_ID=replace-with-active-clients-integration-id
-FRESA_CLIENTS_API_URL=https://fresaai.app/api/integrations/lists/replace-with-active-clients-integration-id
-FRESA_CLIENTS_API_KEY=replace-with-a-rotated-fresa-active-clients-key
-```
-
-The client integration ID must match the source returned by Fresa. A mismatch
-is treated as a configuration error, not as an unknown email.
-
-Active-client lookup is always a same-origin `POST /api/clients/lookup`. The
-server loads and briefly caches the private directory, but returns at most the
-single matching active profile. The browser never receives the directory or
-its bearer key. An optional existing session bridge can be configured with
-`VITE_FRESA_QUOTE_SESSION_ENDPOINT`; it receives the final payload by `POST`
-and returns a short-lived `redirectUrl`. Personal data is never put in the URL
-or persisted beyond the current tab session.
-
-The server identifies the authorized email and active columns from their Fresa
-descriptors, follows `page.nextOffset`, compares emails case-insensitively and
-caches the normalized directory in function memory for 60 seconds. It does not
-persist or expose the directory, and its availability does not block quote
-requests.
+The basic-plan flow does not query an active-client source. The visitor enters
+their contact details directly and the completed payload is submitted through
+the public Fresa form API. Personal data stays in the current tab draft until
+the visitor sends the request; there is no custom session endpoint or profile
+database.
 
 The payload keeps the catalog's own representation **and** a `fresa` block
 holding the same request in the form's terms:
@@ -368,19 +340,26 @@ field. Length and colour are folded into the option label
 | Form step | Field | Source |
 |---|---|---|
 | 1 Email | Email | the visitor enters it first |
-| 2 Contact | First/Last name, Phone, Company | prefilled from the active Fresa profile when recognized; missing values remain editable |
+| 2 Contact | First/Last name, Phone, Company | entered by the visitor |
 | 3 Products | Location, Producto / Quantity | `fresa.location`, `fresa.products[]` |
 | 4 Type of Order | Type of Order | the visitor chooses |
 | 5 Delivery | Date/time, Address, City, State, ZIP | `fresa.delivery` |
 | 6 Other | Notes for the seller | `fresa.notes` |
 
 **Privacy.** Email, address, ZIP code and the product list travel in the POST
-body, never in a query string. The direct fallback puts only `source`,
-`location` and `serviceCenter` in the URL.
+body to Fresa, never in a query string. No application database stores the
+request.
 
 **On failure** the selection is never discarded: the quote summary stays open,
 shows *"We couldn't open the quote form. Please try again."*, and offers Retry
 and a copyable plain-text summary.
+
+### Delivery windows
+
+Delivery dates and two-hour windows are local preferences only. The catalog does
+not reserve slots or show persistent capacity. The team confirms availability,
+minimum order and the final delivery time after reviewing the request, so this
+flow does not require Firestore, Authentication or another backend.
 
 ---
 
@@ -429,6 +408,7 @@ catalog.
 npm run dev                  # dev server, /catalog works
 npm run build                # production build
 npm run build:catalog-data   # regenerate seed data from data/sources/*.xlsx
+npm run snapshot:catalog     # refresh public/data/catalog-snapshot.json locally
 npm run check:fresa-map      # verify every product maps to a form option
-npm test                     # 78 tests
+npm test                     # unit and integration tests
 ```

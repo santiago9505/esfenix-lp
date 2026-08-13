@@ -2,20 +2,14 @@
  * Catalog repository — the only module that knows where product data comes
  * from. Everything else asks it questions.
  *
- * Product data comes from Fresa at runtime. Keeping that decision here means
- * the views, filters and quote list do not need to know the remote response shape.
+ * Product data comes from the checked-in, price-free catalog snapshot. Fresa
+ * remains a build-time source through `scripts/generate-fresa-catalog-snapshot.mjs`;
+ * the browser never receives a credential or depends on a backend proxy.
  */
 
 import { compareCategories } from '../data/categories.js';
 import { LOCATIONS, resolveLocation } from '../data/locations.js';
-import {
-  FRESA_CATALOG_REVALIDATE_MS,
-  loadFresaCatalog,
-  normalizeCatalog,
-  resetFresaCatalogCache,
-  sanitizeCatalogDescription,
-} from './fresa-catalog.js';
-import { read, remove, write } from './storage.js';
+import { sanitizeCatalogDescription } from './fresa-catalog.js';
 import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
 
 /**
@@ -35,83 +29,31 @@ import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
 
 /** @type {Product[]|null} */
 let productsCache = null;
-let productsCachedAt = 0;
-let productsAreSnapshot = false;
 /** @type {Promise<Product[]>|null} */
 let initialProductsPromise = null;
-/** @type {Promise<Product[]>|null} */
-let remoteProductsPromise = null;
-
-const PRODUCT_CACHE_VERSION = 1;
-const PRODUCT_CACHE_KEY = 'products.live.v1';
 export const PRODUCT_SNAPSHOT_URL = '/data/catalog-snapshot.json';
 
 /**
- * Loads the best immediately available product list. A fresh browser cache is
- * preferred; first-time visitors receive the bundled price-free snapshot so
- * the page can render without waiting for the full Fresa directory. The app
- * revalidates snapshots in the background through `force: true`.
+ * Loads the bundled price-free product list. The browser deliberately stays
+ * static-only so the basic Firebase Hosting plan does not need Cloud Functions
+ * or a database. Refresh the snapshot during a release when Fresa changes.
  *
  * @param {{
- *   force?: boolean,
  *   snapshotUrl?: string,
  *   snapshotFetchImpl?: typeof fetch,
- *   apiUrl?: string,
- *   apiKey?: string,
- *   fetchImpl?: typeof fetch,
  * }} [options]
  * @returns {Promise<Product[]>}
  */
 export function loadProducts(options = {}) {
-  if (options.force) return loadRemoteProducts(options);
   if (productsCache) return Promise.resolve(productsCache);
 
-  const persisted = readPersistedProducts();
-  if (persisted) {
-    // Prices are deliberately kept in the in-memory pricing module and are not
-    // persisted with the public product model. Treat a warm product cache like
-    // the snapshot until Fresa refreshes it, otherwise Delivery progress would
-    // stay unavailable after a page reload.
-    const products = rememberProducts(persisted.products, persisted.savedAt);
-    productsAreSnapshot = true;
-    return Promise.resolve(products);
-  }
   if (initialProductsPromise) return initialProductsPromise;
 
-  initialProductsPromise = loadProductSnapshot(options)
-    .catch(() => loadRemoteProducts(options))
-    .finally(() => {
-      initialProductsPromise = null;
-    });
+  initialProductsPromise = loadProductSnapshot(options).finally(() => {
+    initialProductsPromise = null;
+  });
 
   return initialProductsPromise;
-}
-
-/** Loads and persists the current live response from Fresa. */
-function loadRemoteProducts(options) {
-  if (remoteProductsPromise) return remoteProductsPromise;
-
-  remoteProductsPromise = loadFresaCatalog(options)
-    .then(normalizeCatalog)
-    .then((products) => {
-      const savedAt = Date.now();
-      const remembered = rememberProducts(products, savedAt);
-      write(PRODUCT_CACHE_KEY, {
-        version: PRODUCT_CACHE_VERSION,
-        savedAt,
-        products: remembered,
-      });
-      return remembered;
-    })
-    .catch((error) => {
-      // Let the next call retry rather than caching the failure forever.
-      throw error;
-    })
-    .finally(() => {
-      remoteProductsPromise = null;
-    });
-
-  return remoteProductsPromise;
 }
 
 /**
@@ -129,24 +71,8 @@ async function loadProductSnapshot(options) {
   const payload = await response.json();
   if (!isProductList(payload?.products)) throw new Error('Catalog snapshot is invalid.');
 
-  productsAreSnapshot = true;
-  productsCachedAt = 0;
   productsCache = applyLocalProductImageFallbacks(sanitizeProductDescriptions(payload.products));
   return productsCache;
-}
-
-function readPersistedProducts() {
-  const entry = read(PRODUCT_CACHE_KEY, null);
-  const savedAt = Number(entry?.savedAt);
-  const isFresh = Number.isFinite(savedAt)
-    && savedAt > 0
-    && Date.now() - savedAt < FRESA_CATALOG_REVALIDATE_MS;
-
-  if (entry?.version !== PRODUCT_CACHE_VERSION || !isFresh || !isProductList(entry?.products)) {
-    if (entry !== null) remove(PRODUCT_CACHE_KEY);
-    return null;
-  }
-  return { savedAt, products: sanitizeProductDescriptions(entry.products) };
 }
 
 /** @param {Product[]} products */
@@ -170,30 +96,16 @@ function isProductList(value) {
     );
 }
 
-/** @param {Product[]} products @param {number} savedAt */
-function rememberProducts(products, savedAt) {
-  productsCache = products;
-  productsCachedAt = savedAt;
-  productsAreSnapshot = false;
-  return productsCache;
-}
-
 /** Whether the currently rendered list should be refreshed in the background. */
 export function productsNeedRefresh(now = Date.now()) {
-  return productsAreSnapshot
-    || productsCachedAt <= 0
-    || now - productsCachedAt >= FRESA_CATALOG_REVALIDATE_MS;
+  void now;
+  return false;
 }
 
-/** Clears both product and remote response caches. Used by tests and Retry. */
-export function resetProductCache({ persistent = true } = {}) {
+/** Clears the in-memory snapshot cache. Used by tests and Retry. */
+export function resetProductCache(_options = {}) {
   productsCache = null;
-  productsCachedAt = 0;
-  productsAreSnapshot = false;
   initialProductsPromise = null;
-  remoteProductsPromise = null;
-  resetFresaCatalogCache();
-  if (persistent) remove(PRODUCT_CACHE_KEY);
 }
 
 /**

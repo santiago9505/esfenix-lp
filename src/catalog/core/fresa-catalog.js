@@ -1,12 +1,9 @@
 /**
  * Fresa catalog integration.
  *
- * This module is the only place that knows the remote catalog contract. The
- * rest of the catalog works with the small display view produced by
- * normalizeCatalog(). Price metadata is kept in a private index for the
- * minimum-order rule; it is never added to that view or to quote payloads.
- * Attachment URLs stay in memory only and are refreshed whenever the catalog
- * cache is revalidated.
+ * This module is the build-time-only adapter for the remote catalog contract.
+ * The browser never imports the fetch path: `npm run snapshot:catalog` uses it
+ * to produce the checked-in, price-free snapshot consumed by the site.
  */
 
 import { getCategoryLabel, resolveCategoryId } from '../data/categories.js';
@@ -16,22 +13,11 @@ import { slugify } from './slug.js';
 import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
 import { rememberVariantPrices } from './pricing.js';
 
-export const FRESA_CATALOG_API_URL = '/api/catalog';
-export const FRESA_CATALOG_API_KEY = '';
-export const FRESA_CATALOG_INTEGRATION_ID = '';
-// Fresa attachment URLs are signed for one hour. Revalidate halfway through
-// that window so a warm browser avoids repeatedly downloading the full source
-// while every cached URL is still valid.
-export const FRESA_CATALOG_REVALIDATE_MS = 30 * 60_000;
 export const FRESA_CATALOG_SOURCE_NAME = 'Landing Page';
 // The public Fresa endpoint accepts up to 1,000 records. The production source
 // currently has more than 1,300 rows, so this reduces six sequential requests
 // to two without changing the response contract.
 const PAGE_LIMIT = 1000;
-
-let cachedCatalog = null;
-let cacheExpiresAt = 0;
-let pendingRequest = null;
 
 /**
  * @typedef {{
@@ -57,50 +43,12 @@ export class FresaCatalogError extends Error {
 }
 
 /**
- * Loads all pages of the catalog. Calls within the revalidation window share the
- * same response; a failed request is never cached so Retry remains useful.
- *
- * @param {{
- *   force?: boolean,
- *   apiUrl?: string,
- *   apiKey?: string,
- *   fetchImpl?: typeof fetch,
- * }} [options]
- */
-export function loadFresaCatalog(options = {}) {
-  const now = Date.now();
-  if (!options.force && cachedCatalog && now < cacheExpiresAt) {
-    return Promise.resolve(cachedCatalog);
-  }
-  if (pendingRequest) return pendingRequest;
-
-  pendingRequest = fetchCatalogPages(options)
-    .then((payload) => {
-      cachedCatalog = payload;
-      cacheExpiresAt = Date.now() + FRESA_CATALOG_REVALIDATE_MS;
-      return payload;
-    })
-    .finally(() => {
-      pendingRequest = null;
-    });
-
-  return pendingRequest;
-}
-
-/** Clears the in-memory Fresa response. Useful for tests and explicit retry. */
-export function resetFresaCatalogCache() {
-  cachedCatalog = null;
-  cacheExpiresAt = 0;
-  pendingRequest = null;
-}
-
-/**
  * Fetches every page from Fresa. The first page supplies the catalog metadata;
  * later pages only add products and are merged by product.id.
  */
 export async function fetchCatalogPages({
-  apiUrl = FRESA_CATALOG_API_URL,
-  apiKey = FRESA_CATALOG_API_KEY,
+  apiUrl,
+  apiKey,
   fetchImpl = globalThis.fetch,
 } = {}) {
   const baseUrl = String(apiUrl ?? '').trim();
@@ -223,15 +171,7 @@ export async function fetchCatalogPages({
  */
 function assertCatalogSource(source, columns) {
   const sourceName = normalizeLabel(source?.name);
-  const sourceId = safeString(source?.id);
-  if (FRESA_CATALOG_INTEGRATION_ID) {
-    if (sourceId !== FRESA_CATALOG_INTEGRATION_ID) {
-      throw new FresaCatalogError(
-        0,
-        'The catalog API returned an unexpected Fresa integration.',
-      );
-    }
-  } else if (sourceName !== normalizeLabel(FRESA_CATALOG_SOURCE_NAME)) {
+  if (sourceName !== normalizeLabel(FRESA_CATALOG_SOURCE_NAME)) {
     throw new FresaCatalogError(
       0,
       'The catalog API returned an unexpected Fresa data source.',
