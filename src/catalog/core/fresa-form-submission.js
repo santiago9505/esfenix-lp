@@ -143,8 +143,123 @@ function catalogMeasureOptions(item) {
   return [...new Set(derived)];
 }
 
-/** @param {any} payload @param {Array<any>} items */
-function buildProductLines(payload, items) {
+/** @param {unknown} value */
+function parseNumber(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const match = String(value ?? '').replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** @param {unknown} key */
+function normalizeReferenceKey(key) {
+  return normalizeLabel(key).replace(/\s+/g, '_');
+}
+
+/** @param {any} item @param {string[]} aliases */
+function findReferenceValue(item, aliases) {
+  const entries = Object.entries(item?.referenceValues ?? {});
+  const normalizedAliases = aliases.map(normalizeReferenceKey);
+
+  for (const alias of normalizedAliases) {
+    const exact = entries.find(([key, value]) =>
+      normalizeReferenceKey(key) === alias
+      && value !== null
+      && value !== undefined
+      && String(value).trim() !== ''
+    );
+    if (exact) return exact[1];
+  }
+  for (const alias of normalizedAliases) {
+    const prefixed = entries.find(([key, value]) => {
+      const normalized = normalizeReferenceKey(key);
+      return normalized.startsWith(`${alias}_`)
+        && value !== null
+        && value !== undefined
+        && String(value).trim() !== '';
+    });
+    if (prefixed) return prefixed[1];
+  }
+  return null;
+}
+
+/** @param {any} item @param {string|null} measure */
+function catalogPriceForMeasure(item, measure) {
+  const aliasesByMeasure = {
+    stem: ['stem_price', 'price_per_stem', 'precio_por_tallo'],
+    bunch: ['bunch_price', 'price_per_bunch', 'precio_por_bonche', 'precio_por_ramo'],
+    unit: ['unit_price', 'price_per_unit', 'precio_por_unidad'],
+    pack: ['pack_price', 'price_per_pack', 'precio_por_paquete'],
+    box: ['box_price', 'price_per_box', 'precio_por_caja'],
+  };
+  const specific = findReferenceValue(item, aliasesByMeasure[measure] ?? []);
+  const fallback = specific ?? findReferenceValue(item, [
+    'unit_price',
+    'product_price',
+    'price',
+    'precio',
+  ]);
+  return parseNumber(fallback);
+}
+
+/** @param {any} input */
+function lineInputKind(input) {
+  const identity = normalizeLabel(`${input?.id ?? ''} ${input?.label ?? ''}`);
+  if (/\bsku\b|stock keeping unit/.test(identity)) return 'sku';
+  if (/source product id|product source id|item id prod|\bproduct id\b/.test(identity)) return 'sourceProductId';
+  if (/product name|nombre (?:del )?producto/.test(identity)) return 'productName';
+  if (/unit price|product price|precio (?:unitario|del producto)|\bprice\b|\bprecio\b/.test(identity)) return 'unitPrice';
+  if (/\bquantity\b|\bcantidad\b/.test(identity)) return 'quantity';
+  if (/\bmeasure\b|\bmedida\b/.test(identity)) return 'measure';
+  return null;
+}
+
+/**
+ * Fresa line inputs are the supported way to write values directly onto each
+ * generated product subtask. Populate only inputs configured in the live form
+ * so new attributes can be added without coupling this site to field UUIDs.
+ *
+ * @param {any} row
+ * @param {any} matched
+ * @param {string|null} measure
+ * @param {number} quantity
+ * @param {Array<any>} lineInputs
+ */
+function buildLineValues(row, matched, measure, quantity, lineInputs) {
+  const values = {};
+  const sourceProductId = String(row?.sourceProductId ?? '').trim();
+  if (sourceProductId) values.__fresa_source_product_id = sourceProductId;
+
+  for (const input of lineInputs) {
+    const inputId = String(input?.id ?? '').trim();
+    const kind = lineInputKind(input);
+    if (!inputId || !kind) continue;
+
+    const value = {
+      sourceProductId,
+      sku: String(row?.sku ?? '').trim(),
+      productName: String(row?.sourceProductName ?? matched?.label ?? row?.product ?? '').trim(),
+      unitPrice: catalogPriceForMeasure(matched, measure),
+      quantity,
+      measure,
+    }[kind];
+
+    const missing = value === null || value === undefined || String(value).trim() === '';
+    if (missing) {
+      throw new FresaFormConfigurationError(
+        `Fresa cannot populate ${input?.label ?? kind} for "${row?.product ?? ''}".`,
+        `FRESA_PRODUCT_${kind.replace(/([A-Z])/g, '_$1').toUpperCase()}_UNAVAILABLE`,
+      );
+    }
+    values[inputId] = value;
+  }
+
+  return Object.keys(values).length > 0 ? values : null;
+}
+
+/** @param {any} payload @param {any} catalogConfig */
+function buildProductLines(payload, catalogConfig) {
   if ((payload?.fresa?.unmappedProducts ?? []).length > 0) {
     const names = payload.fresa.unmappedProducts
       .map((item) => item?.productName)
@@ -164,6 +279,8 @@ function buildProductLines(payload, items) {
     );
   }
 
+  const items = Array.isArray(catalogConfig?.items) ? catalogConfig.items : [];
+  const lineInputs = Array.isArray(catalogConfig?.lineInputs) ? catalogConfig.lineInputs : [];
   const itemByLabel = new Map(
     items
       .filter((item) => item?.value && item?.label)
@@ -192,14 +309,13 @@ function buildProductLines(payload, items) {
         'FRESA_PRODUCT_MINIMUM_NOT_MET',
       );
     }
+    const values = buildLineValues(row, matched, measure, quantity, lineInputs);
     return {
       productId: matched.value,
       quantity,
       size: null,
       measure,
-      ...(row?.sourceProductId ? {
-        values: { __fresa_source_product_id: String(row.sourceProductId).trim() },
-      } : {}),
+      ...(values ? { values } : {}),
     };
   }).filter(Boolean);
 
@@ -273,7 +389,7 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     [lastNameField.id]: contact.lastName ?? '',
     [phoneField.id]: contact.phone ?? '',
     [locationField.id]: locationValue,
-    [productField.id]: buildProductLines(payload, productField.catalogConfig?.items ?? []),
+    [productField.id]: buildProductLines(payload, productField.catalogConfig),
     [orderTypeField.id]: orderTypeValue,
   };
 

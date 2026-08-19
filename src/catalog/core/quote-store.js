@@ -118,6 +118,8 @@ export function createQuoteStore(defaultLocation) {
         id,
         productId: product.id,
         sourceProductId: variant.sourceProductId ?? null,
+        sourceProductName: variant.sourceProductName ?? null,
+        sku: variant.sku ?? null,
         productName: product.name,
         category: product.category,
         selectedLocation: state.location,
@@ -142,6 +144,8 @@ export function createQuoteStore(defaultLocation) {
               ? {
                   ...entry,
                   sourceProductId: item.sourceProductId ?? entry.sourceProductId ?? null,
+                  sourceProductName: item.sourceProductName ?? entry.sourceProductName ?? null,
+                  sku: item.sku ?? entry.sku ?? null,
                   quantity: entry.quantity + selection.quantity,
                 }
               : entry,
@@ -226,8 +230,14 @@ export function createQuoteStore(defaultLocation) {
         }
 
         const sourceProductId = matchingVariant.sourceProductId ?? item.sourceProductId ?? null;
-        if (sourceProductId !== (item.sourceProductId ?? null)) {
-          kept.push({ ...item, sourceProductId });
+        const sourceProductName = matchingVariant.sourceProductName ?? item.sourceProductName ?? null;
+        const sku = matchingVariant.sku ?? item.sku ?? null;
+        if (
+          sourceProductId !== (item.sourceProductId ?? null)
+          || sourceProductName !== (item.sourceProductName ?? null)
+          || sku !== (item.sku ?? null)
+        ) {
+          kept.push({ ...item, sourceProductId, sourceProductName, sku });
           changed = true;
         } else {
           kept.push(item);

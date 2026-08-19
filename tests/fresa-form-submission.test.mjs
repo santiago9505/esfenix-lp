@@ -84,6 +84,8 @@ function payload(vip = false) {
       id: 'rose-red-60',
       productId: 'ecuadorian-roses',
       sourceProductId: '6bf5f887-207f-448a-97b8-946d8f6f3e5e',
+      sourceProductName: 'EC ROSES 60',
+      sku: 'RO601000',
       productName: 'Ecuadorian Roses',
       category: 'roses',
       selectedLocation: 'houston',
@@ -137,6 +139,51 @@ test('selects the VIP product field from Fresa visibility rules', () => {
   assert.equal(submission.answers.vip, true);
   assert.equal(submission.answers['regular-products'], undefined);
   assert.equal(submission.answers['vip-products'][0].productId, 'fresa-rose-task');
+});
+
+test('populates every configured Fresa subtask input from the exact catalog line', () => {
+  const response = formResponse();
+  response.form.fields
+    .filter((field) => field.type === 'catalog_items')
+    .forEach((field) => {
+      field.catalogConfig.lineInputs = [
+        { id: 'api-source-id', label: 'Source Product ID', type: 'text', targetFieldId: 'item-id' },
+        { id: 'api-product-name', label: 'Product Name', type: 'text', targetFieldId: 'product-name' },
+        { id: 'api-sku', label: 'Product SKU', type: 'text', targetFieldId: 'product-sku' },
+        { id: 'api-unit-price', label: 'Unit Price', type: 'number', targetFieldId: 'product-price' },
+        { id: 'api-quantity', label: 'Quantity', type: 'number', targetFieldId: 'quantity' },
+        { id: 'api-measure', label: 'Measure', type: 'text', targetFieldId: 'measure' },
+      ];
+    });
+
+  const submission = buildFresaFormSubmission(payload(false), response);
+  assert.deepEqual(submission.answers['regular-products'][0].values, {
+    __fresa_source_product_id: '6bf5f887-207f-448a-97b8-946d8f6f3e5e',
+    'api-source-id': '6bf5f887-207f-448a-97b8-946d8f6f3e5e',
+    'api-product-name': 'EC ROSES 60',
+    'api-sku': 'RO601000',
+    'api-unit-price': 0.92,
+    'api-quantity': 25,
+    'api-measure': 'stem',
+  });
+});
+
+test('stops before creating a partial Fresa subtask when a configured value is missing', () => {
+  const response = formResponse();
+  response.form.fields
+    .filter((field) => field.type === 'catalog_items')
+    .forEach((field) => {
+      field.catalogConfig.lineInputs = [
+        { id: 'api-sku', label: 'Product SKU', type: 'text', targetFieldId: 'product-sku' },
+      ];
+    });
+  const missingSku = payload(false);
+  delete missingSku.fresa.products[0].sku;
+
+  assert.throws(
+    () => buildFresaFormSubmission(missingSku, response),
+    /cannot populate Product SKU/i,
+  );
 });
 
 test('stops before submission when a requested product cannot create a Fresa subtask', () => {

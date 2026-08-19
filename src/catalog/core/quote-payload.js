@@ -66,6 +66,8 @@ export function buildQuotePayload(input) {
     vip: input.vip === true,
     products: items.map((item) => ({
       productId: item.productId,
+      ...(item.sourceProductName ? { sourceProductName: item.sourceProductName } : {}),
+      ...(item.sku ? { sku: item.sku } : {}),
       productName: item.productName,
       category: item.category,
       variety: item.variety ?? null,
@@ -131,7 +133,7 @@ export function buildQuotePayload(input) {
  * @param {QuotePayload} payload
  */
 function buildFresaBlock(items, location, payload) {
-  /** @type {Map<string, { product: string, sourceProductId: string|null, quantity: number, measure: string|null, details: string[] }>} */
+  /** @type {Map<string, { product: string, sourceProductId: string|null, sourceProductName: string|null, sku: string|null, quantity: number, measure: string|null, details: string[] }>} */
   const rows = new Map();
   /** @type {Array<{ item: QuoteItem, tried: string[] }>} */
   const unmapped = [];
@@ -144,12 +146,22 @@ function buildFresaBlock(items, location, payload) {
     }
     const measure = String(item.measure ?? '').trim().toLowerCase() || null;
     const sourceProductId = String(item.sourceProductId ?? '').trim() || null;
+    const sourceProductName = String(item.sourceProductName ?? '').trim() || null;
+    const sku = String(item.sku ?? '').trim() || null;
     // Keep different canonical Fresa products on different rows even when the
     // public form displays the same broad label (for example, two EC Rose
     // varieties at the same length). Each row becomes its own product subtask
     // and can therefore receive the correct database name and SKU.
     const rowKey = `${option}\u0000${measure ?? ''}\u0000${sourceProductId ?? ''}`;
-    if (!rows.has(rowKey)) rows.set(rowKey, { product: option, sourceProductId, quantity: 0, measure, details: [] });
+    if (!rows.has(rowKey)) rows.set(rowKey, {
+      product: option,
+      sourceProductId,
+      sourceProductName,
+      sku,
+      quantity: 0,
+      measure,
+      details: [],
+    });
     const row = rows.get(rowKey);
     row.quantity += item.quantity;
 
@@ -167,6 +179,8 @@ function buildFresaBlock(items, location, payload) {
       quantity: row.quantity,
       measure: row.measure,
       ...(row.sourceProductId ? { sourceProductId: row.sourceProductId } : {}),
+      ...(row.sourceProductName ? { sourceProductName: row.sourceProductName } : {}),
+      ...(row.sku ? { sku: row.sku } : {}),
     })),
     // Step 3 — Type of Order. The catalog does not ask; the visitor picks it.
     orderType: payload.orderType,

@@ -272,6 +272,7 @@ function normalizeProduct(raw, columns) {
     location: findColumn(columns, 'location'),
     origin: findColumn(columns, 'origin'),
     isNew: findColumn(columns, 'isNew'),
+    sku: findColumn(columns, 'sku'),
     stemPrice: findColumn(columns, 'stemPrice'),
     bunchPrice: findColumn(columns, 'bunchPrice'),
     unitPrice: findColumn(columns, 'unitPrice'),
@@ -500,6 +501,7 @@ function buildVariants(raw, fields, columns, roleColumns) {
       .map(normalizeMeasure)
       .filter(Boolean),
   };
+  const sku = safeString(firstScalar(readColumnValue(fields, roleColumns.sku))) || null;
   const explicitPriceColumns = [
     roleColumns.stemPrice,
     roleColumns.bunchPrice,
@@ -563,14 +565,16 @@ function buildVariants(raw, fields, columns, roleColumns) {
   return variants.map((variant, index) => {
     const normalized = {
       id: `${safeString(raw.id)}__variant_${index + 1}`,
-    sourceProductId: safeString(raw.id),
-    variety: variant.variety,
-    color: variant.color,
-    lengthCm: variant.lengthCm,
-    availableMeasures,
-    attributes,
-    images,
-    files,
+      sourceProductId: safeString(raw.id),
+      sourceProductName: safeString(raw.name),
+      sku,
+      variety: variant.variety,
+      color: variant.color,
+      lengthCm: variant.lengthCm,
+      availableMeasures,
+      attributes,
+      images,
+      files,
     };
     rememberVariantPrices(normalized, prices);
     return normalized;
@@ -604,7 +608,7 @@ function cartesianVariants(values) {
   );
 }
 
-/** @param {Array<Record<string, unknown>>} columns @param {'typeProduct'|'category'|'group'|'variety'|'color'|'lengthCm'|'measure'|'location'|'origin'|'isNew'|'stemPrice'|'bunchPrice'|'unitPrice'|'packPrice'|'boxPrice'} role */
+/** @param {Array<Record<string, unknown>>} columns @param {'typeProduct'|'category'|'group'|'variety'|'color'|'lengthCm'|'measure'|'location'|'origin'|'isNew'|'sku'|'stemPrice'|'bunchPrice'|'unitPrice'|'packPrice'|'boxPrice'} role */
 function findColumn(columns, role) {
   const aliases = ROLE_ALIASES[role];
   let best = null;
@@ -670,6 +674,7 @@ const ROLE_ALIASES = {
   location: ['location', 'ubicacion', 'sede', 'branch', 'market', 'region'],
   origin: ['origin', 'origen', 'grown in', 'procedencia'],
   isNew: ['is new', 'new', 'nuevo', 'novedad'],
+  sku: ['formula sku', 'formula_sku', 'sku', 'product sku', 'stock keeping unit'],
   stemPrice: ['stem price', 'stem_price', 'price per stem', 'precio por tallo'],
   bunchPrice: ['bunch price', 'bunch_price', 'price per bunch', 'precio por ramo'],
   unitPrice: ['unit price', 'unit_price', 'price per unit', 'precio por unidad'],
