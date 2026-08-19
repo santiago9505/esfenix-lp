@@ -148,11 +148,12 @@ function buildFresaBlock(items, location, payload) {
     const sourceProductId = String(item.sourceProductId ?? '').trim() || null;
     const sourceProductName = String(item.sourceProductName ?? '').trim() || null;
     const sku = String(item.sku ?? '').trim() || null;
-    // Keep different canonical Fresa products on different rows even when the
-    // public form displays the same broad label (for example, two EC Rose
-    // varieties at the same length). Each row becomes its own product subtask
-    // and can therefore receive the correct database name and SKU.
-    const rowKey = `${option}\u0000${measure ?? ''}\u0000${sourceProductId ?? ''}`;
+    // Fresa validates product rows by their public product option and rejects
+    // repeated product ids. A catalog product can still have several selected
+    // variants, so keep those as separate lines in the catalog payload but
+    // merge them here. The variant/colour/measure breakdown is preserved in
+    // the seller notes below.
+    const rowKey = option;
     if (!rows.has(rowKey)) rows.set(rowKey, {
       product: option,
       sourceProductId,
@@ -164,6 +165,10 @@ function buildFresaBlock(items, location, payload) {
     });
     const row = rows.get(rowKey);
     row.quantity += item.quantity;
+    row.sourceProductId ??= sourceProductId;
+    row.sourceProductName ??= sourceProductName;
+    row.sku ??= sku;
+    row.measure ??= measure;
 
     const extra = unrepresentedDetails(item);
     if (extra.length > 0) row.details.push(`${item.quantity} × ${extra.join(', ')}`);
