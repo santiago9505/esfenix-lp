@@ -131,15 +131,78 @@ test('without a legacy session endpoint the response is submitted through the Fr
   assert.equal(result.ok, true);
   assert.equal(result.mode, 'form-api');
   assert.equal(result.taskId, 'created-task');
-  assert.equal(calls[0].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5');
-  assert.equal(calls[1].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5/submit');
-  const body = JSON.parse(calls[1].options.body);
+  assert.equal(calls[0].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5?catalog=metadata');
+  assert.equal(calls[1].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5?catalogFieldId=products');
+  assert.equal(calls[2].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5/submit');
+  const body = JSON.parse(calls[2].options.body);
   assert.deepEqual(body.answers.products, [{
     productId: 'product-task-id',
     quantity: 5,
     size: null,
     measure: 'bunch',
   }]);
+});
+
+test('validates one active client email and returns the scoped profile and VIP flag', async () => {
+  const form = publicFormResponse();
+  form.form.fields[0].actionRules = [{
+    enabled: true,
+    conditions: [{
+      operator: 'exists_in_list',
+      listLookupTarget: { listId: 'clients', target: 'custom_field', customFieldId: 'client-email' },
+    }],
+    thenActions: [
+      {
+        type: 'populate_field_from_lookup',
+        targetFieldId: 'first',
+        lookupValueTarget: { listId: 'clients', target: 'custom_field', customFieldId: 'client-first' },
+      },
+      {
+        type: 'populate_field_from_lookup',
+        targetFieldId: 'vip',
+        lookupValueTarget: { listId: 'clients', target: 'custom_field', customFieldId: 'client-vip' },
+      },
+    ],
+  }];
+
+  const calls = [];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: null,
+    async fetchImpl(url, options) {
+      calls.push({ url, options });
+      if (String(url).endsWith('/lookup')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            matches: {
+              'clients|custom_field:client-email': {
+                'buyer@example.com': [{
+                  taskId: 'client-task',
+                  values: {
+                    'clients|custom_field:client-first': 'Ana',
+                    'clients|custom_field:client-vip': true,
+                  },
+                }],
+              },
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => form };
+    },
+  });
+
+  const result = await integration.lookupClient(' Buyer@Example.com ');
+  assert.equal(result.ok, true);
+  assert.equal(result.found, true);
+  assert.equal(result.vip, true);
+  assert.equal(result.profile['First Name'], 'Ana');
+  assert.equal(result.taskId, 'client-task');
+  assert.equal(calls[1].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5/lookup');
+  assert.deepEqual(JSON.parse(calls[1].options.body), { answers: { email: 'buyer@example.com' } });
 });
 
 test('a failing Fresa form API keeps the quote summary and does not open a tab', async () => {

@@ -205,6 +205,7 @@
 .cat-card-link::after{content:"";position:absolute;inset:0;z-index:0}
 .cat-card-link:focus-visible{outline:none}
 .cat-card-variety{font-size:14px;color:var(--c-text)}
+.cat-card-price{margin-top:6px;font-size:15px;font-weight:700;color:var(--c-primary)}
 /* One action per row: the button reads as the primary act, the link sits
    under it rather than competing for the same line. */
 .cat-card-actions{margin-top:auto;display:flex;flex-direction:column;align-items:stretch;gap:12px;padding-top:16px}
@@ -347,6 +348,7 @@
 
 .cat-variant-form{display:flex;flex-direction:column;gap:18px}
 .cat-variant-attrs{font-size:13px;color:var(--c-muted)}
+.cat-variant-price{margin:4px 0 0;font-size:18px;font-weight:750;color:var(--c-primary)}
 .cat-option-label-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .cat-option-label-row label{margin:0}
 .cat-option-count{font-size:12px;letter-spacing:0;text-transform:none;color:var(--c-muted);font-weight:400}

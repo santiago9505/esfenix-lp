@@ -45,14 +45,12 @@ const STEPS = [
 /** The step whose rail label follows the chosen order type. */
 const DELIVERY_STEP_INDEX = 4;
 
-// The basic-plan flow deliberately keeps contact data in the current tab and
-// sends it directly to the public Fresa quote form. There is no client
-// directory lookup or profile database.
 /**
  * @param {ReturnType<typeof import('../app.js').createApp>['ctx']} ctx
  * @param {{
  *   onBack: () => void,
  *   onOpenProductPicker?: (options?: { onClose?: () => void }) => void,
+ *   onLookupClient?: (email: string) => Promise<any>,
  *   onSubmit: (payload: ReturnType<typeof buildQuotePayload>) => Promise<any>,
  * }} options
  */
@@ -67,6 +65,9 @@ export function renderQuoteFormView(ctx, options) {
   const state = {
     step: savedDraft?.step ?? 0,
     email: savedDraft?.email ?? '',
+    recognized: savedDraft?.recognized === true,
+    vip: savedDraft?.vip === true,
+    clientLookup: savedDraft?.clientLookup ?? 'idle',
     phoneCountry: savedDraft?.phoneCountry ?? savedPhone.countryCode,
     contact: { ...savedContact, phone: savedPhone.nationalNumber },
     orderType: savedDraft?.orderType ?? 'Delivery',
@@ -288,6 +289,24 @@ export function renderQuoteFormView(ctx, options) {
         // A visitor can go back and submit a different email. Clear the
         // previous contact data so two people can never be mixed.
         clearProfileData();
+        state.submitPending = true;
+        state.clientLookup = 'checking';
+        button.disabled = true;
+        button.textContent = 'Checking your account…';
+        const lookup = options.onLookupClient
+          ? await options.onLookupClient(state.email)
+          : { ok: true, found: false, vip: false, profile: {} };
+        state.submitPending = false;
+        if (!lookup?.ok) {
+          state.clientLookup = 'unavailable';
+          state.error = lookup?.error || 'We could not validate this email. Please try again.';
+          render(true);
+          return;
+        }
+        state.recognized = lookup.found === true;
+        state.vip = lookup.vip === true;
+        state.clientLookup = lookup.found ? 'found' : 'not-found';
+        if (lookup.found) applyLookupProfile(lookup.profile);
         persistDraft();
         state.step = 1;
         state.error = '';
@@ -312,6 +331,17 @@ export function renderQuoteFormView(ctx, options) {
 
   function contactStep() {
     const fields = [
+      state.clientLookup === 'found'
+        ? el('div', { class: 'cat-quote-info-note', role: 'status' }, [
+            el('strong', { text: state.vip ? 'Active VIP account found' : 'Active customer account found' }),
+            el('p', { text: 'We securely loaded the details stored in Fresa. Please confirm they are correct.' }),
+          ])
+        : state.clientLookup === 'not-found'
+          ? el('div', { class: 'cat-quote-info-note', role: 'status' }, [
+              el('strong', { text: 'New customer details' }),
+              el('p', { text: 'This email is not in the active customer list, so standard pricing will be used.' }),
+            ])
+          : null,
       field({
         label: 'Email address',
         name: 'email',
@@ -351,6 +381,9 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function clearProfileData() {
+    state.recognized = false;
+    state.vip = false;
+    state.clientLookup = 'idle';
     state.phoneCountry = DEFAULT_COUNTRY;
     state.contact = { firstName: '', lastName: '', phone: '', company: '' };
     state.delivery = {
@@ -361,6 +394,29 @@ export function renderQuoteFormView(ctx, options) {
       zipCode: '',
     };
     state.editingShippingAddress = false;
+  }
+
+  function applyLookupProfile(profile = {}) {
+    const value = (...labels) => {
+      for (const label of labels) {
+        const found = profile[label];
+        if (found !== null && found !== undefined && String(found).trim()) return String(found).trim();
+      }
+      return '';
+    };
+    state.contact = {
+      firstName: value('First Name'),
+      lastName: value('Last Name'),
+      phone: value('Phone Number', 'Phone'),
+      company: value('Company'),
+    };
+    state.delivery = {
+      ...state.delivery,
+      address: value('Address'),
+      city: value('City'),
+      state: value('State'),
+      zipCode: value('Zip Code', 'ZIP Code'),
+    };
   }
 
   function contactField(label, name, autocomplete, required, type = 'text', help) {
@@ -921,6 +977,7 @@ export function renderQuoteFormView(ctx, options) {
           email: state.email,
           contact: state.contact,
           phoneCountryCode: dialCodeForCountry(state.phoneCountry),
+          vip: state.vip,
           orderType,
           delivery: {
             ...state.delivery,

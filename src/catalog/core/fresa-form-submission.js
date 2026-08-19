@@ -48,6 +48,7 @@ export function resolveFresaFormApi(formUrl) {
   return {
     token,
     formApiUrl,
+    lookupUrl: `${formApiUrl}/lookup`,
     submitUrl: `${formApiUrl}/submit`,
   };
 }
@@ -110,6 +111,47 @@ function findProductField(fields, locationField, vipField, locationValue, vip) {
     const label = normalizeLabel(field?.label);
     return label.includes(locationWords) && label.includes('vip') === vip;
   }) ?? null;
+}
+
+/**
+ * Resolves the one native catalog field needed for a request. Callers can use
+ * this with the lightweight form metadata response, then request only that
+ * field's live catalog items.
+ *
+ * @param {any} payload
+ * @param {any} publicFormResponse
+ */
+export function resolveFresaProductFieldId(payload, publicFormResponse) {
+  const form = publicFormResponse?.form;
+  const fields = Array.isArray(form?.fields) ? form.fields : [];
+  if (publicFormResponse?.success !== true || form?.enabled !== true || fields.length === 0) {
+    throw new FresaFormConfigurationError('The Fresa quote form is unavailable or disabled.');
+  }
+
+  const locationField = requireField(fields, 'Location', 'select');
+  const vipField = requireField(fields, 'VIP?', 'checkbox');
+  const locationValue = findOptionValue(locationField, payload?.fresa?.location);
+  if (!locationValue) {
+    throw new FresaFormConfigurationError(
+      `The location "${payload?.fresa?.location ?? ''}" is not available in Fresa.`,
+      'FRESA_LOCATION_UNAVAILABLE',
+    );
+  }
+
+  const productField = findProductField(
+    fields,
+    locationField,
+    vipField,
+    locationValue,
+    payload?.vip === true,
+  );
+  if (!productField?.id) {
+    throw new FresaFormConfigurationError(
+      `Fresa has no product field configured for ${payload?.fresa?.location ?? 'this location'}${payload?.vip === true ? ' VIP' : ''}.`,
+      'FRESA_PRODUCT_FIELD_UNAVAILABLE',
+    );
+  }
+  return productField.id;
 }
 
 /** @param {unknown} value */
@@ -247,10 +289,13 @@ function buildLineValues(row, matched, measure, quantity, lineInputs) {
 
     const missing = value === null || value === undefined || String(value).trim() === '';
     if (missing) {
-      throw new FresaFormConfigurationError(
-        `Fresa cannot populate ${input?.label ?? kind} for "${row?.product ?? ''}".`,
-        `FRESA_PRODUCT_${kind.replace(/([A-Z])/g, '_$1').toUpperCase()}_UNAVAILABLE`,
-      );
+      if (input?.required === true) {
+        throw new FresaFormConfigurationError(
+          `Fresa cannot populate ${input?.label ?? kind} for "${row?.product ?? ''}".`,
+          `FRESA_PRODUCT_${kind.replace(/([A-Z])/g, '_$1').toUpperCase()}_UNAVAILABLE`,
+        );
+      }
+      continue;
     }
     values[inputId] = value;
   }
@@ -281,6 +326,11 @@ function buildProductLines(payload, catalogConfig) {
 
   const items = Array.isArray(catalogConfig?.items) ? catalogConfig.items : [];
   const lineInputs = Array.isArray(catalogConfig?.lineInputs) ? catalogConfig.lineInputs : [];
+  const itemByValue = new Map(
+    items
+      .filter((item) => item?.value)
+      .map((item) => [String(item.value), item]),
+  );
   const itemByLabel = new Map(
     items
       .filter((item) => item?.value && item?.label)
@@ -288,7 +338,9 @@ function buildProductLines(payload, catalogConfig) {
   );
   const missing = [];
   const lines = requested.map((row) => {
-    const matched = itemByLabel.get(normalizeLabel(row?.product));
+    const sourceProductId = String(row?.sourceProductId ?? '').trim();
+    const matched = (sourceProductId ? itemByValue.get(sourceProductId) : null)
+      || itemByLabel.get(normalizeLabel(row?.product));
     if (!matched) {
       missing.push(String(row?.product ?? '').trim());
       return null;

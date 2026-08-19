@@ -261,7 +261,7 @@ test('lines that collapse to one form option are merged, and the detail is kept 
   assert.equal(payload.products.length, 2);
 });
 
-test('different variants that resolve to one Fresa option share one subtask row', () => {
+test('different native product tasks create separate subtask rows even when their labels match', () => {
   const payload = buildQuotePayload({
     locationId: 'houston',
     items: [
@@ -294,12 +294,20 @@ test('different variants that resolve to one Fresa option share one subtask row'
     ],
   });
 
-  assert.deepEqual(payload.fresa.products, [{
-    product: 'Ecuadorian Roses - 60cm',
-    quantity: 50,
-    measure: 'stem',
-    sourceProductId: '11111111-1111-4111-8111-111111111111',
-  }]);
+  assert.deepEqual(payload.fresa.products, [
+    {
+      product: 'Ecuadorian Roses - 60cm',
+      quantity: 25,
+      measure: 'stem',
+      sourceProductId: '11111111-1111-4111-8111-111111111111',
+    },
+    {
+      product: 'Ecuadorian Roses - 60cm',
+      quantity: 25,
+      measure: 'stem',
+      sourceProductId: '22222222-2222-4222-8222-222222222222',
+    },
+  ]);
   assert.match(payload.fresa.notes, /Freedom/);
   assert.match(payload.fresa.notes, /Vendela/);
 });

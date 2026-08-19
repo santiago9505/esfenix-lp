@@ -340,6 +340,10 @@ export function createApp({ head, body }) {
     return integration.start(payload);
   }
 
+  function lookupClient(email) {
+    return integration.lookupClient(email);
+  }
+
   /* ---------------------------------------------------------------- */
   /* Rendering                                                         */
   /* ---------------------------------------------------------------- */
@@ -360,6 +364,7 @@ export function createApp({ head, body }) {
         ? renderQuoteFormView(ctx, {
             onBack: closeQuoteFormScreen,
             onOpenProductPicker: openProductPicker,
+            onLookupClient: lookupClient,
             onSubmit: submitQuoteForm,
           })
           : route.view === 'product'

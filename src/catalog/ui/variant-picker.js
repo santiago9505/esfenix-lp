@@ -11,6 +11,7 @@
  */
 
 import { describeAttribute, capitalize } from '../core/format.js';
+import { formatPrice, getVariantPriceCents } from '../core/pricing.js';
 import { el, replaceChildren } from './dom.js';
 import { openModal } from './modal.js';
 import { validateSelection } from '../core/quote-store.js';
@@ -183,6 +184,14 @@ export function variantForm(product, options = {}) {
           text: attributes.map(([key, value]) => describeAttribute(key, value)).join(' · '),
         }),
       );
+    }
+
+    const selectedPrice = getVariantPriceCents(variant, choice.measure);
+    if (selectedPrice !== null) {
+      rows.push(el('p', {
+        class: 'cat-variant-price',
+        text: `${formatPrice(selectedPrice)} / ${MEASURE_LABELS[choice.measure] ?? capitalize(choice.measure ?? '')}`,
+      }));
     }
 
     rows.push(quantityRow(choice, render, measureValues));

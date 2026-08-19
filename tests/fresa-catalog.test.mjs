@@ -16,7 +16,7 @@ const columns = [
   { list_id: 'flowers', key: 'price_field', field_name: 'Wholesale amount', field_type: 'currency', is_file: false },
 ];
 
-test('normalizes Fresa columns and attachments without assuming field keys', () => {
+test('normalizes Fresa columns, prices and attachments without assuming field keys', () => {
   const products = normalizeCatalog({
     catalog: {
       columns,
@@ -75,9 +75,9 @@ test('normalizes Fresa columns and attachments without assuming field keys', () 
     products[0].files.map((file) => file.url),
     ['https://cdn/spec.pdf'],
   );
-  assert.ok(!JSON.stringify(products[0]).includes('25000'), 'price is not copied into the view model');
+  assert.equal(products[0].locations[0].variants[0].prices.unit, 2_500_000);
   assert.equal(products[0].name, 'Roses', 'variant suffixes are not shown as separate product names');
-  assert.equal(products[0].description, null, 'generated price descriptions stay private');
+  assert.equal(products[0].description, null, 'generated price prose is not shown as an editorial description');
 });
 
 test('uses local flower photography only when Fresa has no usable image', () => {
@@ -229,10 +229,53 @@ test('fetches every Fresa page with bearer auth and the required pagination', as
 
   assert.deepEqual(
     calls.map((call) => new URL(call.url).search),
-    ['?limit=1000&offset=0', '?limit=1000&offset=1000'],
+    ['?limit=200&offset=0', '?limit=200&offset=1000'],
   );
   assert.equal(calls[0].options.headers.Authorization, 'Bearer test-key');
   assert.deepEqual(response.catalog.products.map((product) => product.id), ['product-0', 'product-1000']);
+});
+
+test('paginates the native task API and adapts authorized custom fields', async () => {
+  const calls = [];
+  const fetchImpl = async (url) => {
+    const offset = Number(new URL(url).searchParams.get('offset'));
+    calls.push(offset);
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          success: true,
+          tasks: [{
+            task_id: `rose-${offset}`,
+            list_id: 'flowers',
+            name: `EC ROSES ${offset || 60}`,
+            custom_fields: {
+              taxonomy: { key: 'type_product', name: 'type_product', type: 'select', value: 'Roses' },
+              price: { key: 'unit_price', name: 'unit_price', type: 'currency', value: 1.25 },
+            },
+          }],
+          page: offset === 0
+            ? { offset: 0, limit: 200, hasMore: true, nextOffset: 200 }
+            : { offset: 200, limit: 200, hasMore: false, nextOffset: null },
+        };
+      },
+    };
+  };
+
+  const response = await fetchCatalogPages({
+    apiUrl: 'https://fresa.example/api/public/v1/tasks?listId=flowers',
+    apiKey: 'catalog-key',
+    expectedListId: 'flowers',
+    listName: 'Texas',
+    fetchImpl,
+  });
+
+  assert.deepEqual(calls, [0, 200]);
+  assert.equal(response.catalog.products.length, 2);
+  const product = normalizeCatalog(response)[0];
+  assert.equal(product.category, 'roses');
+  assert.equal(product.locations[0].variants[0].prices.unit, 125);
 });
 
 test('accepts Fresa source responses that expose products as top-level records', async () => {

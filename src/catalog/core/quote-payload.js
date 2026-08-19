@@ -140,22 +140,20 @@ function buildFresaBlock(items, location, payload) {
 
   for (const item of items) {
     const { option, candidates } = resolveFresaProductForItem(item);
-    if (!option) {
+    const sourceProductId = String(item.sourceProductId ?? '').trim() || null;
+    const sourceProductName = String(item.sourceProductName ?? '').trim() || null;
+    if (!option && !sourceProductId) {
       unmapped.push({ item, tried: candidates });
       continue;
     }
     const measure = String(item.measure ?? '').trim().toLowerCase() || null;
-    const sourceProductId = String(item.sourceProductId ?? '').trim() || null;
-    const sourceProductName = String(item.sourceProductName ?? '').trim() || null;
     const sku = String(item.sku ?? '').trim() || null;
-    // Fresa validates product rows by their public product option and rejects
-    // repeated product ids. A catalog product can still have several selected
-    // variants, so keep those as separate lines in the catalog payload but
-    // merge them here. The variant/colour/measure breakdown is preserved in
-    // the seller notes below.
-    const rowKey = option;
+    const resolvedProduct = option || sourceProductName || item.productName;
+    // Native task ids are the stable contract. Legacy label mapping remains a
+    // fallback for older snapshots that do not carry a source task id.
+    const rowKey = sourceProductId || resolvedProduct;
     if (!rows.has(rowKey)) rows.set(rowKey, {
-      product: option,
+      product: resolvedProduct,
       sourceProductId,
       sourceProductName,
       sku,

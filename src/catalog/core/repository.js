@@ -2,7 +2,7 @@
  * Catalog repository — the only module that knows where product data comes
  * from. Everything else asks it questions.
  *
- * Product data comes from the checked-in, price-free catalog snapshot. Fresa
+ * Product data comes from the checked-in catalog snapshot. Fresa
  * remains a build-time source through `scripts/generate-fresa-catalog-snapshot.mjs`;
  * the browser never receives a credential or depends on a backend proxy.
  */
@@ -34,7 +34,7 @@ let initialProductsPromise = null;
 export const PRODUCT_SNAPSHOT_URL = '/data/catalog-snapshot.json';
 
 /**
- * Loads the bundled price-free product list. The browser deliberately stays
+ * Loads the bundled product list with read-only reference prices. The browser deliberately stays
  * static-only so the basic Firebase Hosting plan does not need Cloud Functions
  * or a database. Refresh the snapshot during a release when Fresa changes.
  *
@@ -64,7 +64,10 @@ async function loadProductSnapshot(options) {
   if (typeof fetchImpl !== 'function') throw new Error('Catalog snapshot fetch is unavailable.');
 
   const response = await fetchImpl(options.snapshotUrl ?? PRODUCT_SNAPSHOT_URL, {
-    cache: 'force-cache',
+    // Revalidate on a fresh page load so a deployment cannot keep referencing
+    // media files from the previous catalog snapshot. The in-memory repository
+    // still guarantees a single request during normal navigation.
+    cache: 'no-cache',
   });
   if (!response?.ok) throw new Error('Catalog snapshot is unavailable.');
 

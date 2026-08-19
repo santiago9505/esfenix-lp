@@ -24,6 +24,7 @@ import {
   buildFresaFormSubmission,
   FresaFormConfigurationError,
   resolveFresaFormApi,
+  resolveFresaProductFieldId,
 } from './fresa-form-submission.js';
 
 /**
@@ -76,6 +77,11 @@ export function createQuoteIntegration(options = {}) {
     /** Which adapter a call to `start` would use. */
     mode() {
       return sessionEndpoint ? 'session' : 'form-api';
+    },
+
+    /** Validates one email through the public form's scoped list lookup. */
+    lookupClient(email) {
+      return lookupFresaClient({ formUrl, email, doFetch, timeoutMs });
     },
 
     /**
@@ -205,13 +211,131 @@ export function createQuoteIntegration(options = {}) {
   };
 }
 
+function normalizeLookupValue(value) {
+  return String(value ?? '')
+    .trim()
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/^mailto:/i, '')
+    .toLowerCase();
+}
+
+function lookupTargetKey(target) {
+  if (!target || typeof target !== 'object') return '';
+  const listId = String(target.listId || target.listName || '').trim().toLowerCase() || 'current';
+  if (target.target === 'custom_field') {
+    const fieldId = String(target.customFieldId || '').trim();
+    return fieldId ? `${listId}|custom_field:${fieldId}` : '';
+  }
+  return `${listId}|${String(target.target || '').trim()}`;
+}
+
+function lookupProfileFromMatch(fields, rule, match) {
+  const byId = new Map(fields.map((field) => [field?.id, field]));
+  const values = {};
+  for (const action of rule?.thenActions ?? []) {
+    if (action?.type !== 'populate_field_from_lookup') continue;
+    const targetField = byId.get(action.targetFieldId);
+    const sourceKey = lookupTargetKey(action.lookupValueTarget);
+    if (!targetField?.label || !sourceKey) continue;
+    values[targetField.label] = match?.values?.[sourceKey] ?? null;
+  }
+  return values;
+}
+
+function booleanValue(value) {
+  if (typeof value === 'boolean') return value;
+  return ['true', '1', 'yes', 'si', 'sí', 'vip'].includes(normalizeLookupValue(value));
+}
+
+async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
+  const normalizedEmail = normalizeLookupValue(email);
+  if (!normalizedEmail) return { ok: false, found: false, error: 'Enter a valid email address.' };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const { formApiUrl, lookupUrl } = resolveFresaFormApi(formUrl);
+    const metadataUrl = new URL(formApiUrl);
+    metadataUrl.searchParams.set('catalog', 'metadata');
+    const formResponse = await doFetch(metadataUrl.toString(), {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    const formData = await readJson(formResponse);
+    const fields = Array.isArray(formData?.form?.fields) ? formData.form.fields : [];
+    const emailField = fields.find((field) =>
+      field?.type === 'email' && normalizeLookupValue(field?.label) === 'email'
+    );
+    const lookupRule = (emailField?.actionRules ?? []).find((rule) =>
+      (rule?.conditions ?? []).some((condition) => condition?.operator === 'exists_in_list')
+    );
+    const lookupCondition = (lookupRule?.conditions ?? []).find((condition) => condition?.operator === 'exists_in_list');
+    const emailTargetKey = lookupTargetKey(lookupCondition?.listLookupTarget);
+    if (!formResponse.ok || formData?.success !== true || !emailField?.id || !emailTargetKey) {
+      return { ok: false, found: false, error: 'Customer validation is not configured in Fresa.' };
+    }
+
+    const response = await doFetch(lookupUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ answers: { [emailField.id]: normalizedEmail } }),
+      signal: controller.signal,
+    });
+    const data = await readJson(response);
+    if (!response.ok || data?.success !== true) {
+      return { ok: false, found: false, error: data?.error || 'Customer validation is temporarily unavailable.' };
+    }
+
+    const match = data?.matches?.[emailTargetKey]?.[normalizedEmail]?.[0] ?? null;
+    if (!match) return { ok: true, found: false, vip: false, profile: {} };
+    const profile = lookupProfileFromMatch(fields, lookupRule, match);
+    return {
+      ok: true,
+      found: true,
+      vip: booleanValue(profile['VIP?']),
+      profile,
+      taskId: match.taskId ?? null,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      found: false,
+      error: error?.name === 'AbortError'
+        ? 'Customer validation took too long. Please try again.'
+        : 'Customer validation is temporarily unavailable.',
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserveSlot, summary }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const { formApiUrl, submitUrl } = resolveFresaFormApi(formUrl);
-    const formResponse = await doFetch(formApiUrl, {
+    const metadataUrl = new URL(formApiUrl);
+    metadataUrl.searchParams.set('catalog', 'metadata');
+    const metadataResponse = await doFetch(metadataUrl.toString(), {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    const metadata = await readJson(metadataResponse);
+    if (!metadataResponse.ok || metadata?.success !== true) {
+      return {
+        ok: false,
+        mode: 'form-api',
+        error: metadata?.error || `Fresa could not load the quote form (${metadataResponse.status}).`,
+        summary,
+      };
+    }
+
+    const productFieldId = resolveFresaProductFieldId(payload, metadata);
+    const scopedFormUrl = new URL(formApiUrl);
+    scopedFormUrl.searchParams.set('catalogFieldId', productFieldId);
+    const formResponse = await doFetch(scopedFormUrl.toString(), {
       method: 'GET',
       headers: { Accept: 'application/json' },
       signal: controller.signal,
@@ -221,7 +345,7 @@ async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserve
       return {
         ok: false,
         mode: 'form-api',
-        error: formData?.error || `Fresa could not load the quote form (${formResponse.status}).`,
+        error: formData?.error || `Fresa could not load the selected catalog (${formResponse.status}).`,
         summary,
       };
     }

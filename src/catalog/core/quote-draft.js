@@ -61,6 +61,7 @@ function delivery(value) {
  * @property {number} step
  * @property {string} email
  * @property {boolean} recognized
+ * @property {boolean} vip
  * @property {'idle'|'checking'|'found'|'not-found'|'unavailable'} clientLookup
  * @property {string} phoneCountry
  * @property {{ firstName: string, lastName: string, phone: string, company: string }} contact
@@ -83,6 +84,7 @@ export function readQuoteDraft() {
     step: step(stored.step),
     email: text(stored.email, 254),
     recognized: stored.recognized === true,
+    vip: stored.vip === true,
     clientLookup: lookupState(stored.clientLookup),
     phoneCountry: country(stored.phoneCountry),
     contact: contact(stored.contact),
@@ -102,6 +104,7 @@ export function writeQuoteDraft(draft) {
     step: step(draft.step),
     email: text(draft.email, 254),
     recognized: draft.recognized === true,
+    vip: draft.vip === true,
     clientLookup: lookupState(draft.clientLookup),
     phoneCountry: country(draft.phoneCountry),
     contact: contact(draft.contact),

@@ -4,10 +4,9 @@
  * The runtime is plain JavaScript; these declarations exist so editors and
  * `tsc --checkJs` can verify the shapes the modules document with JSDoc.
  *
- * There is deliberately no price, stemPrice, bunchPrice, unitPrice, total,
- * subtotal, currency, pricingLocation or discount in this public model. The
- * catalog is a quote-request tool, not a store; internal price metadata used
- * to enforce the minimum order remains outside these declarations and payloads.
+ * Catalog prices are read-only reference data copied from authorized Fresa
+ * task fields. Quote payloads deliberately contain no price: Fresa resolves
+ * the authoritative value again when it creates each order subtask.
  */
 
 export type ProductCategory = 'roses' | 'other-flowers' | 'foliage' | 'supplies';
@@ -59,6 +58,8 @@ export interface ProductVariant {
   lengthCm?: number | null;
 
   availableMeasures?: MeasureType[];
+  /** Read-only USD price in cents, keyed by the selectable sales measure. */
+  prices?: Partial<Record<MeasureType, number>>;
 
   attributes?: Record<string, string | number | boolean>;
   images?: ProductImage[];

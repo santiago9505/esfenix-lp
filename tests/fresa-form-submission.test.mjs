@@ -103,6 +103,7 @@ test('derives the public form API and submit URLs from the shared form URL', () 
   assert.deepEqual(resolveFresaFormApi('https://fresaai.app/f/abc123'), {
     token: 'abc123',
     formApiUrl: 'https://fresaai.app/api/forms/abc123',
+    lookupUrl: 'https://fresaai.app/api/forms/abc123/lookup',
     submitUrl: 'https://fresaai.app/api/forms/abc123/submit',
   });
 });
@@ -131,6 +132,24 @@ test('maps all contact, delivery and product fields to live Fresa ids', () => {
   }]);
   assert.match(submission.answers.notes, /Company: Esfenix Test/);
   assert.match(submission.answers.notes, /Freedom/);
+});
+
+test('matches a live catalog item by native task id before considering its label', () => {
+  const directPayload = payload(false);
+  directPayload.fresa.products[0].product = 'A label that is intentionally different';
+  const response = formResponse();
+  response.form.fields
+    .filter((field) => field.type === 'catalog_items')
+    .forEach((field) => {
+      field.catalogConfig.items[0].value = directPayload.fresa.products[0].sourceProductId;
+      field.catalogConfig.items[0].label = 'Canonical Fresa task label';
+    });
+
+  const submission = buildFresaFormSubmission(directPayload, response);
+  assert.equal(
+    submission.answers['regular-products'][0].productId,
+    directPayload.fresa.products[0].sourceProductId,
+  );
 });
 
 test('selects the VIP product field from Fresa visibility rules', () => {
@@ -174,7 +193,7 @@ test('stops before creating a partial Fresa subtask when a configured value is m
     .filter((field) => field.type === 'catalog_items')
     .forEach((field) => {
       field.catalogConfig.lineInputs = [
-        { id: 'api-sku', label: 'Product SKU', type: 'text', targetFieldId: 'product-sku' },
+        { id: 'api-sku', label: 'Product SKU', type: 'text', targetFieldId: 'product-sku', required: true },
       ];
     });
   const missingSku = payload(false);

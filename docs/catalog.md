@@ -1,7 +1,9 @@
 # Product catalog
 
 The catalog lives at `/catalog` and `/catalog/<category>/<slug>`. It is a
-quote-request tool, not a store: it never shows, stores or transmits a price.
+quote-request tool, not a checkout. It shows read-only prices published from
+authorized Fresa fields, while order payloads never submit a browser-provided
+price. Fresa resolves the authoritative value again for each created subtask.
 
 The landing page is untouched apart from three things — a link to the shared
 stylesheet, the header/overlay/footer moving into shared partials, and the
@@ -100,7 +102,7 @@ is not Houston, and it asks where the order would ship.
 | `scripts/build-catalog-data.mjs` | Workbooks → seed data |
 | `scripts/catalog-source.config.mjs` | How source rows are interpreted |
 | `scripts/lib/xlsx-reader.mjs` | Minimal `.xlsx` reader (Node built-ins only) |
-| `scripts/check-fresa-map.mjs` | Verifies every product maps to a form option |
+| `scripts/check-fresa-map.mjs` | Verifies every selectable variant has a native Fresa task id |
 | `scripts/vite-plugin-html-partials.mjs` | `<!--#include name-->` support |
 | `tests/*.test.mjs` | Automated unit and integration tests with `node --test` |
 
@@ -130,14 +132,14 @@ Two additions worth knowing about:
 - `ProductVariant.attributes` — for facts that are neither variety, colour nor
   length: `{ stemsPerBunch: 20 }`, `{ origin: 'Canada' }`.
 
-**There is no price field anywhere**, and there are three separate guards
-against one appearing:
+Catalog variants may include a `prices` object keyed by sales measure. Three
+separate boundaries keep that reference data safe:
 
-1. `scripts/catalog-source.config.mjs` reads a strict allow-list of columns, so
-   pricing never enters the pipeline.
-2. `build-catalog-data.mjs` refuses to write output containing a monetary field
-   or a currency amount.
-3. `assertNoPricing()` re-checks the payload before it leaves the browser.
+1. The Fresa API credential authorizes only the configured lists and fields.
+2. `npm run snapshot:catalog` copies attachment bytes locally and never writes
+   the API credential or expiring signed URLs into the snapshot.
+3. `assertNoPricing()` rejects any order payload containing a price before it
+   leaves the browser; the live Fresa form supplies the authoritative price.
 
 A missing attribute is `null`. It is never `""`, `"N/A"` or `"—"`, and the UI
 hides the corresponding row and filter rather than showing a placeholder.
@@ -146,7 +148,7 @@ hides the corresponding row and filter rather than showing a placeholder.
 
 ## Where the data comes from
 
-The browser fetches the checked-in, price-free snapshot:
+The browser fetches the checked-in snapshot:
 
 ```text
 GET /data/catalog-snapshot.json
@@ -154,17 +156,18 @@ GET /data/catalog-snapshot.json
 
 `npm run snapshot:catalog` is the only step that calls Fresa. It uses the
 private `FRESA_CATALOG_API_URL` and `FRESA_CATALOG_API_KEY` from local
-environment variables, follows pagination, removes non-approved fields and
-prices, and writes the result to `public/data/catalog-snapshot.json`. Those
+environment variables, follows native task pagination, keeps only authorized
+fields, downloads stable media and writes the result to
+`public/data/catalog-snapshot.json`. Those
 credentials never enter `dist/`, and production has no catalog proxy or
 database to operate.
 
 The generator follows `page.nextOffset` while `hasMore` is true and deduplicates
-pages by record id. Fresa may return the products as `catalog.products` or as
-top-level `records`; both are normalized to the same internal model. Custom
-values are read only through the matching descriptors in `columns[].key` (or
-`catalog.columns[].key` in the wrapped response), and the product taxonomy is
-validated before the snapshot is written.
+pages by task id. The preferred source is the native `/api/public/v1/tasks`
+response; legacy `catalog.products` and top-level `records` responses remain
+supported by the adapter. Custom values are read only through their Fresa field
+descriptors, and the product taxonomy is validated before the snapshot is
+written.
 
 Categories come from an authorized Fresa category column or, when the catalog
 uses lists as categories, from `listName`:
@@ -195,8 +198,9 @@ Products come from Fresa, so the normal route is:
 
 The legacy workbook generation scripts are not used by the landing runtime.
 
-If the product needs a photo or file, attach it in Fresa. The landing uses its
-temporary `attachment.url` directly. When a product has no usable Fresa image,
+If the product needs a photo or file, attach it in Fresa. The snapshot generator
+downloads the attachment, converts raster product photography to bounded WebP,
+removes obsolete generated assets and publishes a stable local URL. When a product has no usable Fresa image,
 the local photography imported into `public/assets/images/flowers-fallback/`
 is used by variety where there is an exact match, or by the closest rose
 family when Fresa does not expose enough detail; a product with at least one
@@ -258,15 +262,19 @@ time, so regenerating the seed never wipes editorial content.
 export const QUOTE_FORM_URL = 'https://fresaai.app/f/<new-form-id>';
 ```
 
-If the new form has a different product list, re-capture its vocabulary into
-`src/catalog/data/fresa-form.js` (`locationOptions` and `productOptions` per
-catalog source), then run `npm run check:fresa-map` to see what no longer maps.
+Connect each `catalog_items` field to the native Fresa relation for its list and
+keep `activeItemsOnly` enabled. Native task ids are the integration key;
+`src/catalog/data/fresa-form.js` is only a label fallback for old snapshots.
+Run `npm run check:fresa-map` to verify that every selectable variant still has
+its source task identity.
 
 ### Product prefill and client lookup
 
-These features are intentionally disabled in the basic-plan deployment. The
-visitor enters contact details in the quote form; no active-client directory,
-custom session endpoint, or profile database is queried.
+The landing reads lightweight public-form metadata, then sends only the email
+the visitor entered to `/api/forms/<token>/lookup`. Fresa evaluates the scoped
+`exists_in_list` rule server-side and returns only that match. A match prefills
+the configured contact fields and VIP flag; a missing match remains a valid new
+quote. The browser never receives the active-client list or an API credential.
 
 ---
 
@@ -296,10 +304,11 @@ email first, and then builds the payload and hands it to
 continue so it can request a quote. The same screen is used by the quote CTA
 when no products were selected.
 
-The basic-plan flow does not query an active-client source. The visitor enters
-their contact details directly and the completed payload is submitted through
-the public Fresa form API. Personal data stays in the current tab draft until
-the visitor sends the request; there is no custom session endpoint or profile
+The public Fresa form API validates the client on demand. When the visitor
+sends the request, the landing first loads form metadata, resolves the one
+visible native catalog field from location and VIP status, then reloads only
+that field with `?catalogFieldId=<field-id>`. Personal data stays in the current
+tab draft until submission; there is no custom session endpoint or profile
 database.
 
 The payload keeps the catalog's own representation **and** a `fresa` block
@@ -317,23 +326,20 @@ holding the same request in the form's terms:
   "notes": "",
   "fresa": {
     "location": "WA - SEATTLE",
-    "products": [ { "product": "Sunflowers", "quantity": 5 } ],
+    "products": [ { "product": "Sunflowers", "sourceProductId": "<fresa-task-id>", "quantity": 5, "measure": "bunch" } ],
     "notes": "Selected from the Esfenix online catalog — Seattle, WA. …",
     "unmappedProducts": []
   }
 }
 ```
 
-**Why the two representations differ.** The form's product rows are
-`{Producto, Quantity}` only — there is no colour, variety, measure or length
-field. Length and colour are folded into the option label
-(`Ecuadorian Roses - 60cm`, `Peony - white`). So:
-
-- Lines that resolve to the same option are merged and their quantities summed.
-- Everything the form cannot express — variety, colour, measure — is written
-  into "Notes for the seller" instead of being dropped.
-- Any product the form has no option for is listed in the notes and reported in
-  `unmappedProducts`.
+**Why the two representations differ.** The catalog representation is designed
+for the landing UI. The `fresa` block carries the native source task id used by
+the public form. Each distinct source task creates its own subtask, even when
+two rows have the same display label. Fresa validates the id against the
+selected relation, fills canonical product name/SKU server-side, and stores
+quantity, measure and current price in the configured order columns. Legacy
+snapshots without a source id still use label mapping and `unmappedProducts`.
 
 **Field mapping**
 
@@ -368,11 +374,9 @@ flow does not require Firestore, Authentication or another backend.
 Found while building, worth fixing at the source. None of them break the
 catalog.
 
-1. **Seattle hydrangeas — blue vs shocking.** The accounting export lists a
-   `Blue` hydrangea for Seattle; the Seattle price list and the Fresa form both
-   offer `shocking` and no blue. The catalog shows what the database says, and
-   that line is the one product that does not map to a form option. Deciding
-   which source is right resolves it.
+1. **Seattle hydrangeas — blue vs shocking.** The source list contains both
+   naming vocabularies. Native task ids keep both rows unambiguous, but the
+   business team can still consolidate the names at the source.
 
 2. **Duplicated hydrangea rows.** Each colour appears twice per location —
    `Hydrangeas Premium - blue` and `Hydrangeas  blue`. Both price lists and the
@@ -397,8 +401,8 @@ catalog.
    the neutral placeholder.
 
 7. **The Woodlands has no separate product list.** It is served from the Texas
-   export while keeping its own service centre, which matches the Fresa form
-   (Houston, The Woodlands and NATION WIDE all offer the same 67 products).
+   native list while keeping its own service centre, which matches the Fresa
+   form routing for Houston, The Woodlands and NATION WIDE.
 
 ---
 
@@ -409,6 +413,6 @@ npm run dev                  # dev server, /catalog works
 npm run build                # production build
 npm run build:catalog-data   # regenerate seed data from data/sources/*.xlsx
 npm run snapshot:catalog     # refresh public/data/catalog-snapshot.json locally
-npm run check:fresa-map      # verify every product maps to a form option
+npm run check:fresa-map      # verify every selectable variant has a native task id
 npm test                     # unit and integration tests
 ```

@@ -5,8 +5,10 @@ Landing page y catálogo de productos de Esfenix.
 - `/` — landing page (`index.html`)
 - `/catalog` y `/catalog/<categoria>/<slug>` — catálogo B2B (`catalog.html`)
 
-El catálogo es una herramienta de solicitud de cotización, no una tienda: no
-muestra, guarda ni transmite precios. Su documentación completa está en
+El catálogo es una herramienta de solicitud de cotización, no una tienda.
+Muestra los precios de referencia publicados en Fresa, pero no los envía como
+parte de la orden: Fresa vuelve a resolver el precio vigente al crear cada
+subtarea. Su documentación completa está en
 [docs/catalog.md](docs/catalog.md).
 
 ## Desarrollo local
@@ -46,13 +48,15 @@ npm test
 ## Catálogo y Fresa
 
 El navegador usa únicamente `public/data/catalog-snapshot.json`, un snapshot
-sin precios que está versionado junto con el sitio. Para actualizarlo, ejecuta
+con los campos autorizados, precios e imágenes estables que está versionado
+junto con el sitio. Para actualizarlo, ejecuta
 localmente el generador con credenciales privadas en `.env.local` (ese archivo
 no se versiona):
 
 ```env
-FRESA_CATALOG_API_URL=https://fresaai.app/api/integrations/lists/replace-with-catalog-integration-id
+FRESA_CATALOG_API_URL=https://fresaai.app/api/public/v1/tasks
 FRESA_CATALOG_API_KEY=replace-with-a-rotated-fresa-catalog-key
+FRESA_CATALOG_SOURCES=[{"listId":"replace-with-list-id","name":"Texas","activeFieldId":"replace-with-active-field-id"}]
 ```
 
 ```sh
@@ -64,8 +68,10 @@ npm run build
 
 Las credenciales `FRESA_*` solo se usan durante `npm run snapshot:catalog` y
 nunca entran al bundle ni se necesitan en producción. El formulario de
-cotización se envía directamente a la API pública de Fresa; no hay endpoint
-propio, Cloud Function, base de datos ni búsqueda de clientes activos. El
+cotización se envía directamente a la API pública del formulario de Fresa. El
+mismo formulario valida únicamente el email enviado contra su lista autorizada,
+devuelve el perfil y el estado VIP cuando existe, y crea la tarea principal con
+sus subtareas. No hay endpoint propio, Cloud Function ni base de datos. El
 borrador vive en `sessionStorage`, y la selección de productos puede persistir
 como wishlist.
 

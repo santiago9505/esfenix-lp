@@ -3,7 +3,7 @@
  *
  * This module is the build-time-only adapter for the remote catalog contract.
  * The browser never imports the fetch path: `npm run snapshot:catalog` uses it
- * to produce the checked-in, price-free snapshot consumed by the site.
+ * to produce the checked-in snapshot consumed by the site.
  */
 
 import { getCategoryLabel, resolveCategoryId } from '../data/categories.js';
@@ -11,13 +11,12 @@ import { LOCATIONS } from '../data/locations.js';
 import { catalogOrderForFamily, resolveCatalogFamily } from '../data/catalog-taxonomy.js';
 import { slugify } from './slug.js';
 import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
-import { rememberVariantPrices } from './pricing.js';
+import { priceToCents, rememberVariantPrices } from './pricing.js';
 
 export const FRESA_CATALOG_SOURCE_NAME = 'Landing Page';
-// The public Fresa endpoint accepts up to 1,000 records. The production source
-// currently has more than 1,300 rows, so this reduces six sequential requests
-// to two without changing the response contract.
-const PAGE_LIMIT = 1000;
+// The native public API caps task pages at 200 rows and returns explicit page
+// metadata. Keeping the adapter at that limit makes pagination deterministic.
+const PAGE_LIMIT = 200;
 
 /**
  * @typedef {{
@@ -49,6 +48,8 @@ export class FresaCatalogError extends Error {
 export async function fetchCatalogPages({
   apiUrl,
   apiKey,
+  expectedListId,
+  listName,
   fetchImpl = globalThis.fetch,
 } = {}) {
   const baseUrl = String(apiUrl ?? '').trim();
@@ -100,16 +101,25 @@ export async function fetchCatalogPages({
     if (!response.ok) {
       throw new FresaCatalogError(response.status, messageForStatus(response.status));
     }
+    const isTaskApi = Array.isArray(data?.tasks);
+    const taskPage = isTaskApi
+      ? adaptTaskApiPage(data.tasks, {
+          expectedListId: safeString(expectedListId) || safeString(url.searchParams.get('listId')),
+          listName: safeString(listName) || FRESA_CATALOG_SOURCE_NAME,
+          offset,
+          page: data?.page,
+        })
+      : null;
     const isWrappedCatalog = data?.catalog && typeof data.catalog === 'object';
-    const rawProducts = isWrappedCatalog && Array.isArray(data.catalog.products)
+    const rawProducts = taskPage?.products ?? (isWrappedCatalog && Array.isArray(data.catalog.products)
       ? data.catalog.products
       : Array.isArray(data?.records)
         ? data.records
-        : null;
-    const rawColumns = isWrappedCatalog ? data.catalog.columns : data?.columns;
-    const rawLists = isWrappedCatalog ? data.catalog.lists : data?.lists;
-    const rawPage = isWrappedCatalog ? data.catalog.page : data?.page;
-    const source = isWrappedCatalog ? data.catalog : data?.source;
+        : null);
+    const rawColumns = taskPage?.columns ?? (isWrappedCatalog ? data.catalog.columns : data?.columns);
+    const rawLists = taskPage?.lists ?? (isWrappedCatalog ? data.catalog.lists : data?.lists);
+    const rawPage = taskPage?.page ?? (isWrappedCatalog ? data.catalog.page : data?.page);
+    const source = taskPage?.source ?? (isWrappedCatalog ? data.catalog : data?.source);
 
     if (offset === 0) assertCatalogSource(source, rawColumns);
 
@@ -158,6 +168,77 @@ export async function fetchCatalogPages({
         hasMore: false,
         nextOffset: null,
       },
+    },
+  };
+}
+
+/**
+ * Adapts the native Fresa v1 task response to the catalog normalization
+ * boundary. Custom-field definitions travel beside each value, so no
+ * integration-specific schema or business profile is required.
+ *
+ * @param {Array<Record<string, any>>} tasks
+ * @param {{ expectedListId: string, listName: string, offset: number, page?: Record<string, any> }} options
+ */
+function adaptTaskApiPage(tasks, options) {
+  const expectedListId = safeString(options.expectedListId);
+  if (!expectedListId) {
+    throw new FresaCatalogError(0, 'The native Fresa task endpoint must be configured with a listId.');
+  }
+  if (tasks.some((task) => safeString(task?.list_id) !== expectedListId)) {
+    throw new FresaCatalogError(0, 'The catalog API returned tasks from an unexpected Fresa list.');
+  }
+
+  const columnsById = new Map();
+  const products = tasks.map((task) => {
+    const fields = {};
+    for (const [fieldId, definition] of Object.entries(task?.custom_fields ?? {})) {
+      if (!definition || typeof definition !== 'object') continue;
+      fields[fieldId] = definition.value ?? null;
+      if (!columnsById.has(fieldId)) {
+        const fieldType = safeString(definition.type);
+        columnsById.set(fieldId, {
+          list_id: expectedListId,
+          key: fieldId,
+          field_id: fieldId,
+          field_key: safeString(definition.key),
+          field_name: safeString(definition.name),
+          field_type: fieldType,
+          is_file: normalizeLabel(fieldType) === 'attachments',
+        });
+      }
+    }
+    return {
+      id: safeString(task.task_id),
+      name: safeString(task.name),
+      description: safeString(task.description) || null,
+      listId: expectedListId,
+      listName: options.listName,
+      position: Number(task.position) || 0,
+      fields,
+      createdAt: safeString(task.created_at) || null,
+      updatedAt: safeString(task.updated_at) || null,
+    };
+  });
+
+  return {
+    products,
+    columns: [...columnsById.values()],
+    lists: [{ list_id: expectedListId, name: options.listName }],
+    source: { id: expectedListId, name: FRESA_CATALOG_SOURCE_NAME },
+    page: {
+      offset: Number(options.page?.offset) || options.offset,
+      limit: Number(options.page?.limit) || PAGE_LIMIT,
+      hasMore: typeof options.page?.hasMore === 'boolean'
+        ? options.page.hasMore
+        : tasks.length === PAGE_LIMIT,
+      nextOffset: options.page?.nextOffset === null
+        ? null
+        : Number.isSafeInteger(Number(options.page?.nextOffset))
+          ? Number(options.page.nextOffset)
+          : tasks.length === PAGE_LIMIT
+            ? options.offset + PAGE_LIMIT
+            : null,
     },
   };
 }
@@ -521,8 +602,7 @@ function buildVariants(raw, fields, columns, roleColumns) {
   };
   if (genericPriceColumn) {
     // Some Fresa lists expose one currency column such as `Wholesale amount`
-    // and keep the applicable measure in the sales-unit field. Keep that price
-    // private, but attach it to the internal measure used by the quote line.
+    // and keep the applicable measure in the sales-unit field.
     const genericMeasure = values.measure[0] ?? 'unit';
     prices[genericMeasure] = readColumnValue(fields, genericPriceColumn);
   }
@@ -572,6 +652,11 @@ function buildVariants(raw, fields, columns, roleColumns) {
       color: variant.color,
       lengthCm: variant.lengthCm,
       availableMeasures,
+      prices: Object.fromEntries(
+        Object.entries(prices)
+          .map(([measure, value]) => [measure, priceToCents(value)])
+          .filter(([, cents]) => cents !== null),
+      ),
       attributes,
       images,
       files,

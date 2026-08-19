@@ -1,9 +1,9 @@
 /**
  * Internal catalog pricing.
  *
- * Prices are used only for order-type eligibility. They are intentionally kept
- * outside the public product model and outside QuotePayload, which remains a
- * quote request rather than a checkout payload.
+ * Prices are read-only catalog data. QuotePayload remains a quote request
+ * rather than a checkout payload; Fresa resolves the authoritative price again
+ * from the live form when it creates each order subtask.
  */
 
 export const DELIVERY_MINIMUM_CENTS = 15_000;
@@ -17,8 +17,8 @@ const PRICE_KEYS_BY_MEASURE = {
 };
 
 // The map is keyed by the stable Fresa variant id so grouping/merging and
-// location projections can safely clone variant objects without losing price
-// metadata or exposing it through JSON.stringify().
+// location projections can safely clone variant objects. Serialized snapshots
+// also retain the same values in `variant.prices` for a cold page load.
 const pricesByVariantId = new Map();
 
 /**
@@ -51,7 +51,21 @@ export function getVariantPriceCents(variant, measure) {
   const id = String(variant?.id ?? '').trim();
   const key = PRICE_KEYS_BY_MEASURE[String(measure ?? '').trim().toLowerCase()];
   if (!id || !key) return null;
-  return pricesByVariantId.get(id)?.[key] ?? null;
+  const serialized = variant?.prices && typeof variant.prices === 'object'
+    ? Number(variant.prices[key])
+    : Number.NaN;
+  return pricesByVariantId.get(id)?.[key]
+    ?? (Number.isInteger(serialized) && serialized >= 0 ? serialized : null);
+}
+
+/** @param {number|null|undefined} cents */
+export function formatPrice(cents) {
+  if (!Number.isInteger(cents) || cents < 0) return '';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(cents / 100);
 }
 
 /**

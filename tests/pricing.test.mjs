@@ -35,12 +35,12 @@ function productWithPrices() {
   })[0];
 }
 
-test('Fresa prices remain out of the public product JSON while metrics follow populated fields', () => {
+test('Fresa prices are serialized as cents only for populated measures', () => {
   const product = productWithPrices();
   const variant = product.locations[0].variants[0];
 
   assert.deepEqual(variant.availableMeasures, ['stem']);
-  assert.equal(JSON.stringify(product).includes('0.84'), false);
+  assert.deepEqual(variant.prices, { stem: 84 });
   assert.equal(JSON.stringify(product).includes('bunch_price'), false);
 });
 
