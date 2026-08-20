@@ -161,9 +161,9 @@ export function announce(message) {
 /**
  * Renders an image with the site's branded placeholder fallback.
  *
- * Products without a usable API image or a local fallback intentionally render
- * the site's `.ph` placeholder, so a missing image stays visible as missing
- * while still carrying the site's brand mark.
+ * Products without a usable Fresa image intentionally render the site's `.ph`
+ * placeholder, so missing photography stays visible as missing while still
+ * carrying the site's brand mark.
  *
  * @param {{ src?: string, alt?: string }|null} image
  * @param {{ label: string, className?: string, width?: number, height?: number, eager?: boolean }} options

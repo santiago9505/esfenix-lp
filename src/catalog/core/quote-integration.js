@@ -251,16 +251,13 @@ async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
   const normalizedEmail = normalizeLookupValue(email);
   if (!normalizedEmail) return { ok: false, found: false, error: 'Enter a valid email address.' };
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const { formApiUrl, lookupUrl } = resolveFresaFormApi(formUrl);
     const metadataUrl = new URL(formApiUrl);
     metadataUrl.searchParams.set('catalog', 'metadata');
-    const formResponse = await doFetch(metadataUrl.toString(), {
+    const formResponse = await fetchWithTimeout(doFetch, metadataUrl.toString(), {
       headers: { Accept: 'application/json' },
-      signal: controller.signal,
-    });
+    }, timeoutMs);
     const formData = await readJson(formResponse);
     const fields = Array.isArray(formData?.form?.fields) ? formData.form.fields : [];
     const emailField = fields.find((field) =>
@@ -275,12 +272,11 @@ async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
       return { ok: false, found: false, error: 'Customer validation is not configured in Fresa.' };
     }
 
-    const response = await doFetch(lookupUrl, {
+    const response = await fetchWithTimeout(doFetch, lookupUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ answers: { [emailField.id]: normalizedEmail } }),
-      signal: controller.signal,
-    });
+    }, timeoutMs);
     const data = await readJson(response);
     if (!response.ok || data?.success !== true) {
       return { ok: false, found: false, error: data?.error || 'Customer validation is temporarily unavailable.' };
@@ -304,24 +300,18 @@ async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
         ? 'Customer validation took too long. Please try again.'
         : 'Customer validation is temporarily unavailable.',
     };
-  } finally {
-    clearTimeout(timer);
   }
 }
 
 async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserveSlot, summary }) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
   try {
     const { formApiUrl, submitUrl } = resolveFresaFormApi(formUrl);
     const metadataUrl = new URL(formApiUrl);
     metadataUrl.searchParams.set('catalog', 'metadata');
-    const metadataResponse = await doFetch(metadataUrl.toString(), {
+    const metadataResponse = await fetchWithTimeout(doFetch, metadataUrl.toString(), {
       method: 'GET',
       headers: { Accept: 'application/json' },
-      signal: controller.signal,
-    });
+    }, timeoutMs);
     const metadata = await readJson(metadataResponse);
     if (!metadataResponse.ok || metadata?.success !== true) {
       return {
@@ -335,11 +325,10 @@ async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserve
     const productFieldId = resolveFresaProductFieldId(payload, metadata);
     const scopedFormUrl = new URL(formApiUrl);
     scopedFormUrl.searchParams.set('catalogFieldId', productFieldId);
-    const formResponse = await doFetch(scopedFormUrl.toString(), {
+    const formResponse = await fetchWithTimeout(doFetch, scopedFormUrl.toString(), {
       method: 'GET',
       headers: { Accept: 'application/json' },
-      signal: controller.signal,
-    });
+    }, timeoutMs);
     const formData = await readJson(formResponse);
     if (!formResponse.ok || formData?.success !== true) {
       return {
@@ -374,12 +363,11 @@ async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserve
       }
     }
 
-    const response = await doFetch(submitUrl, {
+    const response = await fetchWithTimeout(doFetch, submitUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ answers: submission.answers, meta: submission.meta }),
-      signal: controller.signal,
-    });
+    }, timeoutMs);
     const data = await readJson(response);
     if (!response.ok || data?.success !== true || typeof data?.taskId !== 'string') {
       return {
@@ -411,6 +399,14 @@ async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserve
           : 'We could not reach Fresa. Your selection is still saved.',
       summary,
     };
+  }
+}
+
+async function fetchWithTimeout(doFetch, url, init, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await doFetch(url, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timer);
   }

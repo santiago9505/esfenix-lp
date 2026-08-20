@@ -125,6 +125,17 @@ async function snapshotProduct(product) {
   };
 }
 
+/** Prices are internal catalog data and must never enter the public snapshot. */
+function stripPublicPrices(products) {
+  return products.map((product) => ({
+    ...product,
+    locations: (product.locations ?? []).map((location) => ({
+      ...location,
+      variants: (location.variants ?? []).map(({ prices: _prices, ...variant }) => variant),
+    })),
+  }));
+}
+
 function readCatalogSources(env, apiUrl) {
   const configured = String(env.FRESA_CATALOG_SOURCES ?? '').trim();
   if (configured) {
@@ -172,6 +183,11 @@ for (const source of sources) {
     apiKey,
     expectedListId: source.listId,
     listName: source.name,
+    // The list endpoint can lag behind task details for newly uploaded
+    // attachments. Hydrate empty file fields while building the static release.
+    hydrateAttachments: true,
+    attachmentConcurrency: 32,
+    attachmentTimeoutMs: 10000,
   }));
 }
 
@@ -185,7 +201,8 @@ const payload = {
     lists: payloads.flatMap((entry) => entry.catalog.lists ?? []),
   },
 };
-const products = await Promise.all(normalizeCatalog(payload).map(snapshotProduct));
+const productsWithInternalData = await Promise.all(normalizeCatalog(payload).map(snapshotProduct));
+const products = stripPublicPrices(productsWithInternalData);
 await pruneCatalogAssets(products);
 
 await fs.mkdir(path.dirname(outputPath), { recursive: true });
@@ -196,4 +213,4 @@ await fs.writeFile(outputPath, `${JSON.stringify({
 })}\n`, 'utf8');
 
 const bytes = Buffer.byteLength(JSON.stringify(products));
-console.log(`Wrote ${products.length} products with stable media and catalog prices (${bytes} bytes) to ${outputPath}`);
+console.log(`Wrote ${products.length} products with stable media and no public prices (${bytes} bytes) to ${outputPath}`);

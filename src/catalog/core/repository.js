@@ -10,7 +10,6 @@
 import { compareCategories } from '../data/categories.js';
 import { LOCATIONS, resolveLocation } from '../data/locations.js';
 import { sanitizeCatalogDescription } from './fresa-catalog.js';
-import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
 
 /**
  * @typedef {import('./types').Product} Product
@@ -34,9 +33,9 @@ let initialProductsPromise = null;
 export const PRODUCT_SNAPSHOT_URL = '/data/catalog-snapshot.json';
 
 /**
- * Loads the bundled product list with read-only reference prices. The browser deliberately stays
- * static-only so the basic Firebase Hosting plan does not need Cloud Functions
- * or a database. Refresh the snapshot during a release when Fresa changes.
+ * Loads the bundled product list without public prices. The browser deliberately
+ * stays static-only so the basic Firebase Hosting plan does not need Cloud
+ * Functions or a database. Refresh the snapshot during a release when Fresa changes.
  *
  * @param {{
  *   snapshotUrl?: string,
@@ -74,7 +73,7 @@ async function loadProductSnapshot(options) {
   const payload = await response.json();
   if (!isProductList(payload?.products)) throw new Error('Catalog snapshot is invalid.');
 
-  productsCache = applyLocalProductImageFallbacks(sanitizeProductDescriptions(payload.products));
+  productsCache = sanitizeProductDescriptions(payload.products);
   return productsCache;
 }
 
@@ -142,9 +141,35 @@ export function getProductsForLocation(products, locationId) {
     if (!entry || !entry.catalogAvailable || entry.variants.length === 0) continue;
 
     const { locations, ...rest } = product;
-    list.push({ ...rest, variants: entry.variants, catalogSource });
+    const locationImages = imagesForVariants(entry.variants);
+    list.push({
+      ...rest,
+      // A location without an uploaded image stays blank. Do not borrow a
+      // confirmed photo from another Fresa list just because the product name
+      // matches.
+      images: locationImages,
+      variants: entry.variants,
+      catalogSource,
+    });
   }
   return sortProducts(list);
+}
+
+/**
+ * Product cards are location-scoped. A real upload in another catalog source
+ * must not make this location appear to have a photo it does not have.
+ * @param {Array<Record<string, any>>} variants
+ */
+function imagesForVariants(variants) {
+  const seen = new Set();
+  return (variants ?? []).flatMap((variant) => variant.images ?? []).filter((image) => {
+    const src = String(image?.src ?? '').trim();
+    if (!src) return false;
+    const key = `${image?.id ?? ''}|${src}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**

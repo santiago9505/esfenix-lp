@@ -18,6 +18,7 @@ test('the fast catalog snapshot is populated and contains only stable media URLs
     'compressed snapshot stays small enough for the first render',
   );
   assert.doesNotMatch(serialized, /https?:\/\//i, 'expiring remote attachments are not bundled');
+  assert.doesNotMatch(serialized, /"prices"\s*:/i, 'prices stay out of the public snapshot');
 
   for (const product of snapshot.products) {
     for (const location of product.locations ?? []) {

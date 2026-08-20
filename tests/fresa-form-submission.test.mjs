@@ -19,6 +19,7 @@ function formResponse() {
         { id: 'first', label: 'First Name', type: 'short_text' },
         { id: 'last', label: 'Last Name', type: 'short_text' },
         { id: 'phone', label: 'Phone Number', type: 'phone' },
+        { id: 'company', label: 'Company', type: 'short_text' },
         { id: 'location', label: 'Location', type: 'select', options: [{ value: 'tx__houston', label: 'TX - HOUSTON' }] },
         catalogField('regular-products', false),
         catalogField('vip-products', true),
@@ -117,6 +118,7 @@ test('maps all contact, delivery and product fields to live Fresa ids', () => {
   assert.equal(submission.answers.vip, false);
   assert.equal(submission.answers.first, 'Ana');
   assert.equal(submission.answers.phone, '+57 350 576 5962');
+  assert.equal(submission.answers.company, 'Esfenix Test');
   assert.equal(submission.answers.location, 'tx__houston');
   assert.equal(submission.answers.type, 'delivery');
   assert.equal(submission.answers.delivery, '2026-08-14T08:00');

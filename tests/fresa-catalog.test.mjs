@@ -80,7 +80,40 @@ test('normalizes Fresa columns, prices and attachments without assuming field ke
   assert.equal(products[0].description, null, 'generated price prose is not shown as an editorial description');
 });
 
-test('uses local flower photography only when Fresa has no usable image', () => {
+test('accepts direct image links and wrapped attachment links from Fresa', () => {
+  const products = normalizeCatalog({
+    catalog: {
+      columns,
+      products: [
+        {
+          id: 'alstroemeria-green',
+          listId: 'flowers',
+          listName: 'Seattle',
+          name: 'Alstroemeria Green',
+          fields: {
+            type_product_field: 'Other Flowers',
+            gallery_field: 'https://cdn.example/alstroemeria-green',
+          },
+        },
+        {
+          id: 'alstroemeria-pink',
+          listId: 'flowers',
+          listName: 'Seattle',
+          name: 'Alstroemeria Pink',
+          fields: {
+            type_product_field: 'Other Flowers',
+            gallery_field: { link: 'https://cdn.example/alstroemeria-pink?token=1' },
+          },
+        },
+      ],
+    },
+  });
+
+  assert.equal(products[0].images[0].src, 'https://cdn.example/alstroemeria-green');
+  assert.equal(products[1].images[0].src, 'https://cdn.example/alstroemeria-pink?token=1');
+});
+
+test('keeps missing photography blank and shares a real upload across stem lengths', () => {
   const baseProduct = {
     id: 'ecuadorian-roses-60',
     listId: 'flowers',
@@ -93,27 +126,67 @@ test('uses local flower photography only when Fresa has no usable image', () => 
     },
   };
 
-  const local = normalizeCatalog({ catalog: { columns, products: [baseProduct] } })[0];
-  assert.match(local.images[0].src, /flowers-fallback\/roses-freedom\.webp$/);
-  assert.ok(local.images.length > 1, 'EC ROSES receives several nearby local photos');
-  assert.equal(local.images[0].isFallback, true);
-  assert.match(local.locations[0].variants[0].images[0].src, /roses-freedom\.webp$/);
-  assert.ok(local.locations[0].variants[0].images.length > 1, 'the selected rose variant also has nearby fallback photos');
+  const missing = normalizeCatalog({ catalog: { columns, products: [baseProduct] } })[0];
+  assert.deepEqual(missing.images, []);
+  assert.deepEqual(missing.locations[0].variants[0].images, []);
 
-  const fromApi = normalizeCatalog({
+  const products = normalizeCatalog({
     catalog: {
       columns,
-      products: [{
+      products: [50, 60].map((length) => ({
         ...baseProduct,
+        id: `ecuadorian-roses-${length}`,
         fields: {
           ...baseProduct.fields,
-          gallery_field: [{ id: 'api-image', name: 'freedom.webp', type: 'image/webp', url: 'https://cdn/freedom.webp' }],
+          stem_size: `${length} cm`,
+          gallery_field: length === 50
+            ? [{ id: 'api-image', name: 'freedom.webp', type: 'image/webp', url: 'https://cdn/freedom.webp' }]
+            : [],
         },
-      }],
+      })),
+    },
+  });
+  const fromApi = products[0];
+  assert.equal(fromApi.images[0].src, 'https://cdn/freedom.webp');
+  assert.deepEqual(
+    fromApi.locations[0].variants.map((variant) => variant.images[0]?.src),
+    ['https://cdn/freedom.webp', 'https://cdn/freedom.webp'],
+  );
+});
+
+test('does not borrow photography across catalog locations', () => {
+  const product = (id, listName, galleryField) => ({
+    id,
+    listId: 'flowers',
+    listName,
+    name: 'Alstroemeria Green',
+    fields: {
+      type_product_field: 'Other Flowers',
+      floral_variant: 'Alstroemeria',
+      shade_attr: 'Green',
+      stem_size: '60 cm',
+      gallery_field: galleryField,
+    },
+  });
+
+  const normalized = normalizeCatalog({
+    catalog: {
+      columns,
+      products: [
+        product('seattle-image', 'Seattle', [{ id: 'seattle-photo', type: 'image/png', url: 'https://cdn/seattle.png' }]),
+        product('texas-no-image', 'Texas', []),
+      ],
     },
   })[0];
-  assert.equal(fromApi.images[0].src, 'https://cdn/freedom.webp');
-  assert.ok(fromApi.images.every((image) => !image.isFallback), 'API photography is never mixed with local fallback');
+
+  assert.equal(
+    normalized.locations.find((location) => location.location === 'seattle')?.variants[0].images[0]?.src,
+    'https://cdn/seattle.png',
+  );
+  assert.deepEqual(
+    normalized.locations.find((location) => location.location === 'houston')?.variants[0].images,
+    [],
+  );
 });
 
 test('groups size suffixes in product names when Fresa has no length column', () => {
@@ -276,6 +349,68 @@ test('paginates the native task API and adapts authorized custom fields', async 
   const product = normalizeCatalog(response)[0];
   assert.equal(product.category, 'roses');
   assert.equal(product.locations[0].variants[0].prices.unit, 125);
+});
+
+test('hydrates attachment links when the task list lags behind task detail', async () => {
+  const calls = [];
+  const fetchImpl = async (url) => {
+    const parsed = new URL(url);
+    calls.push(parsed.pathname);
+    if (parsed.pathname.endsWith('/rose-1')) {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            success: true,
+            task: {
+              task_id: 'rose-1',
+              list_id: 'flowers',
+              custom_fields: {
+                image: {
+                  key: 'product_image',
+                  name: 'Product_image',
+                  type: 'attachments',
+                  value: [{ id: 'rose-photo', name: 'rose.webp', type: 'image/webp', url: 'https://cdn/rose.webp' }],
+                },
+              },
+            },
+          };
+        },
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          success: true,
+          tasks: [{
+            task_id: 'rose-1',
+            list_id: 'flowers',
+            name: 'Roses',
+            custom_fields: {
+              type: { key: 'type_product', name: 'type_product', type: 'select', value: 'Roses' },
+              image: { key: 'product_image', name: 'Product_image', type: 'attachments', value: [] },
+            },
+          }],
+          page: { offset: 0, limit: 200, hasMore: false, nextOffset: null },
+        };
+      },
+    };
+  };
+
+  const response = await fetchCatalogPages({
+    apiUrl: 'https://fresa.example/api/public/v1/tasks?listId=flowers',
+    apiKey: 'catalog-key',
+    expectedListId: 'flowers',
+    listName: 'Texas',
+    hydrateAttachments: true,
+    fetchImpl,
+  });
+
+  assert.deepEqual(calls, ['/api/public/v1/tasks', '/api/public/v1/tasks/rose-1']);
+  assert.equal(normalizeCatalog(response)[0].images[0].src, 'https://cdn/rose.webp');
 });
 
 test('accepts Fresa source responses that expose products as top-level records', async () => {

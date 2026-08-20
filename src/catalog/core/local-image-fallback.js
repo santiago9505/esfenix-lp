@@ -1,5 +1,5 @@
 /**
- * Local photography fallback for the runtime Fresa catalog.
+ * Legacy local photography fallback for the runtime Fresa catalog.
  *
  * Fresa remains the source of truth. Local photos are considered only when a
  * product has no usable Fresa image at all; a single non-empty API image keeps
@@ -8,8 +8,11 @@
 
 import { LOCAL_PRODUCT_IMAGES } from '../data/local-product-images.js';
 
-/** Toggle for the local-photo fallback. */
-export const LOCAL_PRODUCT_IMAGE_FALLBACK_ENABLED = true;
+/**
+ * Kept for backwards compatibility with older imports, but disabled so a
+ * missing Fresa upload remains a blank placeholder.
+ */
+export const LOCAL_PRODUCT_IMAGE_FALLBACK_ENABLED = false;
 
 const LOCAL_KEY_ALIASES = new Map([
   ['candelight', 'candlelight'],

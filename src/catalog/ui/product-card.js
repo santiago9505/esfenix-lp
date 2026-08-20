@@ -12,21 +12,7 @@
  */
 
 import { getCategoryLabel } from '../data/categories.js';
-import { formatPrice } from '../core/pricing.js';
 import { el, firstUsableImage, productMedia } from './dom.js';
-
-/** @param {import('../core/repository').LocationProduct} product */
-function productPriceSummary(product) {
-  const prices = (product.variants ?? []).flatMap((variant) =>
-    Object.entries(variant.prices ?? {})
-      .filter(([, cents]) => Number.isInteger(cents) && cents >= 0)
-      .map(([measure, cents]) => ({ measure, cents })),
-  );
-  if (prices.length === 0) return '';
-  const lowest = prices.reduce((best, entry) => entry.cents < best.cents ? entry : best);
-  const prefix = prices.some((entry) => entry.cents !== lowest.cents) ? 'From ' : '';
-  return `${prefix}${formatPrice(lowest.cents)} / ${lowest.measure}`;
-}
 
 /** @param {import('../core/repository').LocationProduct} product */
 function productOptionSummary(product) {
@@ -84,9 +70,6 @@ export function productCard(options) {
       ]),
 
       el('p', { class: 'cat-card-variety', text: productOptionSummary(product) }),
-      productPriceSummary(product)
-        ? el('p', { class: 'cat-card-price', text: productPriceSummary(product) })
-        : null,
 
       el('div', { class: 'cat-card-actions' }, [
         el('button', {

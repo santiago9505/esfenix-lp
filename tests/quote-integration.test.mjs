@@ -61,6 +61,7 @@ function publicFormResponse() {
     { id: 'first', label: 'First Name', type: 'short_text' },
     { id: 'last', label: 'Last Name', type: 'short_text' },
     { id: 'phone', label: 'Phone Number', type: 'phone' },
+    { id: 'company', label: 'Company', type: 'short_text' },
     { id: 'location', label: 'Location', type: 'select', options: [{ value: 'nation_wide', label: 'NATION WIDE' }] },
     {
       id: 'products',
@@ -143,6 +144,31 @@ test('without a legacy session endpoint the response is submitted through the Fr
   }]);
 });
 
+test('each Fresa form phase receives its own timeout budget', async () => {
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: null,
+    timeoutMs: 50,
+    fetchImpl: (url, options) => new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        resolve(String(url).endsWith('/submit')
+          ? { ok: true, status: 200, json: async () => ({ success: true, taskId: 'created-task' }) }
+          : { ok: true, status: 200, json: async () => publicFormResponse() });
+      }, 30);
+      options.signal.addEventListener('abort', () => {
+        clearTimeout(timer);
+        const error = new Error('aborted');
+        error.name = 'AbortError';
+        reject(error);
+      }, { once: true });
+    }),
+  });
+
+  const result = await integration.start(readyPickupPayload());
+  assert.equal(result.ok, true);
+  assert.equal(result.taskId, 'created-task');
+});
+
 test('validates one active client email and returns the scoped profile and VIP flag', async () => {
   const form = publicFormResponse();
   form.form.fields[0].actionRules = [{
@@ -161,6 +187,11 @@ test('validates one active client email and returns the scoped profile and VIP f
         type: 'populate_field_from_lookup',
         targetFieldId: 'vip',
         lookupValueTarget: { listId: 'clients', target: 'custom_field', customFieldId: 'client-vip' },
+      },
+      {
+        type: 'populate_field_from_lookup',
+        targetFieldId: 'company',
+        lookupValueTarget: { listId: 'clients', target: 'custom_field', customFieldId: 'client-company' },
       },
     ],
   }];
@@ -184,6 +215,7 @@ test('validates one active client email and returns the scoped profile and VIP f
                   values: {
                     'clients|custom_field:client-first': 'Ana',
                     'clients|custom_field:client-vip': true,
+                    'clients|custom_field:client-company': 'Flowers Inc.',
                   },
                 }],
               },
@@ -200,6 +232,7 @@ test('validates one active client email and returns the scoped profile and VIP f
   assert.equal(result.found, true);
   assert.equal(result.vip, true);
   assert.equal(result.profile['First Name'], 'Ana');
+  assert.equal(result.profile.Company, 'Flowers Inc.');
   assert.equal(result.taskId, 'client-task');
   assert.equal(calls[1].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5/lookup');
   assert.deepEqual(JSON.parse(calls[1].options.body), { answers: { email: 'buyer@example.com' } });

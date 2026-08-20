@@ -6,9 +6,8 @@ Landing page y catálogo de productos de Esfenix.
 - `/catalog` y `/catalog/<categoria>/<slug>` — catálogo B2B (`catalog.html`)
 
 El catálogo es una herramienta de solicitud de cotización, no una tienda.
-Muestra los precios de referencia publicados en Fresa, pero no los envía como
-parte de la orden: Fresa vuelve a resolver el precio vigente al crear cada
-subtarea. Su documentación completa está en
+No muestra precios en el sitio público. Fresa vuelve a resolver el precio
+vigente en el backend al crear cada subtarea. Su documentación completa está en
 [docs/catalog.md](docs/catalog.md).
 
 ## Desarrollo local
@@ -48,8 +47,8 @@ npm test
 ## Catálogo y Fresa
 
 El navegador usa únicamente `public/data/catalog-snapshot.json`, un snapshot
-con los campos autorizados, precios e imágenes estables que está versionado
-junto con el sitio. Para actualizarlo, ejecuta
+con los campos autorizados e imágenes estables, sin precios públicos, que está
+versionado junto con el sitio. Para actualizarlo, ejecuta
 localmente el generador con credenciales privadas en `.env.local` (ese archivo
 no se versiona):
 

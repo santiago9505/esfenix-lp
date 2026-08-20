@@ -339,7 +339,7 @@ export function renderQuoteFormView(ctx, options) {
         : state.clientLookup === 'not-found'
           ? el('div', { class: 'cat-quote-info-note', role: 'status' }, [
               el('strong', { text: 'New customer details' }),
-              el('p', { text: 'This email is not in the active customer list, so standard pricing will be used.' }),
+              el('p', { text: 'This email is not in the active customer list, so the standard quote process will be used.' }),
             ])
           : null,
       field({

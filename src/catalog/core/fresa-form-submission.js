@@ -404,6 +404,7 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
   const firstNameField = requireField(fields, 'First Name', 'short_text');
   const lastNameField = requireField(fields, 'Last Name', 'short_text');
   const phoneField = requireField(fields, 'Phone Number', 'phone');
+  const companyField = findField(fields, 'Company', 'short_text');
   const locationField = requireField(fields, 'Location', 'select');
   const orderTypeField = requireField(fields, 'Type of Order', 'select');
 
@@ -440,6 +441,7 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     [firstNameField.id]: contact.firstName ?? '',
     [lastNameField.id]: contact.lastName ?? '',
     [phoneField.id]: contact.phone ?? '',
+    ...(companyField?.id ? { [companyField.id]: contact.company ?? '' } : {}),
     [locationField.id]: locationValue,
     [productField.id]: buildProductLines(payload, productField.catalogConfig),
     [orderTypeField.id]: orderTypeValue,

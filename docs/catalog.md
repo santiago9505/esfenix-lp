@@ -1,9 +1,9 @@
 # Product catalog
 
 The catalog lives at `/catalog` and `/catalog/<category>/<slug>`. It is a
-quote-request tool, not a checkout. It shows read-only prices published from
-authorized Fresa fields, while order payloads never submit a browser-provided
-price. Fresa resolves the authoritative value again for each created subtask.
+quote-request tool, not a checkout. It never renders prices publicly. Fresa
+resolves the authoritative value in the backend again for each created
+subtask.
 
 The landing page is untouched apart from three things — a link to the shared
 stylesheet, the header/overlay/footer moving into shared partials, and the
@@ -132,12 +132,12 @@ Two additions worth knowing about:
 - `ProductVariant.attributes` — for facts that are neither variety, colour nor
   length: `{ stemsPerBunch: 20 }`, `{ origin: 'Canada' }`.
 
-Catalog variants may include a `prices` object keyed by sales measure. Three
+Catalog variants use the authorized sales-measure fields internally. Three
 separate boundaries keep that reference data safe:
 
 1. The Fresa API credential authorizes only the configured lists and fields.
 2. `npm run snapshot:catalog` copies attachment bytes locally and never writes
-   the API credential or expiring signed URLs into the snapshot.
+   the API credential, expiring signed URLs or prices into the snapshot.
 3. `assertNoPricing()` rejects any order payload containing a price before it
    leaves the browser; the live Fresa form supplies the authoritative price.
 
@@ -167,7 +167,9 @@ pages by task id. The preferred source is the native `/api/public/v1/tasks`
 response; legacy `catalog.products` and top-level `records` responses remain
 supported by the adapter. Custom values are read only through their Fresa field
 descriptors, and the product taxonomy is validated before the snapshot is
-written.
+written. For native task lists, empty attachment fields are hydrated from the
+corresponding task-detail response because Fresa can expose a newly uploaded
+file in the detail response before it appears in the paginated list.
 
 Categories come from an authorized Fresa category column or, when the catalog
 uses lists as categories, from `listName`:
@@ -200,11 +202,11 @@ The legacy workbook generation scripts are not used by the landing runtime.
 
 If the product needs a photo or file, attach it in Fresa. The snapshot generator
 downloads the attachment, converts raster product photography to bounded WebP,
-removes obsolete generated assets and publishes a stable local URL. When a product has no usable Fresa image,
-the local photography imported into `public/assets/images/flowers-fallback/`
-is used by variety where there is an exact match, or by the closest rose
-family when Fresa does not expose enough detail; a product with at least one
-usable Fresa image never mixes in local fallback photography.
+removes obsolete generated assets and publishes a stable local URL. Products
+without a usable Fresa image keep the neutral placeholder. When the same
+variety and colour are offered at multiple stem lengths, a real Fresa image is
+shared across those lengths; it is not copied to another variety, colour or
+catalog location.
 
 ### Modify a location
 
@@ -395,10 +397,9 @@ catalog.
 5. **`Bells of Irland`** is spelled that way in every source. Left as-is; worth
    a decision.
 
-6. **Seed photography is incomplete.** The runtime first uses Fresa
-   attachments, then the local variety-matched fallback under
-   `public/assets/images/flowers-fallback/`; products with neither source keep
-   the neutral placeholder.
+6. **Photography is intentionally incomplete.** The runtime only uses real
+   Fresa attachments. Products and location variants without an uploaded image
+   keep the neutral placeholder.
 
 7. **The Woodlands has no separate product list.** It is served from the Texas
    native list while keeping its own service centre, which matches the Fresa

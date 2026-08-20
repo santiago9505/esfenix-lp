@@ -10,7 +10,6 @@ import { getCategoryLabel, resolveCategoryId } from '../data/categories.js';
 import { LOCATIONS } from '../data/locations.js';
 import { catalogOrderForFamily, resolveCatalogFamily } from '../data/catalog-taxonomy.js';
 import { slugify } from './slug.js';
-import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
 import { priceToCents, rememberVariantPrices } from './pricing.js';
 
 export const FRESA_CATALOG_SOURCE_NAME = 'Landing Page';
@@ -43,7 +42,9 @@ export class FresaCatalogError extends Error {
 
 /**
  * Fetches every page from Fresa. The first page supplies the catalog metadata;
- * later pages only add products and are merged by product.id.
+ * later pages only add products and are merged by product.id. Native task list
+ * responses can lag behind task detail responses for attachments, so the
+ * build-time snapshot may opt into detail hydration.
  */
 export async function fetchCatalogPages({
   apiUrl,
@@ -51,6 +52,9 @@ export async function fetchCatalogPages({
   expectedListId,
   listName,
   fetchImpl = globalThis.fetch,
+  hydrateAttachments = false,
+  attachmentConcurrency = 12,
+  attachmentTimeoutMs = 8000,
 } = {}) {
   const baseUrl = String(apiUrl ?? '').trim();
   const token = String(apiKey ?? '').trim();
@@ -102,8 +106,17 @@ export async function fetchCatalogPages({
       throw new FresaCatalogError(response.status, messageForStatus(response.status));
     }
     const isTaskApi = Array.isArray(data?.tasks);
+    const tasks = isTaskApi && hydrateAttachments
+      ? await hydrateTaskAttachments(data.tasks, {
+          listUrl: url,
+          apiKey: token,
+          fetchImpl,
+          concurrency: attachmentConcurrency,
+          timeoutMs: attachmentTimeoutMs,
+        })
+      : data.tasks;
     const taskPage = isTaskApi
-      ? adaptTaskApiPage(data.tasks, {
+      ? adaptTaskApiPage(tasks, {
           expectedListId: safeString(expectedListId) || safeString(url.searchParams.get('listId')),
           listName: safeString(listName) || FRESA_CATALOG_SOURCE_NAME,
           offset,
@@ -170,6 +183,110 @@ export async function fetchCatalogPages({
       },
     },
   };
+}
+
+/**
+ * The task list endpoint may expose an attachment column as an empty array
+ * while the task detail endpoint already has the uploaded file. Hydrate only
+ * those empty attachment fields and leave the list response untouched when a
+ * detail request is unavailable.
+ *
+ * @param {Array<Record<string, any>>} tasks
+ * @param {{ listUrl: URL, apiKey: string, fetchImpl: typeof fetch, concurrency?: number, timeoutMs?: number }} options
+ */
+async function hydrateTaskAttachments(tasks, options) {
+  const candidates = tasks.filter((task) => Object.values(task?.custom_fields ?? {})
+    .some((field) => normalizeLabel(field?.type) === 'attachments' && !hasAttachmentValue(field?.value)));
+  if (candidates.length === 0) return tasks;
+
+  const hydrated = await mapWithConcurrency(candidates, options.concurrency ?? 12, async (task) => {
+    const taskId = safeString(task?.task_id);
+    if (!taskId) return task;
+
+    const detailUrl = new URL(options.listUrl.toString());
+    detailUrl.search = '';
+    detailUrl.pathname = `${detailUrl.pathname.replace(/\/$/, '')}/${encodeURIComponent(taskId)}`;
+
+    try {
+      const response = await fetchWithTimeout(options.fetchImpl, detailUrl.toString(), {
+        headers: options.apiKey
+          ? { Authorization: `Bearer ${options.apiKey}` }
+          : { Accept: 'application/json' },
+        cache: options.apiKey ? 'no-store' : 'no-cache',
+      }, options.timeoutMs ?? 8000);
+      if (!response?.ok) return task;
+      const data = await response.json();
+      const detail = data?.task;
+      if (!detail || safeString(detail.list_id) !== safeString(task.list_id)) return task;
+      return {
+        ...task,
+        custom_fields: {
+          ...(task.custom_fields ?? {}),
+          ...(detail.custom_fields ?? {}),
+        },
+      };
+    } catch {
+      return task;
+    }
+  });
+
+  const byId = new Map(hydrated.map((task) => [safeString(task.task_id), task]));
+  return tasks.map((task) => byId.get(safeString(task.task_id)) ?? task);
+}
+
+/**
+ * @param {typeof fetch} fetchImpl
+ * @param {string} url
+ * @param {RequestInit} init
+ * @param {number} timeoutMs
+ */
+async function fetchWithTimeout(fetchImpl, url, init, timeoutMs) {
+  const controller = new AbortController();
+  let timer;
+  let timedOut = false;
+  try {
+    return await Promise.race([
+      fetchImpl(url, { ...init, signal: controller.signal }),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+          reject(new Error('Fresa attachment detail timed out.'));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+    if (timedOut) controller.abort();
+  }
+}
+
+/** @param {unknown} value */
+function hasAttachmentValue(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  if (value === null || value === undefined || value === '') return false;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  return true;
+}
+
+/**
+ * @template T
+ * @param {T[]} values
+ * @param {number} concurrency
+ * @param {(value: T, index: number) => Promise<T>} worker
+ * @returns {Promise<T[]>}
+ */
+async function mapWithConcurrency(values, concurrency, worker) {
+  const results = new Array(values.length);
+  let nextIndex = 0;
+  const workerCount = Math.max(1, Math.min(Number(concurrency) || 1, values.length));
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (nextIndex < values.length) {
+      const index = nextIndex++;
+      results[index] = await worker(values[index], index);
+    }
+  }));
+  return results;
 }
 
 /**
@@ -332,7 +449,69 @@ export function normalizeCatalog(payload) {
     usedSlugs.add(slug);
   }
 
-  return applyLocalProductImageFallbacks(groupedProducts);
+  return inheritImagesAcrossStemLengths(groupedProducts);
+}
+
+/**
+ * A Fresa photo belongs to the flower option, not to a particular stem
+ * length. When one length has a real upload, share it with variants in the
+ * same catalog location whose variety, colour and attributes are identical.
+ * Other locations, varieties, colours and products remain blank when they
+ * have no upload.
+ *
+ * @param {Array<Record<string, any>>} products
+ * @returns {Array<Record<string, any>>}
+ */
+export function inheritImagesAcrossStemLengths(products) {
+  for (const product of products) {
+    for (const location of product.locations ?? []) {
+      const groups = new Map();
+
+      for (const variant of location.variants ?? []) {
+        const key = imageIdentityWithoutLength(variant);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(variant);
+      }
+
+      for (const variants of groups.values()) {
+        const images = uniqueAttachments(
+          variants.flatMap((variant) => (variant.images ?? []).filter(hasUsableImage)),
+        );
+        if (images.length === 0) continue;
+
+        for (const variant of variants) {
+          if (!hasUsableImage(variant.images)) variant.images = [...images];
+        }
+      }
+    }
+
+    // Keep the product gallery in sync with the variant galleries, while
+    // preserving the source attachments already present at product level.
+    product.images = uniqueAttachments([
+      ...(product.images ?? []),
+      ...(product.locations ?? []).flatMap((location) =>
+        (location.variants ?? []).flatMap((variant) => variant.images ?? []),
+      ),
+    ]);
+  }
+
+  return products;
+}
+
+/** @param {Record<string, any>} variant */
+function imageIdentityWithoutLength(variant) {
+  return JSON.stringify([
+    normalizeLabel(variant.variety),
+    normalizeLabel(variant.color),
+    Object.entries(variant.attributes ?? {})
+      .map(([key, value]) => [normalizeLabel(key), normalizeLabel(value)])
+      .sort(([a], [b]) => a.localeCompare(b)),
+  ]);
+}
+
+/** @param {Record<string, any>} image */
+function hasUsableImage(image) {
+  return Boolean(String(image?.src ?? '').trim());
 }
 
 /**
@@ -637,7 +816,9 @@ function buildVariants(raw, fields, columns, roleColumns) {
 
   const attachments = columns
     .filter(isAttachmentColumn)
-    .flatMap((column) => attachmentValues(readColumnValue(fields, column)));
+    .flatMap((column) => attachmentValues(readColumnValue(fields, column), {
+      imageHint: isImageAttachmentColumn(column),
+    }));
   const images = attachments.filter((attachment) => attachment.isImage);
   const files = attachments.filter((attachment) => !attachment.isImage);
 
@@ -780,6 +961,14 @@ function isAttachmentColumn(column) {
 }
 
 /** @param {Record<string, unknown>} column */
+function isImageAttachmentColumn(column) {
+  const label = [column.key, column.field_key, column.field_name]
+    .map(normalizeLabel)
+    .join(' ');
+  return /(^|\s)(image|images|photo|photos|picture|pictures|imagen|imagenes|foto|fotos|gallery|galeria)(\s|$)/.test(label);
+}
+
+/** @param {Record<string, unknown>} column */
 function isPrivateColumn(column) {
   const label = [column.key, column.field_key, column.field_name, column.field_type]
     .map(normalizeLabel)
@@ -886,16 +1075,26 @@ function normalizeLabel(value) {
     .replace(/\s+/g, ' ');
 }
 
-/** @param {unknown} value */
-function attachmentValues(value) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((file) => file && typeof file === 'object')
+/**
+ * Fresa normally returns attachment arrays, but imported/native fields can
+ * also expose one URL, an attachment object, or a wrapper around either.
+ * Normalize all of those shapes at the integration boundary so the rest of
+ * the catalog only deals with stable attachment records.
+ *
+ * @param {unknown} value
+ * @param {{ imageHint?: boolean }} [options]
+ */
+function attachmentValues(value, options = {}) {
+  return attachmentEntries(value)
     .map((file, index) => {
-      const type = safeString(file.type);
-      const name = safeString(file.name) || `Attachment ${index + 1}`;
-      const url = safeString(file.url) || null;
-      const isImage = file.isImage === true || type.toLocaleLowerCase().startsWith('image/');
+      const type = safeString(file.type ?? file.mimeType ?? file.mime_type ?? file.contentType);
+      const url = attachmentUrl(file);
+      const name = safeString(file.name) || attachmentName(url) || `Attachment ${index + 1}`;
+      const isImage = file.isImage === true
+        || file.is_image === true
+        || type.toLocaleLowerCase().startsWith('image/')
+        || looksLikeImageUrl(url)
+        || (options.imageHint === true && Boolean(url));
       return {
         id: safeString(file.id) || `${name}-${index}`,
         name,
@@ -907,6 +1106,49 @@ function attachmentValues(value) {
         alt: name,
       };
     });
+}
+
+/** @param {unknown} value @returns {Array<Record<string, any>>} */
+function attachmentEntries(value) {
+  if (Array.isArray(value)) return value.flatMap((entry) => attachmentEntries(entry));
+  if (typeof value === 'string') return value.trim() ? [{ url: value.trim() }] : [];
+  if (!value || typeof value !== 'object') return [];
+
+  const file = /** @type {Record<string, any>} */ (value);
+  if (attachmentUrl(file) || file.name || file.type || file.mimeType || file.isImage !== undefined) {
+    return [file];
+  }
+
+  for (const key of ['value', 'files', 'attachments', 'data', 'items']) {
+    if (Object.prototype.hasOwnProperty.call(file, key)) return attachmentEntries(file[key]);
+  }
+
+  return [];
+}
+
+/** @param {Record<string, any>} file */
+function attachmentUrl(file) {
+  for (const key of ['url', 'src', 'link', 'href', 'download_url', 'downloadUrl', 'file_url', 'fileUrl', 'path']) {
+    const candidate = safeString(file?.[key]);
+    if (candidate) return candidate;
+  }
+  return typeof file?.value === 'string' ? file.value.trim() || null : null;
+}
+
+/** @param {string|null} url */
+function attachmentName(url) {
+  if (!url) return '';
+  try {
+    const pathname = new URL(url, 'https://catalog.invalid/').pathname;
+    return decodeURIComponent(pathname.split('/').pop() ?? '').trim();
+  } catch {
+    return '';
+  }
+}
+
+/** @param {string|null} url */
+function looksLikeImageUrl(url) {
+  return Boolean(url && (/^data:image\//i.test(url) || /\.(?:avif|gif|jpe?g|png|svg|webp)(?:[?#]|$)/i.test(url)));
 }
 
 /** @param {Array<Record<string, unknown>>} attachments */
