@@ -50,7 +50,7 @@ export function renderProductView(ctx, route) {
 
   const related = getRelatedProducts(product, ctx.products, 6);
   let detailView = null;
-  const galleryView = gallery(product, (variant) => detailView?.selectVariety(variant?.variety ?? null));
+  const galleryView = gallery(product, (variant) => detailView?.selectVariant(variant));
   detailView = details(ctx, product, initialVariety, galleryView.setVariant, galleryView.setVariety);
 
   return {
@@ -116,6 +116,17 @@ function gallery(product, onImageSelect) {
   let activeImageKey = null;
 
   const imageKey = (image) => image?.id ?? image?.src ?? null;
+  const thumbnailKey = (image) => String(image?.src ?? imageKey(image) ?? '').trim();
+
+  function uniqueThumbnailImages(images) {
+    const seen = new Set();
+    return (images ?? []).filter((image) => {
+      const key = thumbnailKey(image);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
 
   function variantForImage(image) {
     const key = imageKey(image);
@@ -143,6 +154,10 @@ function gallery(product, onImageSelect) {
     // Once a variant is selected, do not borrow another variant's photo. A
     // missing image for that exact option must remain a placeholder.
     const images = variant ? variant.images ?? [] : product.images ?? [];
+    // Keep the family gallery visible after selecting one exact variant. The
+    // selected variant controls the main image, while the full image list
+    // keeps the other varieties available for the next click.
+    const thumbnailImages = uniqueThumbnailImages(product.images);
     const primary = firstUsableImage(
       imageOverride ? [imageOverride, ...images.filter((image) => imageKey(image) !== imageKey(imageOverride))] : images,
     );
@@ -160,14 +175,14 @@ function gallery(product, onImageSelect) {
 
     replaceChildren(
       thumbsHost,
-      images.length > 1
+      thumbnailImages.length > 1
         ? [
             el(
               'ul',
               { class: 'cat-gallery-thumbs' },
-              images.map((image) => {
+              thumbnailImages.map((image) => {
                 const imageVariant = variantForImage(image);
-                const key = imageKey(image);
+                const key = thumbnailKey(image);
                 return el('li', {}, [
                   el('button', {
                     type: 'button',
@@ -178,7 +193,7 @@ function gallery(product, onImageSelect) {
                     'aria-pressed': key !== null && key === activeImageKey ? 'true' : 'false',
                     onClick() {
                       activeImageKey = key;
-                      if (imageVariant?.variety && onImageSelect) {
+                      if (imageVariant && onImageSelect) {
                         onImageSelect(imageVariant);
                       } else {
                         render(variant, image);
@@ -205,13 +220,13 @@ function gallery(product, onImageSelect) {
     element: el('div', { class: 'cat-gallery' }, [mainHost, thumbsHost]),
     setVariant(variant) {
       activeVariant = variant;
-      activeImageKey = null;
+      activeImageKey = thumbnailKey(firstUsableImage(variant?.images ?? []));
       render(variant);
     },
     setVariety(variety) {
       activeVariant = null;
       const image = firstUsableImage(imagesForVariety(variety));
-      activeImageKey = imageKey(image);
+      activeImageKey = thumbnailKey(image);
       render(null, image);
     },
   };
@@ -306,6 +321,7 @@ function details(ctx, product, initialVariety, onVariantChange, onVarietyChange)
       availabilityNote(PRODUCT_AVAILABILITY_NOTE),
     ]),
     selectVariety: form.selectVariety,
+    selectVariant: form.selectVariant,
   };
 }
 

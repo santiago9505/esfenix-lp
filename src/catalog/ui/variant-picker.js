@@ -93,6 +93,7 @@ export function variantForm(product, options = {}) {
     quantity: options.initial?.quantity ?? 1,
   };
   const searchTerms = { variety: '' };
+  let selectedVariantId = null;
 
   const container = el('div', { class: 'cat-variant-form' });
   const errorList = el('ul', { class: 'cat-field-errors', role: 'alert', hidden: true });
@@ -100,6 +101,15 @@ export function variantForm(product, options = {}) {
   /** @returns {ProductVariant|null} */
   function currentVariant() {
     const matches = narrow(product.variants, choice);
+
+    // A gallery image can identify an exact Fresa task even when several
+    // variants share the same variety, colour and photograph. Keep that id
+    // until the visitor changes a form dimension instead of falling back to
+    // the first matching variant.
+    if (selectedVariantId) {
+      return matches.find((variant) => variant.id === selectedVariantId) ?? null;
+    }
+
     // Every present dimension must be pinned before a variant is unambiguous.
     for (const dimension of dimensions) {
       if (choice[dimension.key] === null || choice[dimension.key] === undefined) return null;
@@ -143,6 +153,7 @@ export function variantForm(product, options = {}) {
         })),
         disabled: values.length === 1,
         onChange(value) {
+          selectedVariantId = null;
           choice[dimension.key] = dimension.key === 'lengthCm' ? Number(value) : value;
           // Anything chosen further down may no longer be reachable.
           let past = false;
@@ -218,9 +229,23 @@ export function variantForm(product, options = {}) {
       const available = optionsFor(product.variants, 'variety');
       if (variety !== null && variety !== undefined && !available.includes(variety)) return;
 
+      selectedVariantId = null;
       choice.variety = variety ?? null;
       choice.color = null;
       choice.lengthCm = null;
+      choice.measure = null;
+      render();
+    },
+
+    /** Selects the exact variant represented by an external visual control. */
+    selectVariant(variant) {
+      const exact = product.variants.find((candidate) => candidate.id === variant?.id);
+      if (!exact) return;
+
+      selectedVariantId = exact.id;
+      for (const dimension of DIMENSIONS) {
+        choice[dimension.key] = exact[dimension.key] ?? null;
+      }
       choice.measure = null;
       render();
     },
