@@ -189,6 +189,7 @@ export interface QuotePayload {
     lastName: string;
     phone: string;
     company: string;
+    socialMediaProfiles: string;
   };
   products: Array<{
     productId: string;

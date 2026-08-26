@@ -58,7 +58,13 @@ test('the internal quote form carries contact, order and delivery details', () =
     locationId: 'houston',
     items: [],
     email: 'new@example.com',
-    contact: { firstName: 'Ana', lastName: 'Flower', phone: '5550100', company: 'Example Flowers' },
+    contact: {
+      firstName: 'Ana',
+      lastName: 'Flower',
+      phone: '5550100',
+      company: 'Example Flowers',
+      socialMediaProfiles: '@exampleflowers',
+    },
     orderType: 'Delivery',
     delivery: {
       dateTime: '2026-08-08T12:00',
@@ -75,6 +81,7 @@ test('the internal quote form carries contact, order and delivery details', () =
     lastName: 'Flower',
     phone: '5550100',
     company: 'Example Flowers',
+    socialMediaProfiles: '@exampleflowers',
   });
   assert.equal(payload.orderType, 'Delivery');
   assert.equal(payload.deliveryDateTime, '2026-08-08T12:00');
@@ -86,7 +93,13 @@ test('the internal quote form carries contact, order and delivery details', () =
 test('the selected country calling code is included once in the phone payload', () => {
   const payload = buildQuotePayload({
     locationId: 'houston',
-    contact: { firstName: 'Ana', lastName: 'Flower', phone: '350 576 5962', company: '' },
+    contact: {
+      firstName: 'Ana',
+      lastName: 'Flower',
+      phone: '350 576 5962',
+      company: '',
+      socialMediaProfiles: '',
+    },
     phoneCountryCode: '+57',
   });
 

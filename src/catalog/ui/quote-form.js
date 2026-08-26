@@ -57,7 +57,13 @@ const DELIVERY_STEP_INDEX = 4;
 export function renderQuoteFormView(ctx, options) {
   const existingDestination = ctx.locationStore.getShippingDestination() ?? {};
   const savedDraft = readQuoteDraft();
-  const savedContact = savedDraft?.contact ?? { firstName: '', lastName: '', phone: '', company: '' };
+  const savedContact = savedDraft?.contact ?? {
+    firstName: '',
+    lastName: '',
+    phone: '',
+    company: '',
+    socialMediaProfiles: '',
+  };
   const savedPhone = splitPhoneNumber(
     savedContact.phone,
     savedDraft?.phoneCountry ? dialCodeForCountry(savedDraft.phoneCountry) : undefined,
@@ -292,14 +298,14 @@ export function renderQuoteFormView(ctx, options) {
         state.submitPending = true;
         state.clientLookup = 'checking';
         button.disabled = true;
-        button.textContent = 'Checking your account…';
+        button.textContent = 'Continuing…';
         const lookup = options.onLookupClient
           ? await options.onLookupClient(state.email)
           : { ok: true, found: false, vip: false, profile: {} };
         state.submitPending = false;
         if (!lookup?.ok) {
           state.clientLookup = 'unavailable';
-          state.error = lookup?.error || 'We could not validate this email. Please try again.';
+          state.error = 'We could not continue with this email. Please try again.';
           render(true);
           return;
         }
@@ -331,17 +337,6 @@ export function renderQuoteFormView(ctx, options) {
 
   function contactStep() {
     const fields = [
-      state.clientLookup === 'found'
-        ? el('div', { class: 'cat-quote-info-note', role: 'status' }, [
-            el('strong', { text: state.vip ? 'Active VIP account found' : 'Active customer account found' }),
-            el('p', { text: 'We securely loaded the details stored in Fresa. Please confirm they are correct.' }),
-          ])
-        : state.clientLookup === 'not-found'
-          ? el('div', { class: 'cat-quote-info-note', role: 'status' }, [
-              el('strong', { text: 'New customer details' }),
-              el('p', { text: 'This email is not in the active customer list, so the standard quote process will be used.' }),
-            ])
-          : null,
       field({
         label: 'Email address',
         name: 'email',
@@ -349,6 +344,7 @@ export function renderQuoteFormView(ctx, options) {
         value: state.email,
         autocomplete: 'email',
         maxlength: '254',
+        required: true,
         readonly: true,
       }),
       el('div', { class: 'cat-quote-field-grid' }, [
@@ -357,8 +353,9 @@ export function renderQuoteFormView(ctx, options) {
       ]),
       el('div', { class: 'cat-quote-field-grid' }, [
         phoneField(),
-        contactField('Company', 'company', 'organization', false, 'text', 'Optional'),
+        contactField('Company', 'company', 'organization', false),
       ]),
+      contactField('Social media profiles (business)', 'socialMediaProfiles', 'off', false),
     ];
 
     return el('form', {
@@ -385,7 +382,13 @@ export function renderQuoteFormView(ctx, options) {
     state.vip = false;
     state.clientLookup = 'idle';
     state.phoneCountry = DEFAULT_COUNTRY;
-    state.contact = { firstName: '', lastName: '', phone: '', company: '' };
+    state.contact = {
+      firstName: '',
+      lastName: '',
+      phone: '',
+      company: '',
+      socialMediaProfiles: '',
+    };
     state.delivery = {
       ...state.delivery,
       address: '',
@@ -409,6 +412,11 @@ export function renderQuoteFormView(ctx, options) {
       lastName: value('Last Name'),
       phone: value('Phone Number', 'Phone'),
       company: value('Company'),
+      socialMediaProfiles: value(
+        'Social media profiles (business)',
+        'Social Media Profiles (Business)',
+        'Social Media Profiles',
+      ),
     };
     state.delivery = {
       ...state.delivery,
@@ -419,7 +427,7 @@ export function renderQuoteFormView(ctx, options) {
     };
   }
 
-  function contactField(label, name, autocomplete, required, type = 'text', help) {
+  function contactField(label, name, autocomplete, required, type = 'text') {
     const value = state.contact[name] ?? '';
     return field({
       label,
@@ -427,9 +435,9 @@ export function renderQuoteFormView(ctx, options) {
       type,
       value,
       autocomplete,
-      maxlength: name === 'company' ? '120' : '80',
+      maxlength: name === 'company' ? '120' : name === 'socialMediaProfiles' ? '500' : '80',
       required,
-      help,
+      optional: !required,
     });
   }
 
@@ -536,7 +544,7 @@ export function renderQuoteFormView(ctx, options) {
     }
 
     return el('div', { class: 'cat-quote-field cat-quote-phone-field' }, [
-      el('label', { for: 'cat-quote-field-phone', text: 'Phone number' }),
+      el('label', { for: 'cat-quote-field-phone', text: 'Phone number *' }),
       el('div', { class: 'cat-quote-phone-control' }, [
         countryPicker,
         el('input', {
@@ -583,6 +591,7 @@ export function renderQuoteFormView(ctx, options) {
         locationSelect({
           locationId: ctx.locationId,
           label: 'Location',
+          required: true,
           describeServiceCenter: true,
           onRequestChange: (next) => ctx.requestLocationChange(next, { onCancel: () => render() }),
         }),
@@ -830,7 +839,7 @@ export function renderQuoteFormView(ctx, options) {
     });
     const scheduleField = el('div', { class: 'cat-quote-field cat-quote-schedule-field' }, [
       el('div', { class: 'cat-quote-schedule-label' }, [
-        el('label', { text: isDelivery ? 'Preferred delivery date and time' : 'Preferred pickup date' }),
+        el('label', { text: `${isDelivery ? 'Preferred delivery date and time' : 'Preferred pickup date'} *` }),
         el('span', { text: isDelivery ? 'Mon–Fri · 8:00 AM–4:00 PM; Sat–Sun · 8:00 AM–12:00 PM' : 'Mon–Sun · 24-hour notice' }),
       ]),
       deliverySchedulePicker({
@@ -1010,7 +1019,7 @@ export function renderQuoteFormView(ctx, options) {
       },
     }, [
       el('div', { class: 'cat-quote-notes-field' }, [
-        el('label', { for: 'cat-quote-notes', text: 'Notes for the seller' }),
+        el('label', { for: 'cat-quote-notes', text: 'Notes for the seller (Optional)' }),
         el('textarea', { id: 'cat-quote-notes', name: 'notes', rows: '6', maxlength: '2000', placeholder: 'Tell us anything important about your request…' }, state.notes),
       ]),
       reviewSummary(),
@@ -1046,8 +1055,13 @@ export function renderQuoteFormView(ctx, options) {
 
   function field(config) {
     const id = `cat-quote-field-${config.name}`;
+    const label = config.required === true
+      ? `${config.label} *`
+      : config.optional === true
+        ? `${config.label} (Optional)`
+        : config.label;
     return el('div', { class: 'cat-quote-field' }, [
-      el('label', { for: id, text: config.label }),
+      el('label', { for: id, text: label }),
       el('input', {
         id,
         name: config.name,
@@ -1064,6 +1078,7 @@ export function renderQuoteFormView(ctx, options) {
           if (config.name === 'lastName') state.contact.lastName = event.currentTarget.value;
           if (config.name === 'phone') state.contact.phone = event.currentTarget.value;
           if (config.name === 'company') state.contact.company = event.currentTarget.value;
+          if (config.name === 'socialMediaProfiles') state.contact.socialMediaProfiles = event.currentTarget.value;
           if (config.name === 'email') state.email = event.currentTarget.value;
           if (config.name === 'address') state.delivery.address = event.currentTarget.value;
           if (config.name === 'city') state.delivery.city = event.currentTarget.value;
@@ -1077,7 +1092,7 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function readContact(root) {
-    const fields = ['firstName', 'lastName', 'phone', 'company'];
+    const fields = ['firstName', 'lastName', 'phone', 'company', 'socialMediaProfiles'];
     fields.forEach((name) => {
       const input = root.querySelector(`[name="${name}"]`);
       if (input && !input.readOnly) state.contact[name] = input.value.trim();

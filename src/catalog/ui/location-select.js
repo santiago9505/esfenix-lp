@@ -18,6 +18,7 @@ let idCounter = 0;
  *   locationId: string,
  *   onRequestChange: (locationId: string) => void,
  *   label?: string,
+ *   required?: boolean,
  *   compact?: boolean,
  *   describeServiceCenter?: boolean,
  * }} options
@@ -31,6 +32,7 @@ export function locationSelect(options) {
     {
       id,
       class: 'cat-select',
+      required: options.required,
       onChange(event) {
         const next = event.currentTarget.value;
         if (next === options.locationId) return;
@@ -52,7 +54,11 @@ export function locationSelect(options) {
   const note = options.describeServiceCenter !== false ? serviceCenterNote(current) : null;
 
   return el('div', { class: `cat-location ${options.compact ? 'cat-location-compact' : ''}` }, [
-    el('label', { class: 'cat-location-label', for: id, text: options.label ?? 'Your location' }),
+    el('label', {
+      class: 'cat-location-label',
+      for: id,
+      text: `${options.label ?? 'Your location'}${options.required ? ' *' : ''}`,
+    }),
     el('div', { class: 'cat-select-wrap' }, [select]),
     note,
   ]);
@@ -140,7 +146,7 @@ export function shippingDestinationFields(options) {
         });
 
     return el('div', { class: 'cat-field' }, [
-      el('label', { for: id, text: field.label }),
+      el('label', { for: id, text: `${field.label}${options.required ? ' *' : ''}` }),
       control,
     ]);
   };

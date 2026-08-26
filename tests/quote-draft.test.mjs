@@ -25,7 +25,13 @@ test('a quote draft survives a new read and keeps the entered form state', () =>
     vip: false,
     clientLookup: 'not-found',
     phoneCountry: 'US',
-    contact: { firstName: 'Ana', lastName: 'Flower', phone: '5550100', company: 'Flowers Inc.' },
+    contact: {
+      firstName: 'Ana',
+      lastName: 'Flower',
+      phone: '5550100',
+      company: 'Flowers Inc.',
+      socialMediaProfiles: '@flowersinc',
+    },
     orderType: 'Pickup',
     delivery: {
       dateTime: '2026-08-08T12:00',
@@ -44,7 +50,13 @@ test('a quote draft survives a new read and keeps the entered form state', () =>
     vip: false,
     clientLookup: 'not-found',
     phoneCountry: 'US',
-    contact: { firstName: 'Ana', lastName: 'Flower', phone: '5550100', company: 'Flowers Inc.' },
+    contact: {
+      firstName: 'Ana',
+      lastName: 'Flower',
+      phone: '5550100',
+      company: 'Flowers Inc.',
+      socialMediaProfiles: '@flowersinc',
+    },
     orderType: 'Pickup',
     delivery: {
       dateTime: '2026-08-08T12:00',
@@ -78,7 +90,7 @@ test('malformed draft values are normalized to safe form defaults', () => {
     vip: false,
     clientLookup: 'idle',
     phoneCountry: 'US',
-    contact: { firstName: '', lastName: '', phone: '', company: '' },
+    contact: { firstName: '', lastName: '', phone: '', company: '', socialMediaProfiles: '' },
     orderType: 'Delivery',
     delivery: { dateTime: '', address: '', city: '', state: '', zipCode: '' },
     notes: '',

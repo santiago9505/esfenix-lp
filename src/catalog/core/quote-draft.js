@@ -41,6 +41,7 @@ function contact(value) {
     lastName: text(source.lastName, 80),
     phone: text(source.phone, 40),
     company: text(source.company, 120),
+    socialMediaProfiles: text(source.socialMediaProfiles, 500),
   };
 }
 
@@ -64,7 +65,7 @@ function delivery(value) {
  * @property {boolean} vip
  * @property {'idle'|'checking'|'found'|'not-found'|'unavailable'} clientLookup
  * @property {string} phoneCountry
- * @property {{ firstName: string, lastName: string, phone: string, company: string }} contact
+ * @property {{ firstName: string, lastName: string, phone: string, company: string, socialMediaProfiles: string }} contact
  * @property {'Delivery'|'Pickup'} orderType
  * @property {{ dateTime: string, address: string, city: string, state: string, zipCode: string }} delivery
  * @property {string} notes

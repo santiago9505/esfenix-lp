@@ -147,7 +147,7 @@ export function resolveFresaProductFieldId(payload, publicFormResponse) {
   );
   if (!productField?.id) {
     throw new FresaFormConfigurationError(
-      `Fresa has no product field configured for ${payload?.fresa?.location ?? 'this location'}${payload?.vip === true ? ' VIP' : ''}.`,
+      `Fresa has no product field configured for ${payload?.fresa?.location ?? 'this location'}.`,
       'FRESA_PRODUCT_FIELD_UNAVAILABLE',
     );
   }
@@ -405,6 +405,7 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
   const lastNameField = requireField(fields, 'Last Name', 'short_text');
   const phoneField = requireField(fields, 'Phone Number', 'phone');
   const companyField = findField(fields, 'Company', 'short_text');
+  const socialMediaField = findField(fields, 'Social media profiles (business)');
   const locationField = requireField(fields, 'Location', 'select');
   const orderTypeField = requireField(fields, 'Type of Order', 'select');
 
@@ -429,7 +430,7 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
   const productField = findProductField(fields, locationField, vipField, locationValue, vip);
   if (!productField?.id) {
     throw new FresaFormConfigurationError(
-      `Fresa has no product field configured for ${payload?.fresa?.location ?? 'this location'}${vip ? ' VIP' : ''}.`,
+      `Fresa has no product field configured for ${payload?.fresa?.location ?? 'this location'}.`,
       'FRESA_PRODUCT_FIELD_UNAVAILABLE',
     );
   }
@@ -442,6 +443,7 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     [lastNameField.id]: contact.lastName ?? '',
     [phoneField.id]: contact.phone ?? '',
     ...(companyField?.id ? { [companyField.id]: contact.company ?? '' } : {}),
+    ...(socialMediaField?.id ? { [socialMediaField.id]: contact.socialMediaProfiles ?? '' } : {}),
     [locationField.id]: locationValue,
     [productField.id]: buildProductLines(payload, productField.catalogConfig),
     [orderTypeField.id]: orderTypeValue,
@@ -466,6 +468,9 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
   const notesField = findField(fields, 'Notes for the seller', 'long_text');
   const notes = [
     contact.company ? `Company: ${contact.company}` : '',
+    !socialMediaField && contact.socialMediaProfiles
+      ? `Social media profiles (business): ${contact.socialMediaProfiles}`
+      : '',
     payload?.fresa?.notes ?? payload?.notes ?? '',
   ].filter(Boolean).join('\n\n');
   if (notesField?.id && notes) answers[notesField.id] = notes;

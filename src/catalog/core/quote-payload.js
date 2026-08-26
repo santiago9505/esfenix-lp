@@ -43,7 +43,7 @@ function locationCode(locationId) {
  *   items?: QuoteItem[],
  *   shippingDestination?: ShippingDestination|null,
  *   email?: string,
- *   contact?: { firstName?: string, lastName?: string, phone?: string, company?: string }|null,
+ *   contact?: { firstName?: string, lastName?: string, phone?: string, company?: string, socialMediaProfiles?: string }|null,
  *   phoneCountryCode?: string,
  *   vip?: boolean,
  *   orderType?: string|null,
@@ -94,6 +94,7 @@ export function buildQuotePayload(input) {
         ? formatInternationalPhone(input.phoneCountryCode, input.contact.phone)
         : String(input.contact.phone ?? '').trim(),
       company: String(input.contact.company ?? '').trim(),
+      socialMediaProfiles: String(input.contact.socialMediaProfiles ?? '').trim(),
     };
   }
   if (input.delivery?.dateTime) {
