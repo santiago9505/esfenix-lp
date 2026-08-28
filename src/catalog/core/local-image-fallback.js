@@ -9,10 +9,16 @@
 import { LOCAL_PRODUCT_IMAGES } from '../data/local-product-images.js';
 
 /**
- * Kept for backwards compatibility with older imports, but disabled so a
- * missing Fresa upload remains a blank placeholder.
+ * Kept for backwards compatibility with older imports. The repository opts
+ * in explicitly for the curated products that have approved local photos.
  */
 export const LOCAL_PRODUCT_IMAGE_FALLBACK_ENABLED = false;
+
+/**
+ * Product slugs with approved local photography. Keep this list narrow until
+ * each product's local assets have been reviewed against its Fresa catalog.
+ */
+export const LOCAL_PRODUCT_IMAGE_FALLBACK_PRODUCT_IDS = ['garden-roses'];
 
 const LOCAL_KEY_ALIASES = new Map([
   ['candelight', 'candlelight'],
@@ -35,36 +41,45 @@ const LOCAL_KEY_ALIASES = new Map([
  * quote flows remain unchanged.
  *
  * @param {Array<Record<string, any>>} products
- * @param {{ enabled?: boolean }} [options]
+ * @param {{ enabled?: boolean, productIds?: Iterable<string> }} [options]
  */
 export function applyLocalProductImageFallbacks(
   products,
-  { enabled = LOCAL_PRODUCT_IMAGE_FALLBACK_ENABLED } = {},
+  { enabled = LOCAL_PRODUCT_IMAGE_FALLBACK_ENABLED, productIds } = {},
 ) {
   if (!enabled) return products;
 
+  const scopedProductIds = productIds ? new Set([...productIds].map((id) => String(id).trim())) : null;
+
   for (const product of products) {
+    if (
+      scopedProductIds
+      && !scopedProductIds.has(String(product.id ?? '').trim())
+      && !scopedProductIds.has(String(product.slug ?? '').trim())
+    ) continue;
+
     // This guard is deliberately product-wide. If one variant has a real API
     // image, local photography must not be mixed into that product's gallery.
     if (hasUsableImage(product.images)) continue;
 
     const exactEntries = entriesForProduct(product);
     // The product gallery may use the closest photos from the same rose
-    // family as additional context. Variant galleries remain exact-only.
+    // family as additional context. Variant galleries remain exact-only so a
+    // thumbnail can identify one variety instead of matching the first
+    // variant that happens to share a nearby family photo.
     const entries = nearestEntries(product, exactEntries);
     if (entries.length === 0) continue;
 
     product.images = toImages(entries, product.name);
 
-    // On the product page a selected variant uses its own gallery. Prefer an
-    // exact local match, then use a small nearby family set when Fresa did not
-    // provide enough detail to identify a variety (for example `EC ROSES 60`).
+    // On the product page a selected variant uses its own gallery. Only attach
+    // exact local matches: sharing nearby family photos across every variant
+    // makes the gallery resolve any clicked thumbnail to the first variant.
     for (const location of product.locations ?? []) {
       for (const variant of location.variants ?? []) {
         if (hasUsableImage(variant.images)) continue;
         const variantEntries = entriesForVariant(product, variant);
-        const nearbyEntries = nearestEntries(product, variantEntries).slice(0, 8);
-        if (nearbyEntries.length > 0) variant.images = toImages(nearbyEntries, product.name);
+        if (variantEntries.length > 0) variant.images = toImages(variantEntries, product.name);
       }
     }
   }

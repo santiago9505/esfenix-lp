@@ -40,11 +40,12 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  *   timeZone: string,
  *   mode?: 'window'|'date',
  *   bookedByStart?: Record<string, number>,
+ *   isDateAllowed?: (dateKey: string) => boolean,
  *   availabilityProvider?: ((dateKey: string) => Promise<Array<{ start: string, booked?: number }> )|null,
  *   onChange?: (selection: { dateTime: string, slot?: object, timeZone: string }) => void,
  * }} options
  */
-export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', bookedByStart, availabilityProvider = null, onChange }) {
+export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', bookedByStart, isDateAllowed = () => true, availabilityProvider = null, onChange }) {
   const now = new Date();
   const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en-US';
   const picksWindow = mode !== 'date';
@@ -71,6 +72,7 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
       now,
       timeZone,
       bookedByStart: remoteBookedByStart,
+      isDateAllowed,
       mode: picksWindow ? 'delivery' : 'pickup',
       requireOpenSlot: picksWindow,
     };
@@ -327,6 +329,7 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
   }
 
   function selectDate(dateKey) {
+    if (!isDateAllowed(dateKey)) return;
     selectedDate = dateKey;
     if (picksWindow) {
       // Changing day drops a window that belonged to the previous one.

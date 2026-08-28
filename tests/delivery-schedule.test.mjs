@@ -11,6 +11,7 @@ import {
   normalizeDeliveryDate,
   normalizeDeliveryValue,
 } from '../src/catalog/core/delivery-schedule.js';
+import { resolveSeason } from '../src/catalog/core/season.js';
 
 const timeZone = 'UTC';
 
@@ -64,6 +65,18 @@ test('pickup uses all seven days and requires 24 hours before the 8 AM start', (
   assert.equal(normalizeDeliveryDate('2026-08-08', options), '');
   assert.equal(normalizeDeliveryDate('2026-08-09', options), '2026-08-09');
   assert.equal(getFirstSelectableDate({ ...options, requireOpenSlot: false }), '2026-08-09');
+});
+
+test('high-season dates are blocked for delivery but remain available for pickup', () => {
+  const now = new Date('2026-02-07T07:30:00Z');
+  const isDateAllowed = (dateKey) => resolveSeason(dateKey).type !== 'HIGH';
+  const deliveryOptions = { now, timeZone, isDateAllowed };
+
+  assert.equal(isDateSelectable('2026-02-10', deliveryOptions), false);
+  assert.equal(normalizeDeliveryValue('2026-02-10T08:00', deliveryOptions), '');
+  assert.ok(getDeliverySlots('2026-02-10', deliveryOptions).every((slot) => !slot.available));
+
+  assert.equal(normalizeDeliveryDate('2026-02-10', { now, timeZone, mode: 'pickup' }), '2026-02-10');
 });
 
 test('a window stops being offered once its two spots are taken', () => {

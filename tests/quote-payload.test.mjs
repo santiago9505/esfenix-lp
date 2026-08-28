@@ -88,6 +88,21 @@ test('the internal quote form carries contact, order and delivery details', () =
   assert.equal(payload.delivery.address, '123 Flower Street');
   assert.equal(payload.fresa.orderType, 'Delivery');
   assert.equal(payload.fresa.delivery.dateTime, '2026-08-08T12:00');
+  assert.equal(payload.season.type, 'LOW');
+});
+
+test('a high-season delivery is classified and included in the Fresa notes', () => {
+  const payload = buildQuotePayload({
+    locationId: 'houston',
+    items: [line({ selectedLocation: 'houston', serviceCenter: 'HOUSTON' })],
+    orderType: 'Delivery',
+    delivery: { dateTime: '2026-05-09T08:00' },
+  });
+
+  assert.equal(payload.season.type, 'HIGH');
+  assert.equal(payload.season.ruleId, 'mothers-day');
+  assert.match(payload.fresa.notes, /Season type: HIGH/);
+  assert.match(payload.fresa.notes, /Mother's Day/);
 });
 
 test('the selected country calling code is included once in the phone payload', () => {

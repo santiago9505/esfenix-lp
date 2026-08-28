@@ -10,6 +10,10 @@
 import { compareCategories } from '../data/categories.js';
 import { LOCATIONS, resolveLocation } from '../data/locations.js';
 import { sanitizeCatalogDescription } from './fresa-catalog.js';
+import {
+  applyLocalProductImageFallbacks,
+  LOCAL_PRODUCT_IMAGE_FALLBACK_PRODUCT_IDS,
+} from './local-image-fallback.js';
 
 /**
  * @typedef {import('./types').Product} Product
@@ -73,7 +77,13 @@ async function loadProductSnapshot(options) {
   const payload = await response.json();
   if (!isProductList(payload?.products)) throw new Error('Catalog snapshot is invalid.');
 
-  productsCache = sanitizeProductDescriptions(payload.products);
+  productsCache = applyLocalProductImageFallbacks(
+    sanitizeProductDescriptions(payload.products),
+    {
+      enabled: true,
+      productIds: LOCAL_PRODUCT_IMAGE_FALLBACK_PRODUCT_IDS,
+    },
+  );
   return productsCache;
 }
 

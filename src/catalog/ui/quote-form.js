@@ -15,6 +15,7 @@ import { getDeliverySlots, normalizeDeliveryDate, normalizeDeliveryValue } from 
 import { buildQuotePayload } from '../core/quote-payload.js';
 import { clearQuoteDraft, readQuoteDraft, writeQuoteDraft } from '../core/quote-draft.js';
 import { describeQuoteItem } from '../core/format.js';
+import { resolveSeason } from '../core/season.js';
 import { getCategoryLabel } from '../data/categories.js';
 // Temporarily disabled with the advisor portrait block below.
 // import { resolveAdvisor } from '../data/advisors.js';
@@ -135,7 +136,10 @@ export function renderQuoteFormView(ctx, options) {
     const moved = state.step !== renderedStep;
     const direction = moved ? (state.step < renderedStep ? 'backward' : 'forward') : null;
     const isCatalogExit = state.result || state.step === 0;
-    if (!state.result) persistDraft();
+    if (!state.result) {
+      enforceSeasonalOrderType();
+      persistDraft();
+    }
     topBack.textContent = isCatalogExit ? '← Back to catalog' : '← Back';
     topBack.setAttribute('aria-label', isCatalogExit ? 'Back to catalog' : 'Back to previous question');
 
@@ -169,6 +173,14 @@ export function renderQuoteFormView(ctx, options) {
         phone: formatInternationalPhone(dialCodeForCountry(state.phoneCountry), state.contact.phone),
       },
     });
+  }
+
+  function enforceSeasonalOrderType() {
+    if (state.orderType !== 'Delivery' || resolveSeason(state.delivery.dateTime).type !== 'HIGH') return;
+    // A saved or tampered Delivery selection must not survive a render during
+    // a high-season window. Pickup remains valid for the same date.
+    state.orderType = 'Pickup';
+    state.delivery.slot = undefined;
   }
 
   /**
@@ -733,6 +745,8 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function orderTypeStep() {
+    const selectedSeason = resolveSeason(state.delivery.dateTime);
+    const deliveryBlocked = selectedSeason.type === 'HIGH';
     return el('form', {
       class: 'cat-quote-step-form',
       onSubmit: (event) => {
@@ -744,31 +758,41 @@ export function renderQuoteFormView(ctx, options) {
         render(true);
       },
     }, [
-      deliveryEligibilityNote(),
+      deliveryEligibilityNote(deliveryBlocked ? selectedSeason : null),
       el('div', { class: 'cat-quote-choice-list' }, [
-        choice('Delivery', 'We’ll deliver to the address you provide.'),
+        choice(
+          'Delivery',
+          deliveryBlocked
+            ? `Unavailable during ${selectedSeason.label}.`
+            : 'We’ll deliver to the address you provide.',
+          deliveryBlocked,
+        ),
         choice('Pickup', 'You’ll collect the flowers from our team.'),
       ]),
       stepActions('Continue to delivery information'),
     ]);
   }
 
-  function deliveryEligibilityNote() {
+  function deliveryEligibilityNote(blockedSeason = null) {
+    const blocked = blockedSeason?.type === 'HIGH';
     return el('div', {
       class: 'cat-quote-delivery-eligibility',
       role: 'status',
       'aria-live': 'polite',
     }, [
       el('div', { class: 'cat-quote-delivery-eligibility-head' }, [
-        el('strong', { text: 'Delivery subject to confirmation' }),
+        el('strong', { text: blocked ? 'Delivery unavailable during high season' : 'Delivery subject to confirmation' }),
       ]),
-      el('p', { text: 'Choose a preferred window. Our team will confirm availability, minimum order and final delivery details with your quote.' }),
+      el('p', {
+        text: blocked
+          ? `Pickup is available during ${blockedSeason.label}.`
+          : 'Choose a preferred window. Our team will confirm availability, minimum order and final delivery details with your quote.',
+      }),
     ]);
   }
 
-  function choice(value, description) {
+  function choice(value, description, disabled = false) {
     const id = `cat-order-${value.toLowerCase()}`;
-    const disabled = false;
     return el('label', { class: `cat-quote-choice ${state.orderType === value ? 'is-selected' : ''} ${disabled ? 'is-disabled' : ''}` }, [
       el('input', {
         type: 'radio',
@@ -792,13 +816,15 @@ export function renderQuoteFormView(ctx, options) {
   function deliveryStep() {
     const isDelivery = state.orderType === 'Delivery';
     const clientTimeZone = ctx.clientTimeZone ?? 'UTC';
-    // Both order types use the same working calendar. Delivery windows are
-    // preferences only in the static plan; the team confirms availability
-    // after reviewing the request.
+    const isDateAllowed = (dateKey) => !isDelivery || resolveSeason(dateKey).type !== 'HIGH';
+    // Delivery windows are preferences only in the static plan; the team
+    // confirms availability after reviewing the request. High-season dates
+    // remain available to Pickup but are not valid for Delivery.
     const scheduleOptions = {
       now: new Date(),
       timeZone: clientTimeZone,
       mode: isDelivery ? 'delivery' : 'pickup',
+      isDateAllowed,
     };
     const validValue = isDelivery
       ? normalizeDeliveryValue(state.delivery.dateTime, scheduleOptions)
@@ -837,6 +863,21 @@ export function renderQuoteFormView(ctx, options) {
       value: state.delivery.dateTime,
       required: true,
     });
+    const seasonNotice = el('div', {
+      class: 'cat-quote-info-note cat-quote-season-notice',
+      role: 'status',
+      'aria-live': 'polite',
+    });
+    const updateSeasonNotice = (value) => {
+      const season = resolveSeason(value);
+      const isHighSeason = season.type === 'HIGH';
+      replaceChildren(seasonNotice, isHighSeason ? [
+        el('strong', { text: `High season — ${season.label}` }),
+        el('p', { text: season.customerMessage ?? 'Availability may vary during this period.' }),
+      ] : []);
+      seasonNotice.hidden = !isHighSeason;
+    };
+    updateSeasonNotice(state.delivery.dateTime);
     const scheduleField = el('div', { class: 'cat-quote-field cat-quote-schedule-field' }, [
       el('div', { class: 'cat-quote-schedule-label' }, [
         el('label', { text: `${isDelivery ? 'Preferred delivery date and time' : 'Preferred pickup date'} *` }),
@@ -846,16 +887,19 @@ export function renderQuoteFormView(ctx, options) {
         value: state.delivery.dateTime,
         timeZone: clientTimeZone,
         mode: isDelivery ? 'window' : 'date',
+        isDateAllowed,
         availabilityProvider: null,
         onChange: (selection) => {
           state.delivery.dateTime = selection.dateTime;
           state.delivery.slot = selection.slot;
           scheduleInput.value = selection.dateTime;
+          updateSeasonNotice(selection.dateTime);
           state.error = '';
           persistDraft();
         },
       }),
       scheduleInput,
+      seasonNotice,
       el('small', {
         text: isDelivery
           ? 'Pick a preferred two-hour window. Our team will confirm the final delivery time.'
@@ -870,6 +914,7 @@ export function renderQuoteFormView(ctx, options) {
           now: new Date(),
           timeZone: clientTimeZone,
           mode: isDelivery ? 'delivery' : 'pickup',
+          isDateAllowed,
         };
         const validValue = isDelivery
           ? normalizeDeliveryValue(state.delivery.dateTime, currentScheduleOptions)
@@ -941,10 +986,20 @@ export function renderQuoteFormView(ctx, options) {
         persistDraft();
 
         const orderType = state.orderType === 'Delivery' ? 'Delivery' : 'Pickup';
+        if (orderType === 'Delivery' && resolveSeason(state.delivery.dateTime).type === 'HIGH') {
+          state.orderType = 'Pickup';
+          state.delivery.slot = undefined;
+          state.error = 'Delivery is not available during high season. Please choose Pickup instead.';
+          state.step = 3;
+          render(true);
+          return;
+        }
+        const isDateAllowed = (dateKey) => orderType !== 'Delivery' || resolveSeason(dateKey).type !== 'HIGH';
         const currentScheduleOptions = {
           now: new Date(),
           timeZone: ctx.clientTimeZone ?? 'UTC',
           mode: orderType === 'Delivery' ? 'delivery' : 'pickup',
+          isDateAllowed,
         };
         const validDateTime = orderType === 'Delivery'
           ? normalizeDeliveryValue(state.delivery.dateTime, currentScheduleOptions)
@@ -1031,9 +1086,11 @@ export function renderQuoteFormView(ctx, options) {
 
   function reviewSummary() {
     const items = ctx.quoteStore.getItems();
+    const season = resolveSeason(state.delivery.dateTime);
     return el('div', { class: 'cat-quote-review' }, [
       el('div', { class: 'cat-quote-section-label' }, [el('span', { text: 'Ready to send' }), el('span', { class: 'cat-quote-section-count', text: `${items.length} product${items.length === 1 ? '' : 's'}` })]),
       el('p', { text: `${state.email} · ${resolveLocation(ctx.locationId).label} · ${state.orderType}` }),
+      el('p', { text: season.type === 'HIGH' ? `Season type: HIGH — ${season.label}` : 'Season type: LOW' }),
       el('p', { class: 'cat-note', text: NO_PAYMENT_NOTE }),
     ]);
   }

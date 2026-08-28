@@ -25,6 +25,7 @@ import {
 import { locationServiceMap, resolveLocation } from '../data/locations.js';
 import { formatInternationalPhone } from '../data/country-calling-codes.js';
 import { describeQuoteItem } from './format.js';
+import { resolveSeason } from './season.js';
 
 /**
  * @typedef {import('./types').QuoteItem} QuoteItem
@@ -56,6 +57,7 @@ export function buildQuotePayload(input) {
   const items = input.items ?? [];
   const location = resolveLocation(input.locationId);
   const destination = input.shippingDestination ?? null;
+  const season = resolveSeason(input.delivery?.dateTime);
 
   /** @type {QuotePayload} */
   const payload = {
@@ -77,6 +79,7 @@ export function buildQuotePayload(input) {
       measure: item.measure ?? null,
     })),
     orderType: String(input.orderType ?? '').trim() || null,
+    season,
     delivery: {
       address: String(input.delivery?.address ?? '').trim(),
       city: String(input.delivery?.city ?? destination?.city ?? '').trim(),
@@ -194,7 +197,7 @@ function buildFresaBlock(items, location, payload) {
       ...(payload.deliveryDateTime ? { dateTime: payload.deliveryDateTime } : {}),
     },
     // Step 5 — Notes for the seller
-    notes: buildNotes(items, location, rows, unmapped, payload.notes),
+    notes: buildNotes(items, location, rows, unmapped, payload.notes, payload.season),
     /** Lines the form has no option for. Surfaced so they can be fixed. */
     unmappedProducts: unmapped.map(({ item, tried }) => ({
       productName: item.productName,
@@ -214,11 +217,19 @@ function buildFresaBlock(items, location, payload) {
  * @param {Map<string, { product: string, quantity: number, measure: string|null, details: string[] }>} rows
  * @param {Array<{ item: QuoteItem, tried: string[] }>} unmapped
  * @param {string} extraNotes
+ * @param {ReturnType<typeof import('./season.js').resolveSeason>} season
  */
-function buildNotes(items, location, rows, unmapped, extraNotes) {
-  if (items.length === 0) return extraNotes ?? '';
+function buildNotes(items, location, rows, unmapped, extraNotes, season) {
+  const seasonNote = season.type === 'HIGH'
+    ? `Season type: HIGH — ${season.label}. ${season.customerMessage ?? ''}`.trim()
+    : '';
+  if (items.length === 0) return [seasonNote, extraNotes ?? ''].filter(Boolean).join('\n\n');
 
-  const lines = [`Selected from the Esfenix online catalog — ${location.label}.`, ''];
+  const lines = [
+    `Selected from the Esfenix online catalog — ${location.label}.`,
+    ...(seasonNote ? [seasonNote] : []),
+    '',
+  ];
 
   for (const row of rows.values()) {
     if (row.details.length === 0) continue;
@@ -264,6 +275,10 @@ export function buildQuoteSummaryText(payload) {
         .join(' · ');
       lines.push(`- ${product.quantity} × ${product.productName}${detail ? ` (${detail})` : ''}`);
     }
+  }
+
+  if (payload.season?.type === 'HIGH') {
+    lines.push('', `Season type: HIGH — ${payload.season.label}.`);
   }
 
   lines.push('', 'This is a quote request. No payment will be collected.');

@@ -202,6 +202,14 @@ export interface QuotePayload {
     measure: MeasureType | null;
   }>;
   orderType: string | null;
+  season: {
+    type: 'HIGH' | 'LOW';
+    ruleId: string | null;
+    label: string | null;
+    startDate: string | null;
+    dueDate: string | null;
+    customerMessage: string | null;
+  };
   deliveryDateTime?: string;
   deliveryTimeZone?: string;
   deliverySlot?: {

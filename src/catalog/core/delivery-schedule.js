@@ -37,10 +37,11 @@ export function isDeliveryDate(dateKey) {
  * less than 24 hours away.
  *
  * @param {string} dateKey
- * @param {{ now?: Date, timeZone: string }} options
+ * @param {{ now?: Date, timeZone: string, isDateAllowed?: (dateKey: string) => boolean }} options
  */
-export function isPickupDateSelectable(dateKey, { now = new Date(), timeZone } = {}) {
+export function isPickupDateSelectable(dateKey, { now = new Date(), timeZone, isDateAllowed } = {}) {
   if (!isDeliveryDate(dateKey)) return false;
+  if (isDateAllowed && isDateAllowed(dateKey) === false) return false;
   const pickupStart = wallClockToDate(
     dateKey,
     minutesToTime(DELIVERY_SCHEDULE.startMinutes),
@@ -61,10 +62,11 @@ export function timeToMinutes(time) {
 
 /**
  * @param {string} dateKey
- * @param {{ now?: Date, timeZone: string }} options
+ * @param {{ now?: Date, timeZone: string, isDateAllowed?: (dateKey: string) => boolean }} options
  */
-export function isDateSelectable(dateKey, { now = new Date(), timeZone }) {
+export function isDateSelectable(dateKey, { now = new Date(), timeZone, isDateAllowed } = {}) {
   if (!isDeliveryDate(dateKey)) return false;
+  if (isDateAllowed && isDateAllowed(dateKey) === false) return false;
   return dateKey >= getDateKeyInTimeZone(now, timeZone);
 }
 
@@ -86,12 +88,12 @@ export function isDateSelectable(dateKey, { now = new Date(), timeZone }) {
  *   closed  the whole day is outside the delivery calendar
  *
  * @param {string} dateKey
- * @param {{ now?: Date, timeZone: string, bookedByStart?: Record<string, number> }} options
+ * @param {{ now?: Date, timeZone: string, bookedByStart?: Record<string, number>, isDateAllowed?: (dateKey: string) => boolean }} options
  */
-export function getDeliverySlots(dateKey, { now = new Date(), timeZone, bookedByStart } = {}) {
+export function getDeliverySlots(dateKey, { now = new Date(), timeZone, bookedByStart, isDateAllowed } = {}) {
   const today = getDateKeyInTimeZone(now, timeZone);
   const nowMinutes = getMinutesInTimeZone(now, timeZone);
-  const selectableDate = isDateSelectable(dateKey, { now, timeZone });
+  const selectableDate = isDateSelectable(dateKey, { now, timeZone, isDateAllowed });
 
   const slots = [];
   for (const start of slotStartsForDate(dateKey)) {
