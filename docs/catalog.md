@@ -81,7 +81,7 @@ is not Houston, and it asks where the order would ship.
 | `src/catalog/catalog.css` | Catalog styles, built on the shared tokens |
 | `src/catalog/core/types.d.ts` | The domain model |
 | `src/catalog/core/repository.js` | Product loading and queries |
-| `src/catalog/core/fresa-catalog.js` | Build-time Fresa fetch, pagination and normalization |
+| `src/catalog/core/fresa-catalog.js` | Fresa fetch, pagination and normalization for live data and snapshots |
 | `src/catalog/core/facets.js` | Filtering and facet computation |
 | `src/catalog/core/quote-store.js` | The quote list and its validation |
 | `src/catalog/core/location-store.js` | Selected location and destination |
@@ -135,9 +135,10 @@ Two additions worth knowing about:
 Catalog variants use the authorized sales-measure fields internally. Three
 separate boundaries keep that reference data safe:
 
-1. The Fresa API credential authorizes only the configured lists and fields.
-2. `npm run snapshot:catalog` copies attachment bytes locally and never writes
-   the API credential, expiring signed URLs or prices into the snapshot.
+1. The anonymous storefront integration is server-allowlisted and exposes only
+   three product lists and 33 non-sensitive fields; price columns are absent.
+2. The runtime strips any `prices` property again before rendering, while the
+   checked-in snapshot keeps stable local media as an offline fallback.
 3. `assertNoPricing()` rejects any order payload containing a price before it
    leaves the browser; the live Fresa form supplies the authoritative price.
 
@@ -148,19 +149,23 @@ hides the corresponding row and filter rather than showing a placeholder.
 
 ## Where the data comes from
 
-The browser fetches the checked-in snapshot:
+The browser first fetches the live, read-only Fresa integration:
 
 ```text
-GET /data/catalog-snapshot.json
+GET https://fresaai.app/api/integrations/lists/<integration-id>?activeOnly=true
 ```
 
-`npm run snapshot:catalog` is the only step that calls Fresa. It uses the
-private `FRESA_CATALOG_API_URL` and `FRESA_CATALOG_API_KEY` from local
-environment variables, follows native task pagination, keeps only authorized
-fields, downloads stable media and writes the result to
-`public/data/catalog-snapshot.json`. Those
-credentials never enter `dist/`, and production has no catalog proxy or
-database to operate.
+On load it receives fresh signed attachment URLs. While the page remains open,
+it requests `mode=revision` every 15 seconds. That response does not load or
+sign image values; the full paginated catalog is requested only when the
+revision changes. Returning to the tab triggers the same check immediately.
+Signed URLs are renewed before expiry. A failed live request falls back to
+`GET /data/catalog-snapshot.json` and background checks keep retrying.
+
+`npm run snapshot:catalog` remains the optional fallback-maintenance step. It
+uses private `FRESA_CATALOG_API_URL` and `FRESA_CATALOG_API_KEY` values, copies
+attachments to stable local assets and writes
+`public/data/catalog-snapshot.json`; those credentials never enter `dist/`.
 
 The generator follows `page.nextOffset` while `hasMore` is true and deduplicates
 pages by task id. The preferred source is the native `/api/public/v1/tasks`
@@ -195,15 +200,15 @@ looks like an unrelated client directory before writing it.
 Products come from Fresa, so the normal route is:
 
 1. Publish or update the product in the authorized Fresa catalog.
-2. Run `npm run snapshot:catalog` locally.
-3. Run `npm test` and `npm run build`.
+2. Keep its `active` field enabled.
+3. The landing reflects the change on its next load or revision check; there is
+   no snapshot command or deploy for routine product/image changes.
 
 The legacy workbook generation scripts are not used by the landing runtime.
 
-If the product needs a photo or file, attach it in Fresa. The snapshot generator
-downloads the attachment, converts raster product photography to bounded WebP,
-removes obsolete generated assets and publishes a stable local URL. Products
-without a usable Fresa image keep the neutral placeholder. When the same
+If the product needs a photo or file, attach it in Fresa. The live endpoint
+returns a fresh signed URL and the checked-in snapshot remains the emergency
+copy. Products without a usable Fresa image keep the neutral placeholder. When the same
 variety and colour are offered at multiple stem lengths, a real Fresa image is
 shared across those lengths; it is not copied to another variety, colour or
 catalog location.
@@ -413,7 +418,7 @@ catalog.
 npm run dev                  # dev server, /catalog works
 npm run build                # production build
 npm run build:catalog-data   # regenerate seed data from data/sources/*.xlsx
-npm run snapshot:catalog     # refresh public/data/catalog-snapshot.json locally
+npm run snapshot:catalog     # refresh the optional offline snapshot
 npm run check:fresa-map      # verify every selectable variant has a native task id
 npm test                     # unit and integration tests
 ```

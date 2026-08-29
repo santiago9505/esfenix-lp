@@ -46,11 +46,14 @@ npm test
 
 ## Catálogo y Fresa
 
-El navegador usa únicamente `public/data/catalog-snapshot.json`, un snapshot
-con los campos autorizados e imágenes estables, sin precios públicos, que está
-versionado junto con el sitio. Para actualizarlo, ejecuta
-localmente el generador con credenciales privadas en `.env.local` (ese archivo
-no se versiona):
+El navegador carga el catálogo vivo desde una integración pública de Fresa
+limitada a las tres listas de Esfenix y a campos no sensibles. No recibe una
+API key ni columnas de precio. Comprueba una revisión ligera cada 15 segundos y
+solo vuelve a descargar el catálogo cuando algo cambió. Si Fresa no responde,
+usa `public/data/catalog-snapshot.json` como respaldo.
+
+El snapshot se puede regenerar localmente con credenciales privadas en
+`.env.local` (ese archivo no se versiona):
 
 ```env
 FRESA_CATALOG_API_URL=https://fresaai.app/api/public/v1/tasks
@@ -65,14 +68,14 @@ npm test
 npm run build
 ```
 
-Las credenciales `FRESA_*` solo se usan durante `npm run snapshot:catalog` y
-nunca entran al bundle ni se necesitan en producción. El formulario de
+Las credenciales `FRESA_*` solo se usan para regenerar el respaldo y nunca
+entran al bundle ni se necesitan en producción. El formulario de
 cotización se envía directamente a la API pública del formulario de Fresa. El
 mismo formulario valida únicamente el email enviado contra su lista autorizada,
 devuelve el perfil y el estado VIP cuando existe, y crea la tarea principal con
-sus subtareas. No hay endpoint propio, Cloud Function ni base de datos. El
-borrador vive en `sessionStorage`, y la selección de productos puede persistir
-como wishlist.
+sus subtareas. La landing no opera un backend propio ni una Cloud Function; el
+catálogo público vive en Fresa. El borrador vive en `sessionStorage`, y la
+selección de productos puede persistir como wishlist.
 
 ## Firebase Hosting (plan básico)
 

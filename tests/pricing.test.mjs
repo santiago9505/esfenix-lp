@@ -35,13 +35,73 @@ function productWithPrices() {
   })[0];
 }
 
-test('Fresa prices are serialized as cents only for populated measures', () => {
+test('a stem-priced flower is offered by stem and bunch without exposing empty prices', () => {
   const product = productWithPrices();
   const variant = product.locations[0].variants[0];
 
-  assert.deepEqual(variant.availableMeasures, ['stem']);
+  assert.deepEqual(variant.availableMeasures, ['stem', 'bunch']);
   assert.deepEqual(variant.prices, { stem: 84 });
   assert.equal(JSON.stringify(product).includes('bunch_price'), false);
+});
+
+test('flowers without a stem price use bunch, while non-floral products use unit', () => {
+  const products = normalizeCatalog({
+    catalog: {
+      columns: [
+        ...columns,
+        { list_id: 'flowers', key: 'unit_price', field_name: 'unit_price', field_type: 'currency' },
+      ],
+      products: [
+        {
+          id: 'alstroemeria-1',
+          listId: 'flowers',
+          listName: 'Products',
+          name: 'Alstroemeria',
+          fields: {
+            type_product: 'Other Flowers',
+            sales_unit: 'Bunch',
+            stem_price: '',
+            bunch_price: 12,
+            unit_price: 12,
+          },
+        },
+        {
+          id: 'greenery-1',
+          listId: 'flowers',
+          listName: 'Products',
+          name: 'Eucalyptus',
+          fields: {
+            type_product: 'Greenery',
+            sales_unit: 'Bunch',
+            stem_price: '',
+            bunch_price: 10,
+            unit_price: 10,
+          },
+        },
+        {
+          id: 'supply-1',
+          listId: 'flowers',
+          listName: 'Products',
+          name: 'Floral Tape',
+          fields: {
+            type_product: 'Supplies',
+            sales_unit: 'Unit',
+            stem_price: 1,
+            bunch_price: 10,
+            unit_price: 2,
+          },
+        },
+      ],
+    },
+  });
+
+  const measuresFor = (name) => products
+    .find((product) => product.name === name)
+    .locations[0].variants[0].availableMeasures;
+
+  assert.deepEqual(measuresFor('Alstroemeria'), ['bunch']);
+  assert.deepEqual(measuresFor('Eucalyptus'), ['bunch']);
+  assert.deepEqual(measuresFor('Floral Tape'), ['unit']);
 });
 
 test('delivery is enabled only when the priced total reaches $150', () => {

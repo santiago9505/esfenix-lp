@@ -12,8 +12,12 @@ const snapshot = JSON.parse(
   fs.readFileSync(new URL('../public/data/catalog-snapshot.json', import.meta.url), 'utf8'),
 );
 
-test('the curated Garden Roses fallback supplies images to the location view', () => {
+test('the curated Garden Roses fallback supplies images only when Fresa has none', () => {
   const gardenRoses = structuredClone(snapshot.products.find((product) => product.slug === 'garden-roses'));
+  gardenRoses.images = [];
+  for (const location of gardenRoses.locations) {
+    for (const variant of location.variants) variant.images = [];
+  }
 
   applyLocalProductImageFallbacks([gardenRoses], {
     enabled: true,
@@ -38,6 +42,7 @@ test('the curated Garden Roses fallback supplies images to the location view', (
 test('the curated fallback does not replace Fresa photography or paint other products', () => {
   const gardenRoses = structuredClone(snapshot.products.find((product) => product.slug === 'garden-roses'));
   const ecRoses = structuredClone(snapshot.products.find((product) => product.slug === 'ec-roses'));
+  const beforeGardenImages = gardenRoses.images.map((image) => image.src);
   const beforeEcImages = ecRoses.images.map((image) => image.src);
 
   applyLocalProductImageFallbacks([gardenRoses, ecRoses], {
@@ -46,5 +51,6 @@ test('the curated fallback does not replace Fresa photography or paint other pro
   });
 
   assert.deepEqual(ecRoses.images.map((image) => image.src), beforeEcImages);
-  assert.equal(gardenRoses.images[0].isFallback, true);
+  assert.deepEqual(gardenRoses.images.map((image) => image.src), beforeGardenImages);
+  assert.equal(gardenRoses.images.some((image) => image.isFallback), false);
 });

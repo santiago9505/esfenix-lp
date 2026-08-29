@@ -2,18 +2,29 @@
  * Catalog repository — the only module that knows where product data comes
  * from. Everything else asks it questions.
  *
- * Product data comes from the checked-in catalog snapshot. Fresa
- * remains a build-time source through `scripts/generate-fresa-catalog-snapshot.mjs`;
- * the browser never receives a credential or depends on a backend proxy.
+ * Product data comes from Fresa's public, field-scoped catalog integration.
+ * The checked-in snapshot remains an offline fallback, so a temporary API
+ * failure never takes the storefront down.
  */
 
 import { compareCategories } from '../data/categories.js';
 import { LOCATIONS, resolveLocation } from '../data/locations.js';
-import { sanitizeCatalogDescription } from './fresa-catalog.js';
+import {
+  fetchCatalogPages,
+  inheritImagesAcrossStemLengths,
+  normalizeCatalog,
+  sanitizeCatalogDescription,
+} from './fresa-catalog.js';
 import {
   applyLocalProductImageFallbacks,
   LOCAL_PRODUCT_IMAGE_FALLBACK_PRODUCT_IDS,
 } from './local-image-fallback.js';
+import {
+  LIVE_CATALOG_POLL_INTERVAL_MS,
+  LIVE_CATALOG_SIGNED_URL_REFRESH_MS,
+  LIVE_CATALOG_URL,
+} from '../data/live-catalog-config.js';
+import { resolveSalesMeasures } from './sales-measures.js';
 
 /**
  * @typedef {import('./types').Product} Product
@@ -34,29 +45,179 @@ import {
 let productsCache = null;
 /** @type {Promise<Product[]>|null} */
 let initialProductsPromise = null;
+let productsCacheSource = 'none';
+let liveRevision = null;
+let lastLiveLoadAt = 0;
+let nextRevisionCheckAt = 0;
 export const PRODUCT_SNAPSHOT_URL = '/data/catalog-snapshot.json';
+export const PRODUCT_REFRESH_INTERVAL_MS = LIVE_CATALOG_POLL_INTERVAL_MS;
 
 /**
- * Loads the bundled product list without public prices. The browser deliberately
- * stays static-only so the basic Firebase Hosting plan does not need Cloud
- * Functions or a database. Refresh the snapshot during a release when Fresa changes.
+ * Loads the live, public Fresa catalog without price fields. The static snapshot
+ * is used only when the live endpoint is temporarily unavailable.
  *
  * @param {{
+ *   force?: boolean,
+ *   liveUrl?: string,
+ *   liveFetchImpl?: typeof fetch,
  *   snapshotUrl?: string,
  *   snapshotFetchImpl?: typeof fetch,
  * }} [options]
  * @returns {Promise<Product[]>}
  */
 export function loadProducts(options = {}) {
-  if (productsCache) return Promise.resolve(productsCache);
+  if (productsCache && options.force !== true) return Promise.resolve(productsCache);
 
   if (initialProductsPromise) return initialProductsPromise;
 
-  initialProductsPromise = loadProductSnapshot(options).finally(() => {
+  initialProductsPromise = loadInitialProducts(options).finally(() => {
     initialProductsPromise = null;
   });
 
   return initialProductsPromise;
+}
+
+async function loadInitialProducts(options) {
+  const liveUrl = resolveLiveUrl(options);
+  if (liveUrl) {
+    try {
+      return await loadLiveProducts({ ...options, liveUrl });
+    } catch (error) {
+      console.warn('Live Fresa catalog unavailable; using the bundled snapshot.', error);
+    }
+  }
+  return loadProductSnapshot(options);
+}
+
+/**
+ * Checks a lightweight Fresa revision and reloads the full catalog only when
+ * data changed or its signed media URLs are close to expiring.
+ *
+ * @param {{
+ *   forceCheck?: boolean,
+ *   now?: number,
+ *   liveUrl?: string,
+ *   liveFetchImpl?: typeof fetch,
+ * }} [options]
+ */
+export async function refreshProductsIfChanged(options = {}) {
+  const now = Number(options.now ?? Date.now());
+  const liveUrl = resolveLiveUrl(options);
+  if (!liveUrl || (!options.forceCheck && now < nextRevisionCheckAt)) {
+    return { changed: false, products: productsCache ?? [] };
+  }
+
+  nextRevisionCheckAt = now + LIVE_CATALOG_POLL_INTERVAL_MS;
+  const fetchImpl = options.liveFetchImpl ?? globalThis.fetch;
+  if (typeof fetchImpl !== 'function') return { changed: false, products: productsCache ?? [] };
+
+  const revision = await fetchLiveRevision(liveUrl, fetchImpl);
+  const signedUrlsNeedRefresh = productsCacheSource === 'live'
+    && now - lastLiveLoadAt >= LIVE_CATALOG_SIGNED_URL_REFRESH_MS;
+  const changed = productsCacheSource !== 'live'
+    || revision !== liveRevision
+    || signedUrlsNeedRefresh;
+  if (!changed) return { changed: false, products: productsCache ?? [] };
+
+  const products = await loadLiveProducts({
+    ...options,
+    liveUrl,
+    knownRevision: revision,
+    now,
+  });
+  return { changed: true, products };
+}
+
+function resolveLiveUrl(options) {
+  return String(options.liveUrl === undefined ? LIVE_CATALOG_URL : options.liveUrl ?? '').trim();
+}
+
+async function loadLiveProducts(options) {
+  const fetchImpl = options.liveFetchImpl ?? globalThis.fetch;
+  if (typeof fetchImpl !== 'function') throw new Error('Live catalog fetch is unavailable.');
+
+  const [payload, revision] = await Promise.all([
+    fetchCatalogPages({
+      apiUrl: options.liveUrl,
+      fetchImpl,
+      // The public integration accepts 1,000 records per page. This keeps the
+      // live storefront to two catalog requests at its current size instead
+      // of seven sequential round trips.
+      pageLimit: 1000,
+    }),
+    options.knownRevision
+      ? Promise.resolve(options.knownRevision)
+      : fetchLiveRevision(options.liveUrl, fetchImpl),
+  ]);
+  const products = prepareProducts(normalizeCatalog(filterActiveProducts(payload)));
+  if (!isProductList(products)) throw new Error('Live Fresa catalog is invalid.');
+
+  productsCache = products;
+  productsCacheSource = 'live';
+  liveRevision = revision;
+  lastLiveLoadAt = Number(options.now ?? Date.now());
+  nextRevisionCheckAt = lastLiveLoadAt + LIVE_CATALOG_POLL_INTERVAL_MS;
+  return productsCache;
+}
+
+async function fetchLiveRevision(liveUrl, fetchImpl) {
+  const url = new URL(
+    liveUrl,
+    typeof window === 'undefined' || !window.location?.href
+      ? 'http://localhost/'
+      : window.location.href,
+  );
+  url.searchParams.set('mode', 'revision');
+  url.searchParams.delete('offset');
+  url.searchParams.delete('limit');
+
+  const response = await fetchImpl(url.toString(), {
+    headers: { Accept: 'application/json' },
+    cache: 'no-cache',
+  });
+  if (!response?.ok) throw new Error('Live Fresa catalog revision is unavailable.');
+  const payload = await response.json();
+  const revision = String(payload?.revision ?? '').trim();
+  if (!payload?.success || !revision || String(payload?.source?.name ?? '').trim() !== 'Landing Page') {
+    throw new Error('Live Fresa catalog revision is invalid.');
+  }
+  return revision;
+}
+
+function filterActiveProducts(payload) {
+  const catalog = payload?.catalog ?? {};
+  const columns = Array.isArray(catalog.columns) ? catalog.columns : [];
+  const products = Array.isArray(catalog.products) ? catalog.products : [];
+  const activeColumnByList = new Map();
+
+  for (const column of columns) {
+    const label = [column?.field_name, column?.field_key, column?.key]
+      .map((value) => String(value ?? '').trim().toLowerCase())
+      .join(' ');
+    if (!/(^|\s|_)active($|\s|_)/.test(label)) continue;
+    const listId = String(column?.list_id ?? '').trim();
+    const key = String(column?.key ?? '').trim();
+    if (listId && key) activeColumnByList.set(listId, key);
+  }
+
+  if (activeColumnByList.size === 0) return payload;
+  return {
+    ...payload,
+    catalog: {
+      ...catalog,
+      products: products.filter((product) => {
+        const key = activeColumnByList.get(String(product?.listId ?? '').trim());
+        return key ? isActiveValue(product?.fields?.[key]) : false;
+      }),
+    },
+  };
+}
+
+function isActiveValue(value) {
+  if (value === true || value === 1) return true;
+  return ['true', '1', 'yes', 'si', 'sí', 'active', 'activa'].includes(
+    String(value ?? '').trim().toLowerCase(),
+  );
 }
 
 /**
@@ -77,14 +238,47 @@ async function loadProductSnapshot(options) {
   const payload = await response.json();
   if (!isProductList(payload?.products)) throw new Error('Catalog snapshot is invalid.');
 
-  productsCache = applyLocalProductImageFallbacks(
-    sanitizeProductDescriptions(payload.products),
+  productsCache = prepareProducts(payload.products);
+  productsCacheSource = 'snapshot';
+  liveRevision = null;
+  lastLiveLoadAt = 0;
+  nextRevisionCheckAt = Date.now() + LIVE_CATALOG_POLL_INTERVAL_MS;
+  return productsCache;
+}
+
+function prepareProducts(products) {
+  return applyLocalProductImageFallbacks(
+    normalizePublicSalesMeasures(
+      stripPublicPrices(sanitizeProductDescriptions(inheritImagesAcrossStemLengths(products))),
+    ),
     {
       enabled: true,
       productIds: LOCAL_PRODUCT_IMAGE_FALLBACK_PRODUCT_IDS,
     },
   );
-  return productsCache;
+}
+
+function normalizePublicSalesMeasures(products) {
+  return products.map((product) => ({
+    ...product,
+    locations: (product.locations ?? []).map((location) => ({
+      ...location,
+      variants: (location.variants ?? []).map((variant) => ({
+        ...variant,
+        availableMeasures: resolveSalesMeasures(product.category, variant.availableMeasures),
+      })),
+    })),
+  }));
+}
+
+function stripPublicPrices(products) {
+  return products.map((product) => ({
+    ...product,
+    locations: (product.locations ?? []).map((location) => ({
+      ...location,
+      variants: (location.variants ?? []).map(({ prices: _prices, ...variant }) => variant),
+    })),
+  }));
 }
 
 /** @param {Product[]} products */
@@ -110,14 +304,17 @@ function isProductList(value) {
 
 /** Whether the currently rendered list should be refreshed in the background. */
 export function productsNeedRefresh(now = Date.now()) {
-  void now;
-  return false;
+  return Boolean(LIVE_CATALOG_URL) && now >= nextRevisionCheckAt;
 }
 
 /** Clears the in-memory snapshot cache. Used by tests and Retry. */
 export function resetProductCache(_options = {}) {
   productsCache = null;
   initialProductsPromise = null;
+  productsCacheSource = 'none';
+  liveRevision = null;
+  lastLiveLoadAt = 0;
+  nextRevisionCheckAt = 0;
 }
 
 /**

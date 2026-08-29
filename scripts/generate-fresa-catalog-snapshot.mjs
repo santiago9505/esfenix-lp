@@ -104,7 +104,14 @@ async function pruneCatalogAssets(products) {
 }
 
 async function snapshotAttachments(attachments = []) {
-  return (await Promise.all(attachments.map(snapshotAttachment))).filter(Boolean);
+  const snapshots = (await Promise.all(attachments.map(snapshotAttachment))).filter(Boolean);
+  const seen = new Set();
+  return snapshots.filter((attachment) => {
+    const key = String(attachment?.contentKey ?? attachment?.url ?? attachment?.src ?? attachment?.id ?? '').trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 async function snapshotProduct(product) {

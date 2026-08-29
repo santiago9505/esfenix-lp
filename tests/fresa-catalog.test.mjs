@@ -113,6 +113,38 @@ test('accepts direct image links and wrapped attachment links from Fresa', () =>
   assert.equal(products[1].images[0].src, 'https://cdn.example/alstroemeria-pink?token=1');
 });
 
+test('deduplicates product photography by stable content instead of temporary URL or record id', () => {
+  const products = normalizeCatalog({
+    catalog: {
+      columns,
+      products: [50, 60, 70].map((length) => ({
+        id: `black-magic-${length}`,
+        listId: 'flowers',
+        listName: 'Products',
+        name: 'EC ROSES',
+        fields: {
+          type_product_field: 'Roses',
+          floral_variant: 'Black Magic',
+          stem_size: `${length} cm`,
+          gallery_field: [{
+            id: `upload-${length}`,
+            contentKey: length === 70 ? 'sha256-12:different' : 'sha256-12:same-photo',
+            name: 'black-magic.webp',
+            type: 'image/webp',
+            url: `https://storage.example/photo-${length}.webp?token=${length}`,
+          }],
+        },
+      })),
+    },
+  });
+
+  assert.equal(products[0].images.length, 2);
+  assert.deepEqual(
+    products[0].images.map((image) => image.contentKey),
+    ['sha256-12:same-photo', 'sha256-12:different'],
+  );
+});
+
 test('keeps missing photography blank and shares a real upload across stem lengths', () => {
   const baseProduct = {
     id: 'ecuadorian-roses-60',
@@ -297,12 +329,13 @@ test('fetches every Fresa page with bearer auth and the required pagination', as
   const response = await fetchCatalogPages({
     apiUrl: 'https://fresa.example/api/integrations/catalog',
     apiKey: 'test-key',
+    pageLimit: 1000,
     fetchImpl,
   });
 
   assert.deepEqual(
     calls.map((call) => new URL(call.url).search),
-    ['?limit=200&offset=0', '?limit=200&offset=1000'],
+    ['?limit=1000&offset=0', '?limit=1000&offset=1000'],
   );
   assert.equal(calls[0].options.headers.Authorization, 'Bearer test-key');
   assert.deepEqual(response.catalog.products.map((product) => product.id), ['product-0', 'product-1000']);

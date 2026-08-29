@@ -9,6 +9,7 @@
 import { getCategoryLabel, resolveCategoryId } from '../data/categories.js';
 import { LOCATIONS } from '../data/locations.js';
 import { catalogOrderForFamily, resolveCatalogFamily } from '../data/catalog-taxonomy.js';
+import { resolveSalesMeasures } from './sales-measures.js';
 import { slugify } from './slug.js';
 import { priceToCents, rememberVariantPrices } from './pricing.js';
 
@@ -52,6 +53,7 @@ export async function fetchCatalogPages({
   expectedListId,
   listName,
   fetchImpl = globalThis.fetch,
+  pageLimit = PAGE_LIMIT,
   hydrateAttachments = false,
   attachmentConcurrency = 12,
   attachmentTimeoutMs = 8000,
@@ -69,6 +71,11 @@ export async function fetchCatalogPages({
     throw new FresaCatalogError(0, 'This browser cannot request the Fresa catalog.');
   }
 
+  const requestPageLimit = Math.min(
+    1000,
+    Math.max(1, Math.floor(Number(pageLimit) || PAGE_LIMIT)),
+  );
+
   let offset = 0;
   const visitedOffsets = new Set();
   const productsById = new Map();
@@ -82,7 +89,7 @@ export async function fetchCatalogPages({
         ? 'http://localhost/'
         : window.location.href,
     );
-    url.searchParams.set('limit', String(PAGE_LIMIT));
+    url.searchParams.set('limit', String(requestPageLimit));
     url.searchParams.set('offset', String(offset));
 
     let response;
@@ -120,6 +127,7 @@ export async function fetchCatalogPages({
           expectedListId: safeString(expectedListId) || safeString(url.searchParams.get('listId')),
           listName: safeString(listName) || FRESA_CATALOG_SOURCE_NAME,
           offset,
+          pageLimit: requestPageLimit,
           page: data?.page,
         })
       : null;
@@ -176,7 +184,7 @@ export async function fetchCatalogPages({
       page: {
         ...(metadata?.page ?? {}),
         offset: 0,
-        limit: PAGE_LIMIT,
+        limit: requestPageLimit,
         totalCount: productsById.size,
         hasMore: false,
         nextOffset: null,
@@ -295,7 +303,7 @@ async function mapWithConcurrency(values, concurrency, worker) {
  * integration-specific schema or business profile is required.
  *
  * @param {Array<Record<string, any>>} tasks
- * @param {{ expectedListId: string, listName: string, offset: number, page?: Record<string, any> }} options
+ * @param {{ expectedListId: string, listName: string, offset: number, pageLimit: number, page?: Record<string, any> }} options
  */
 function adaptTaskApiPage(tasks, options) {
   const expectedListId = safeString(options.expectedListId);
@@ -345,16 +353,16 @@ function adaptTaskApiPage(tasks, options) {
     source: { id: expectedListId, name: FRESA_CATALOG_SOURCE_NAME },
     page: {
       offset: Number(options.page?.offset) || options.offset,
-      limit: Number(options.page?.limit) || PAGE_LIMIT,
+      limit: Number(options.page?.limit) || options.pageLimit,
       hasMore: typeof options.page?.hasMore === 'boolean'
         ? options.page.hasMore
-        : tasks.length === PAGE_LIMIT,
+        : tasks.length === options.pageLimit,
       nextOffset: options.page?.nextOffset === null
         ? null
         : Number.isSafeInteger(Number(options.page?.nextOffset))
           ? Number(options.page.nextOffset)
-          : tasks.length === PAGE_LIMIT
-            ? options.offset + PAGE_LIMIT
+          : tasks.length === options.pageLimit
+            ? options.offset + options.pageLimit
             : null,
     },
   };
@@ -555,7 +563,7 @@ function normalizeProduct(raw, columns) {
   const groupValue = firstScalar(readColumnValue(fields, roleColumns.group));
   const groupLabel = safeString(groupValue) ||
     (resolveCategoryId(listName) ? getCategoryLabel(category) : listName);
-  const variants = buildVariants(raw, fields, columns, roleColumns);
+  const variants = buildVariants(raw, fields, columns, roleColumns, category);
   const locationValue = firstScalar(readColumnValue(fields, roleColumns.location));
   const images = uniqueAttachments(variants.flatMap((variant) => variant.images ?? []));
   const files = uniqueAttachments(variants.flatMap((variant) => variant.files ?? []));
@@ -746,8 +754,9 @@ function familyName(rawName, variants) {
  * @param {Record<string, unknown>} fields
  * @param {Array<Record<string, unknown>>} columns
  * @param {Record<string, Record<string, unknown>|null>} roleColumns
+ * @param {string} category
  */
-function buildVariants(raw, fields, columns, roleColumns) {
+function buildVariants(raw, fields, columns, roleColumns, category) {
   const explicitLengths = scalarValues(readColumnValue(fields, roleColumns.lengthCm))
     .map(parseLength)
     .filter((value) => value !== null);
@@ -789,7 +798,7 @@ function buildVariants(raw, fields, columns, roleColumns) {
     .filter(([, value]) => value !== null && value !== undefined && value !== '')
     .map(([measure]) => measure);
   const hasPriceDescriptor = explicitPriceColumns.length > 0 || Boolean(genericPriceColumn);
-  const availableMeasures = [...new Set([...values.measure, ...pricedMeasures])]
+  const detectedMeasures = [...new Set([...values.measure, ...pricedMeasures])]
     .filter((measure) => {
       // When Fresa exposes a price column, an empty value means that metric is
       // not available for this product. Older/sparse fixtures without price
@@ -797,6 +806,11 @@ function buildVariants(raw, fields, columns, roleColumns) {
       if (!hasPriceDescriptor) return true;
       return pricedMeasures.includes(measure);
     });
+  const hasStemPrice = roleColumns.stemPrice
+    ? prices.stem !== null && prices.stem !== undefined && prices.stem !== ''
+    : null;
+  const salesMeasureSignals = [...new Set([...values.measure, ...detectedMeasures])];
+  const availableMeasures = resolveSalesMeasures(category, salesMeasureSignals, { hasStemPrice });
 
   const customColumns = columns.filter((column) => {
     if (!safeString(column.key)) return false;
@@ -1097,6 +1111,7 @@ function attachmentValues(value, options = {}) {
         || (options.imageHint === true && Boolean(url));
       return {
         id: safeString(file.id) || `${name}-${index}`,
+        contentKey: safeString(file.contentKey ?? file.content_key) || null,
         name,
         type,
         size: Number.isFinite(Number(file.size)) ? Number(file.size) : null,
@@ -1155,7 +1170,13 @@ function looksLikeImageUrl(url) {
 function uniqueAttachments(attachments) {
   const seen = new Set();
   return attachments.filter((attachment) => {
-    const key = `${attachment.id}|${attachment.url ?? ''}`;
+    const contentKey = safeString(attachment.contentKey ?? attachment.content_key).toLowerCase();
+    const url = safeString(attachment.src ?? attachment.url);
+    const key = contentKey
+      ? `content:${contentKey}`
+      : url
+        ? `url:${url}`
+        : `id:${safeString(attachment.id)}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

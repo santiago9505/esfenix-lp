@@ -18,7 +18,10 @@ import {
   findProductBySlug,
   getProductsForLocation,
   loadProducts,
+  PRODUCT_REFRESH_INTERVAL_MS,
   productExistsAnywhere,
+  productsNeedRefresh,
+  refreshProductsIfChanged,
 } from './core/repository.js';
 import { catalogHref, productHref, readFiltersFromUrl, syncUrl } from './core/url-state.js';
 import { confirmLocationChange } from './ui/modal.js';
@@ -50,6 +53,8 @@ export function createApp({ head, body }) {
   let locationProducts = [];
   let filters = emptyFilters();
   let loadError = null;
+  let refreshPromise = null;
+  let refreshTimer = null;
   /** @type {ReturnType<typeof openQuoteSummary>|null} */
   let summary = null;
 
@@ -421,6 +426,40 @@ export function createApp({ head, body }) {
 
     render();
     bindGlobalQuoteCtas();
+    bindCatalogRefresh();
+  }
+
+  async function refreshCatalog(forceCheck = false) {
+    if (document.hidden || refreshPromise || (!forceCheck && !productsNeedRefresh())) return;
+
+    refreshPromise = refreshProductsIfChanged({ forceCheck });
+    try {
+      const result = await refreshPromise;
+      if (!result.changed) return;
+
+      allProducts = result.products;
+      locationProducts = getProductsForLocation(allProducts, locationStore.getId());
+      filters = pruneFilters(locationProducts, filters);
+      quoteStore.reconcile(locationProducts);
+      summary?.update(quoteStore.getItems());
+      render();
+    } catch (error) {
+      // A background failure must never replace a working live catalog or its
+      // bundled fallback with an error state. The next interval retries.
+      console.warn('Could not refresh the live Fresa catalog.', error);
+    } finally {
+      refreshPromise = null;
+    }
+  }
+
+  function bindCatalogRefresh() {
+    if (refreshTimer) return;
+    refreshTimer = window.setInterval(() => {
+      void refreshCatalog();
+    }, PRODUCT_REFRESH_INTERVAL_MS);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) void refreshCatalog(true);
+    });
   }
 
   /**

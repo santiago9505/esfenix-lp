@@ -449,7 +449,7 @@ function measureControl(choice, measureValues, rerender) {
   const id = `cat-variant-measure-${++rowId}`;
   const label = MEASURE_LABELS[choice.measure] ?? capitalize(choice.measure ?? '');
   return el('div', { class: 'cat-variant-measure-control' }, [
-    el('label', { for: id, text: 'Unit' }),
+    el('label', { for: id, text: 'Sold as' }),
     measureValues.length === 1
       ? el('span', { class: 'cat-variant-measure-value', text: label })
       : el('div', { class: 'cat-variant-measure-select-wrap' }, [
@@ -457,7 +457,7 @@ function measureControl(choice, measureValues, rerender) {
             id,
             class: 'cat-variant-measure-select',
             value: choice.measure ?? '',
-            'aria-label': 'Unit',
+            'aria-label': 'Sold as',
             onChange: (event) => {
               choice.measure = event.currentTarget.value || null;
               rerender();
