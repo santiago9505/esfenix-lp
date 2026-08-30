@@ -373,7 +373,7 @@ export function renderQuoteFormView(ctx, options) {
         phoneField(),
         contactField('Company', 'company', 'organization', false),
       ]),
-      contactField('Social media profiles (business)', 'socialMediaProfiles', 'off', false),
+      contactField('Social media link', 'socialMediaProfiles', 'url', false, 'url'),
     ];
 
     return el('form', {
@@ -431,11 +431,13 @@ export function renderQuoteFormView(ctx, options) {
       lastName: value('Last Name'),
       phone: value('Phone Number', 'Phone'),
       company: value('Company'),
-      socialMediaProfiles: value(
+      socialMediaProfiles: normalizeSocialMediaUrl(value(
         'Social media profiles (business)',
         'Social Media Profiles (Business)',
         'Social Media Profiles',
-      ),
+        'Social media link',
+        'Social Media URL',
+      )),
     };
     state.delivery = {
       ...state.delivery,
@@ -447,17 +449,34 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function contactField(label, name, autocomplete, required, type = 'text') {
-    const value = state.contact[name] ?? '';
+    const value = name === 'socialMediaProfiles'
+      ? normalizeSocialMediaUrl(state.contact[name])
+      : state.contact[name] ?? '';
     return field({
       label,
       name,
       type,
       value,
       autocomplete,
+      inputmode: name === 'socialMediaProfiles' ? 'url' : undefined,
+      spellcheck: name === 'socialMediaProfiles' ? 'false' : undefined,
+      autocapitalize: name === 'socialMediaProfiles' ? 'none' : undefined,
       maxlength: name === 'company' ? '120' : name === 'socialMediaProfiles' ? '500' : '80',
       required,
       optional: !required,
     });
+  }
+
+  /** @param {unknown} value */
+  function normalizeSocialMediaUrl(value) {
+    const text = String(value ?? '').trim();
+    if (!text) return '';
+    try {
+      const url = new URL(text);
+      return url.protocol === 'http:' || url.protocol === 'https:' ? text : '';
+    } catch {
+      return '';
+    }
   }
 
   function phoneField() {
@@ -1315,6 +1334,8 @@ export function renderQuoteFormView(ctx, options) {
         placeholder: config.placeholder,
         autocomplete: config.autocomplete,
         inputmode: config.inputmode,
+        spellcheck: config.spellcheck,
+        autocapitalize: config.autocapitalize,
         maxlength: config.maxlength,
         required: config.required,
         readonly: config.readonly,

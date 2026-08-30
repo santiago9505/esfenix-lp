@@ -21,7 +21,7 @@ function formResponse() {
         { id: 'last', label: 'Last Name', type: 'short_text' },
         { id: 'phone', label: 'Phone Number', type: 'phone' },
         { id: 'company', label: 'Company', type: 'short_text' },
-        { id: 'social', label: 'Social media profiles (business)', type: 'long_text' },
+        { id: 'social-link', label: 'Social media URL', type: 'url' },
         { id: 'location', label: 'Location', type: 'select', options: [{ value: 'tx__houston', label: 'TX - HOUSTON' }] },
         catalogField('regular-products', false),
         catalogField('vip-products', true),
@@ -83,7 +83,7 @@ function payload(vip = false) {
       lastName: 'Flower',
       phone: '+57 350 576 5962',
       company: 'Esfenix Test',
-      socialMediaProfiles: '@esfenix-test',
+      socialMediaProfiles: 'https://www.instagram.com/esfenix-test',
     },
     orderType: 'Delivery',
     delivery: {
@@ -132,7 +132,7 @@ test('maps all contact, delivery and product fields to live Fresa ids', () => {
   assert.equal(submission.answers.first, 'Ana');
   assert.equal(submission.answers.phone, '+57 350 576 5962');
   assert.equal(submission.answers.company, 'Esfenix Test');
-  assert.equal(submission.answers.social, '@esfenix-test');
+  assert.equal(submission.answers['social-link'], 'https://www.instagram.com/esfenix-test');
   assert.equal(submission.answers.location, 'tx__houston');
   assert.equal(submission.answers.type, 'delivery');
   assert.equal(submission.answers.delivery, '2026-08-14T08:00');
@@ -177,11 +177,11 @@ test('checks the $150 Delivery minimum with the selected product measure without
 
 test('keeps social media profiles when the live form has no dedicated field yet', () => {
   const response = formResponse();
-  response.form.fields = response.form.fields.filter((field) => field.id !== 'social');
+  response.form.fields = response.form.fields.filter((field) => field.id !== 'social-link');
 
   const submission = buildFresaFormSubmission(payload(false), response);
 
-  assert.match(submission.answers.notes, /Social media profiles \(business\): @esfenix-test/);
+  assert.match(submission.answers.notes, /Social media profiles \(business\): https:\/\/www\.instagram\.com\/esfenix-test/);
 });
 
 test('keeps the selected location and destination fields for a new customer when the order is Pickup', () => {

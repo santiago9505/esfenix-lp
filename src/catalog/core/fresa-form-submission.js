@@ -72,6 +72,35 @@ function findOptionValue(field, label) {
   return typeof option?.value === 'string' ? option.value : null;
 }
 
+/**
+ * Finds the dedicated social-media URL field when the live form has one.
+ * Prefer a URL field over the legacy long-text field if both are present.
+ *
+ * @param {Array<any>} fields
+ */
+function findSocialMediaField(fields) {
+  const candidates = fields.filter((field) => {
+    const label = normalizeLabel(field?.label);
+    return label === 'social media profiles business'
+      || label === 'social media profiles'
+      || label === 'social media profile'
+      || label === 'social media link'
+      || label === 'social media url'
+      || label === 'social media network link'
+      || label === 'link redes sociales'
+      || label === 'url redes sociales';
+  });
+  const semanticUrlField = fields.find((field) => {
+      const label = normalizeLabel(field?.label);
+      return field?.type === 'url'
+        && /social|network|redes|instagram|facebook|tiktok|linkedin/.test(label);
+    });
+  return candidates.find((field) => field?.type === 'url')
+    ?? semanticUrlField
+    ?? candidates[0]
+    ?? null;
+}
+
 /** @param {Array<any>} fields @param {string} label @param {string} type */
 function requireField(fields, label, type) {
   const field = findField(fields, label, type);
@@ -469,7 +498,7 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
   const lastNameField = requireField(fields, 'Last Name', 'short_text');
   const phoneField = requireField(fields, 'Phone Number', 'phone');
   const companyField = findField(fields, 'Company', 'short_text');
-  const socialMediaField = findField(fields, 'Social media profiles (business)');
+  const socialMediaField = findSocialMediaField(fields);
   const locationField = requireField(fields, 'Location', 'select');
   const orderTypeField = requireField(fields, 'Type of Order', 'select');
 
