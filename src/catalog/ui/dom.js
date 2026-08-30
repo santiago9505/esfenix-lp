@@ -208,15 +208,20 @@ export function productMedia(image, options) {
 }
 
 /**
- * Local fallback photos are often displayed as 96–160px thumbnails while the
- * source is prepared for the full product gallery. Use a dedicated small
- * derivative for those slots; remote Fresa URLs continue unchanged.
+ * Snapshot photos have a 480px derivative for cards and compact quote/gallery
+ * slots. Full images remain available for the main product gallery, while
+ * remote Fresa URLs continue unchanged.
  * @param {string} src
  * @param {number} width
  */
 function thumbnailSource(src, width) {
-  if (width > 240 || !/^\/assets\/images\/flowers-fallback\/[^?#]+\.webp$/i.test(src)) return src;
-  return src.replace(/\.webp$/i, '-thumb.webp');
+  if (width <= 480 && /^\/data\/catalog-assets\/[^?#]+\.webp$/i.test(src)) {
+    return src.replace(/\.webp$/i, '-thumb.webp');
+  }
+  if (width <= 240 && /^\/assets\/images\/flowers-fallback\/[^?#]+\.webp$/i.test(src)) {
+    return src.replace(/\.webp$/i, '-thumb.webp');
+  }
+  return src;
 }
 
 /**

@@ -138,7 +138,7 @@ separate boundaries keep that reference data safe:
 1. The anonymous storefront integration is server-allowlisted and exposes only
    three product lists and 33 non-sensitive fields; price columns are absent.
 2. The runtime strips any `prices` property again before rendering, while the
-   checked-in snapshot keeps stable local media as an offline fallback.
+   checked-in snapshot provides the fast first paint with stable local media.
 3. `assertNoPricing()` rejects any order payload containing a price before it
    leaves the browser; the live Fresa form supplies the authoritative price.
 
@@ -149,23 +149,35 @@ hides the corresponding row and filter rather than showing a placeholder.
 
 ## Where the data comes from
 
-The browser first fetches the live, read-only Fresa integration:
+The browser first renders the short-cache, same-origin snapshot:
+
+```text
+GET /data/catalog-snapshot.json
+```
+
+The landing page prefetches that file and the catalog page preloads it, so a
+warm navigation normally reuses the HTTP cache. After the initial products are
+visible, the browser checks the live, read-only Fresa integration:
 
 ```text
 GET https://fresaai.app/api/integrations/lists/<integration-id>?activeOnly=true
 ```
 
-On load it receives fresh signed attachment URLs. While the page remains open,
-it requests `mode=revision` every 15 seconds. That response does not load or
-sign image values; the full paginated catalog is requested only when the
-revision changes. Returning to the tab triggers the same check immediately.
-Signed URLs are renewed before expiry. A failed live request falls back to
-`GET /data/catalog-snapshot.json` and background checks keep retrying.
+That first background refresh receives fresh signed attachment URLs without
+blocking the initial UI. While the page remains open, it requests
+`mode=revision` every 15 seconds. That response does not load or sign image
+values; the full paginated catalog is requested only when the revision changes.
+Returning to the tab triggers the same check immediately. Signed URLs are
+renewed before expiry. A failed live request leaves the working snapshot or
+last live catalog in place and background checks keep retrying. If the snapshot
+cannot load at all, the live endpoint remains the recovery path.
 
-`npm run snapshot:catalog` remains the optional fallback-maintenance step. It
+`npm run snapshot:catalog` maintains the fast first-render dataset. It
 uses private `FRESA_CATALOG_API_URL` and `FRESA_CATALOG_API_KEY` values, copies
 attachments to stable local assets and writes
 `public/data/catalog-snapshot.json`; those credentials never enter `dist/`.
+It also writes 480px WebP derivatives for catalog cards and compact quote
+views; full 1600px images remain reserved for the product gallery.
 
 The generator follows `page.nextOffset` while `hasMore` is true and deduplicates
 pages by task id. The preferred source is the native `/api/public/v1/tasks`
@@ -424,7 +436,7 @@ catalog.
 npm run dev                  # dev server, /catalog works
 npm run build                # production build
 npm run build:catalog-data   # regenerate seed data from data/sources/*.xlsx
-npm run snapshot:catalog     # refresh the optional offline snapshot
+npm run snapshot:catalog     # refresh the fast first-render snapshot and thumbnails
 npm run check:fresa-map      # verify every selectable variant has a native task id
 npm test                     # unit and integration tests
 ```

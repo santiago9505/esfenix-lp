@@ -9,6 +9,7 @@ import { fetchCatalogPages, normalizeCatalog } from '../src/catalog/core/fresa-c
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outputPath = path.join(root, 'public', 'data', 'catalog-snapshot.json');
 const assetDirectory = path.join(root, 'public', 'data', 'catalog-assets');
+const thumbnailWidth = 480;
 
 async function readEnvironment() {
   const values = { ...process.env };
@@ -64,7 +65,21 @@ async function snapshotAttachment(attachment) {
     const extension = canOptimizeImage ? '.webp' : extensionFor(attachment, contentType);
     const filename = `${hash}${extension}`;
     await fs.mkdir(assetDirectory, { recursive: true });
-    await fs.writeFile(path.join(assetDirectory, filename), bytes);
+    const writes = [fs.writeFile(path.join(assetDirectory, filename), bytes)];
+    if (canOptimizeImage) {
+      const thumbnail = await sharp(sourceBytes)
+        .rotate()
+        .resize({
+          width: thumbnailWidth,
+          height: thumbnailWidth,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 76, effort: 5 })
+        .toBuffer();
+      writes.push(fs.writeFile(path.join(assetDirectory, `${hash}-thumb.webp`), thumbnail));
+    }
+    await Promise.all(writes);
     const localUrl = `/data/catalog-assets/${filename}`;
     return {
       ...attachment,
@@ -82,7 +97,12 @@ async function pruneCatalogAssets(products) {
   const collect = (attachments = []) => {
     for (const attachment of attachments) {
       const url = String(attachment?.url ?? '').trim();
-      if (url.startsWith('/data/catalog-assets/')) referenced.add(path.basename(url));
+      if (!url.startsWith('/data/catalog-assets/')) continue;
+      const filename = path.basename(url);
+      referenced.add(filename);
+      if (attachment?.isImage && filename.endsWith('.webp')) {
+        referenced.add(filename.replace(/\.webp$/i, '-thumb.webp'));
+      }
     }
   };
   for (const product of products) {

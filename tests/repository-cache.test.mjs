@@ -95,13 +95,15 @@ test('loads the checked-in snapshot when the live source is disabled', async () 
   resetProductCache();
 });
 
-test('loads live Fresa images, excludes inactive records, and never exposes prices', async () => {
+test('renders the snapshot first, then refreshes live images without exposing prices', async () => {
   resetProductCache();
   let snapshotRequests = 0;
+  let liveRequests = 0;
 
   const products = await loadProducts({
     liveUrl: 'https://fresa.example/api/integrations/lists/esfenix',
     liveFetchImpl: async (url) => {
+      liveRequests += 1;
       const request = new URL(url);
       if (request.searchParams.get('mode') === 'revision') {
         return jsonResponse({ success: true, source: { name: 'Landing Page' }, revision: 'revision-1' });
@@ -117,12 +119,53 @@ test('loads live Fresa images, excludes inactive records, and never exposes pric
     },
   });
 
-  assert.equal(snapshotRequests, 0);
-  assert.equal(products.length, 1);
+  assert.equal(snapshotRequests, 1);
+  assert.equal(liveRequests, 0, 'the first product render never waits for Fresa');
+  assert.equal(products[0].id, 'snapshot');
+
+  const refreshed = await refreshProductsIfChanged({
+    forceCheck: true,
+    liveUrl: 'https://fresa.example/api/integrations/lists/esfenix',
+    liveFetchImpl: async (url) => {
+      const request = new URL(url);
+      if (request.searchParams.get('mode') === 'revision') {
+        return jsonResponse({ success: true, source: { name: 'Landing Page' }, revision: 'revision-1' });
+      }
+      const active = liveCatalogResponse('https://storage.example/rose-v1.webp');
+      const inactive = liveCatalogResponse('https://storage.example/hidden.webp', false).records[0];
+      return jsonResponse({ ...active, records: [...active.records, inactive] });
+    },
+  });
+
+  assert.equal(refreshed.changed, true);
+  assert.equal(refreshed.products.length, 1);
+  assert.equal(refreshed.products[0].id, 'live-active');
+  assert.equal(refreshed.products[0].description, null);
+  assert.equal(refreshed.products[0].images[0].src, 'https://storage.example/rose-v1.webp');
+  assert.equal('prices' in refreshed.products[0].locations[0].variants[0], false);
+  resetProductCache();
+});
+
+test('recovers from a missing snapshot by loading the live catalog directly', async () => {
+  resetProductCache();
+  let liveRequests = 0;
+
+  const products = await loadProducts({
+    liveUrl: 'https://fresa.example/api/integrations/lists/esfenix',
+    snapshotFetchImpl: async () => jsonResponse({}, 503),
+    liveFetchImpl: async (url) => {
+      liveRequests += 1;
+      const request = new URL(url);
+      if (request.searchParams.get('mode') === 'revision') {
+        return jsonResponse({ success: true, source: { name: 'Landing Page' }, revision: 'revision-recovery' });
+      }
+      return jsonResponse(liveCatalogResponse('https://storage.example/recovered.webp'));
+    },
+  });
+
   assert.equal(products[0].id, 'live-active');
-  assert.equal(products[0].description, null);
-  assert.equal(products[0].images[0].src, 'https://storage.example/rose-v1.webp');
-  assert.equal('prices' in products[0].locations[0].variants[0], false);
+  assert.equal(products[0].images[0].src, 'https://storage.example/recovered.webp');
+  assert.equal(liveRequests, 2, 'recovery keeps the full-catalog and lightweight revision requests');
   resetProductCache();
 });
 
@@ -144,9 +187,14 @@ test('polls only the revision until Fresa changes, then refreshes the image auto
   const options = {
     liveUrl: 'https://fresa.example/api/integrations/lists/esfenix',
     liveFetchImpl: fetchImpl,
+    snapshotFetchImpl: async () => jsonResponse({ products: [normalizedProduct('snapshot')] }),
   };
 
   await loadProducts(options);
+  assert.equal(fullCatalogRequests, 0, 'initial rendering uses only the local snapshot');
+
+  const initialRefresh = await refreshProductsIfChanged({ ...options, forceCheck: true });
+  assert.equal(initialRefresh.changed, true);
   assert.equal(fullCatalogRequests, 1);
 
   const unchanged = await refreshProductsIfChanged({ ...options, forceCheck: true });

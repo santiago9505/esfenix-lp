@@ -432,6 +432,11 @@ export function createApp({ head, body }) {
     render();
     bindGlobalQuoteCtas();
     bindCatalogRefresh();
+
+    // The bundled snapshot made the first render independent of Fresa. Check
+    // the live revision only after products are visible, then update quietly if
+    // anything changed.
+    void refreshCatalog(true);
   }
 
   async function refreshCatalog(forceCheck = false) {

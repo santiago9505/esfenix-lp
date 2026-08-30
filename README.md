@@ -46,11 +46,13 @@ npm test
 
 ## Catálogo y Fresa
 
-El navegador carga el catálogo vivo desde una integración pública de Fresa
-limitada a las tres listas de Esfenix y a campos no sensibles. No recibe una
-API key ni columnas de precio. Comprueba una revisión ligera cada 15 segundos y
-solo vuelve a descargar el catálogo cuando algo cambió. Si Fresa no responde,
-usa `public/data/catalog-snapshot.json` como respaldo.
+El navegador pinta primero `public/data/catalog-snapshot.json`, que la portada
+precarga en segundo plano, para no bloquear los productos con una llamada
+externa. Después consulta la integración pública de Fresa —limitada a las tres
+listas de Esfenix y a campos no sensibles— y actualiza el catálogo sin
+interrumpir la vista. No recibe una API key ni columnas de precio. Comprueba una
+revisión ligera cada 15 segundos y solo vuelve a descargar el catálogo vivo
+cuando algo cambió.
 
 El snapshot se puede regenerar localmente con credenciales privadas en
 `.env.local` (ese archivo no se versiona):

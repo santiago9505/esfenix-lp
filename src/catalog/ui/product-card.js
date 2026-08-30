@@ -50,13 +50,15 @@ export function productCard(options) {
   const primary = firstUsableImage(product.images);
   const selected = options.selectedCount ?? 0;
 
-  return el('article', { class: 'cat-card fx-pop' }, [
+  // Catalog results are useful content, not decorative reveals. Keeping cards
+  // visible from their first DOM paint avoids an animation/observer delay.
+  return el('article', { class: 'cat-card' }, [
     el('div', { class: 'cat-card-media' }, [
       productMedia(primary, {
         label: product.name,
         className: 'cat-card-img',
-        width: 640,
-        height: 480,
+        width: 480,
+        height: 360,
         eager: options.eager,
       }),
       product.isNew ? el('span', { class: 'cat-badge-new', text: 'New' }) : null,

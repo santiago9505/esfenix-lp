@@ -2,9 +2,9 @@
  * Catalog repository — the only module that knows where product data comes
  * from. Everything else asks it questions.
  *
- * Product data comes from Fresa's public, field-scoped catalog integration.
- * The checked-in snapshot remains an offline fallback, so a temporary API
- * failure never takes the storefront down.
+ * The checked-in snapshot provides the first paint without waiting for an
+ * external service. Fresa's public, field-scoped integration then refreshes
+ * that data in the background, so speed never trades away freshness.
  */
 
 import { compareCategories } from '../data/categories.js';
@@ -53,8 +53,10 @@ export const PRODUCT_SNAPSHOT_URL = '/data/catalog-snapshot.json';
 export const PRODUCT_REFRESH_INTERVAL_MS = LIVE_CATALOG_POLL_INTERVAL_MS;
 
 /**
- * Loads the live, public Fresa catalog without price fields. The static snapshot
- * is used only when the live endpoint is temporarily unavailable.
+ * Loads the bundled snapshot for the first paint. The app checks Fresa in the
+ * background after rendering and replaces this data only when the live source
+ * is available. If the snapshot itself is unavailable, the live endpoint is a
+ * last-resort fallback so the storefront can still recover.
  *
  * @param {{
  *   force?: boolean,
@@ -78,15 +80,15 @@ export function loadProducts(options = {}) {
 }
 
 async function loadInitialProducts(options) {
-  const liveUrl = resolveLiveUrl(options);
-  if (liveUrl) {
-    try {
-      return await loadLiveProducts({ ...options, liveUrl });
-    } catch (error) {
-      console.warn('Live Fresa catalog unavailable; using the bundled snapshot.', error);
-    }
+  try {
+    return await loadProductSnapshot(options);
+  } catch (snapshotError) {
+    const liveUrl = resolveLiveUrl(options);
+    if (!liveUrl) throw snapshotError;
+
+    console.warn('Bundled catalog snapshot unavailable; loading Fresa directly.', snapshotError);
+    return loadLiveProducts({ ...options, liveUrl });
   }
-  return loadProductSnapshot(options);
 }
 
 /**
@@ -228,10 +230,10 @@ async function loadProductSnapshot(options) {
   if (typeof fetchImpl !== 'function') throw new Error('Catalog snapshot fetch is unavailable.');
 
   const response = await fetchImpl(options.snapshotUrl ?? PRODUCT_SNAPSHOT_URL, {
-    // Revalidate on a fresh page load so a deployment cannot keep referencing
-    // media files from the previous catalog snapshot. The in-memory repository
-    // still guarantees a single request during normal navigation.
-    cache: 'no-cache',
+    // Respect the snapshot's short HTTP cache so a preload from the landing
+    // page can be reused immediately. Fresa still refreshes it in the
+    // background, while hashed media URLs make cached snapshot images stable.
+    cache: 'default',
   });
   if (!response?.ok) throw new Error('Catalog snapshot is unavailable.');
 
