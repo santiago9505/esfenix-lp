@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { afterEach, beforeEach } from 'node:test';
+
+import { createStorage, installBrowserEnv, resetBrowserEnv } from './helpers/browser-env.mjs';
 
 import {
   DEFAULT_LOCATION_ID,
@@ -11,6 +13,18 @@ import {
   resolveLocation,
 } from '../src/catalog/data/locations.js';
 import { US_STATE_OPTIONS } from '../src/catalog/data/us-states.js';
+
+let env;
+
+beforeEach(async () => {
+  env = installBrowserEnv({ storage: createStorage(), sessionStorage: createStorage() });
+  const storage = await import('../src/catalog/core/storage.js');
+  storage.resetStorageProbe();
+  const sessionStorage = await import('../src/catalog/core/session-storage.js');
+  sessionStorage.resetSessionStorageProbe();
+});
+
+afterEach(resetBrowserEnv);
 
 test('every selectable location is configured once', () => {
   const ids = LOCATIONS.map((l) => l.id);
@@ -63,4 +77,21 @@ test('unknown values resolve to the default rather than throwing', () => {
   assert.equal(resolveLocation('atlantis').id, DEFAULT_LOCATION_ID);
   assert.equal(resolveLocation(null).id, DEFAULT_LOCATION_ID);
   assert.equal(resolveLocation(undefined).id, DEFAULT_LOCATION_ID);
+});
+
+test('a new customer destination persists for the active tab and is cleared for branch locations', async () => {
+  const { createLocationStore } = await import('../src/catalog/core/location-store.js');
+  const store = createLocationStore();
+  const destination = { state: 'FL', city: 'Miami', zipCode: '33101' };
+
+  store.setShippingDestination(destination);
+
+  assert.deepEqual(store.getShippingDestination(), destination);
+  assert.equal(env.sessionStorage.length, 1);
+
+  const reloaded = createLocationStore();
+  assert.deepEqual(reloaded.getShippingDestination(), destination);
+
+  reloaded.setLocation('houston');
+  assert.equal(reloaded.getShippingDestination(), null);
 });

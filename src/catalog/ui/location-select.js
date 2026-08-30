@@ -21,6 +21,7 @@ let idCounter = 0;
  *   required?: boolean,
  *   compact?: boolean,
  *   describeServiceCenter?: boolean,
+ *   selectionHint?: string,
  * }} options
  */
 export function locationSelect(options) {
@@ -52,6 +53,9 @@ export function locationSelect(options) {
   );
 
   const note = options.describeServiceCenter !== false ? serviceCenterNote(current) : null;
+  const hint = options.selectionHint
+    ? el('p', { class: 'cat-location-note', text: options.selectionHint })
+    : null;
 
   return el('div', { class: `cat-location ${options.compact ? 'cat-location-compact' : ''}` }, [
     el('label', {
@@ -60,6 +64,7 @@ export function locationSelect(options) {
       text: `${options.label ?? 'Your location'}${options.required ? ' *' : ''}`,
     }),
     el('div', { class: 'cat-select-wrap' }, [select]),
+    hint,
     note,
   ]);
 }

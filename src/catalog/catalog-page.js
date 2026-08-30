@@ -70,6 +70,9 @@ function toolbar(ctx, resultCount, activeCount, facets) {
     el('div', { class: 'cat-toolbar-row' }, [
       locationSelect({
         locationId: ctx.locationId,
+        label: 'Catalog location',
+        required: true,
+        selectionHint: 'Products below are loaded for this location.',
         onRequestChange: (next) => ctx.requestLocationChange(next),
       }),
 

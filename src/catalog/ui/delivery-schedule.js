@@ -15,6 +15,9 @@ import { formatTimeZoneOffset } from '../core/timezone.js';
 import { el, replaceChildren } from './dom.js';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// The quote flow is English. Do not let the browser's regional language turn
+// the selected date into Spanish (or another language) in an English form.
+const FORM_LOCALE = 'en-US';
 
 /**
  * A date — and, for delivery, two-hour window — picker for the quote form.
@@ -47,7 +50,7 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  */
 export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', bookedByStart, isDateAllowed = () => true, availabilityProvider = null, onChange }) {
   const now = new Date();
-  const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en-US';
+  const locale = FORM_LOCALE;
   const picksWindow = mode !== 'date';
   let remoteBookedByStart = bookedByStart ?? {};
   let availabilityState = picksWindow && availabilityProvider ? 'loading' : 'disabled';

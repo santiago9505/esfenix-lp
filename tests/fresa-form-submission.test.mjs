@@ -40,6 +40,16 @@ function formResponse() {
   };
 }
 
+function otherLocationFormResponse() {
+  const response = formResponse();
+  const locationField = response.form.fields.find((field) => field.id === 'location');
+  locationField.options.push({ value: 'nation_wide', label: 'NATION WIDE' });
+  const regularProducts = response.form.fields.find((field) => field.id === 'regular-products');
+  regularProducts.label = 'Products NATION WIDE';
+  regularProducts.actionRules[0].conditions[0].value = 'nation_wide';
+  return response;
+}
+
 function catalogField(id, vip) {
   return {
     id,
@@ -146,6 +156,30 @@ test('keeps social media profiles when the live form has no dedicated field yet'
   const submission = buildFresaFormSubmission(payload(false), response);
 
   assert.match(submission.answers.notes, /Social media profiles \(business\): @esfenix-test/);
+});
+
+test('keeps the selected location and destination fields for a new customer when the order is Pickup', () => {
+  const pickup = payload(false);
+  pickup.selectedLocation = 'OTHER';
+  pickup.fresa.location = 'NATION WIDE';
+  pickup.delivery = { ...pickup.delivery, address: '', city: 'Miami', state: 'FL', zipCode: '33101' };
+  pickup.fresa.delivery = pickup.delivery;
+  pickup.orderType = 'Pickup';
+  pickup.deliveryDateTime = '2026-08-14';
+
+  const submission = buildFresaFormSubmission(pickup, otherLocationFormResponse());
+
+  assert.equal(submission.answers.location, 'nation_wide');
+  assert.equal(submission.answers.city, 'Miami');
+  assert.equal(submission.answers.state, 'FL');
+  assert.equal(submission.answers.zip, '33101');
+  assert.equal(submission.answers.address, undefined, 'pickup does not save a delivery street address');
+
+  const branchPickup = payload(false);
+  branchPickup.orderType = 'Pickup';
+  branchPickup.deliveryDateTime = '2026-08-14';
+  const branchSubmission = buildFresaFormSubmission(branchPickup, formResponse());
+  assert.equal(branchSubmission.answers.city, undefined, 'branch pickup does not add a second destination');
 });
 
 test('matches a live catalog item by native task id before considering its label', () => {

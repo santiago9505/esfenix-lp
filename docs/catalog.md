@@ -282,6 +282,9 @@ the visitor entered to `/api/forms/<token>/lookup`. Fresa evaluates the scoped
 `exists_in_list` rule server-side and returns only that match. A match prefills
 the configured contact fields and VIP flag; a missing match remains a valid new
 quote. The browser never receives the active-client list or an API credential.
+For `Other U.S. location`, the catalog also keeps the destination state, city
+and ZIP in the active session and includes them in Pickup submissions, even
+though Fresa hides those fields for Pickup.
 
 ---
 
@@ -303,13 +306,16 @@ same paths is the whole change.
 
 ### With products
 
-The left checkout panel keeps the selected products visible. Its "Continue to
-quote form" action opens the internal multi-step screen instead of a modal. The
-flow validates every line against the current catalog, asks for the visitor's
-email first, and then builds the payload and hands it to
-`quoteIntegrationService`. A new or unrecognized email is still allowed to
-continue so it can request a quote. The same screen is used by the quote CTA
-when no products were selected.
+The catalog exposes the location selector before the visitor chooses products,
+and the product list updates to that location. The left checkout panel keeps the
+selected products visible. Its "Continue to quote form" action opens the
+internal multi-step screen instead of a modal. The location is shown there as
+read-only context; changing it requires returning to the catalog, where the
+existing confirmation protects the selected list. The flow validates every
+line against the current catalog, asks for the visitor's email first, and then
+builds the payload and hands it to `quoteIntegrationService`. A new or
+unrecognized email is still allowed to continue so it can request a quote. The
+same screen is used by the quote CTA when no products were selected.
 
 The public Fresa form API validates the client on demand. When the visitor
 sends the request, the landing first loads form metadata, resolves the one
@@ -354,7 +360,7 @@ snapshots without a source id still use label mapping and `unmappedProducts`.
 |---|---|---|
 | 1 Email | Email | the visitor enters it first |
 | 2 Contact | First/Last name, Phone, Company | entered by the visitor |
-| 3 Products | Location, Producto / Quantity | `fresa.location`, `fresa.products[]` |
+| Catalog / 3 Products | Location is selected in the catalog; Producto / Quantity are reviewed in the internal form | `fresa.location`, `fresa.products[]` |
 | 4 Type of Order | Type of Order | the visitor chooses |
 | 5 Delivery | Date/time, Address, City, State, ZIP | `fresa.delivery` |
 | 6 Other | Notes for the seller | `fresa.notes` |

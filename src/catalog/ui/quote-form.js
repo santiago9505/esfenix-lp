@@ -30,7 +30,7 @@ import {
 import { resolveLocation } from '../data/locations.js';
 import { el, firstUsableImage, productMedia, replaceChildren } from './dom.js';
 import { deliverySchedulePicker } from './delivery-schedule.js';
-import { locationSelect, shippingDestinationFields } from './location-select.js';
+import { shippingDestinationFields } from './location-select.js';
 import { NO_PAYMENT_NOTE } from './states.js';
 import { openVariantPicker } from './variant-picker.js';
 
@@ -227,7 +227,7 @@ export function renderQuoteFormView(ctx, options) {
     const config = [
       ['What’s the best email for you?', ''],
       ['Tell us a little about you', 'These details help our team get your quote right.'],
-      ['Select your products', 'Review the products you selected and tell us where the request should be handled.'],
+      ['Select your products', 'Review the products selected from your catalog location.'],
       ['How would you like to receive it?', 'Choose delivery or pickup so we can plan the next step.'],
       state.orderType === 'Delivery'
         ? ['Where should we deliver?', 'Choose a preferred date and confirm the shipping address for this request.']
@@ -390,6 +390,7 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function clearProfileData() {
+    const currentDestination = ctx.locationStore.getShippingDestination() ?? {};
     state.recognized = false;
     state.vip = false;
     state.clientLookup = 'idle';
@@ -404,9 +405,9 @@ export function renderQuoteFormView(ctx, options) {
     state.delivery = {
       ...state.delivery,
       address: '',
-      city: existingDestination.city ?? '',
-      state: existingDestination.state ?? '',
-      zipCode: '',
+      city: currentDestination.city ?? '',
+      state: currentDestination.state ?? '',
+      zipCode: currentDestination.zipCode ?? '',
     };
     state.editingShippingAddress = false;
   }
@@ -600,17 +601,15 @@ export function renderQuoteFormView(ctx, options) {
       },
     }, [
       el('div', { class: 'cat-quote-form-section' }, [
-        locationSelect({
-          locationId: ctx.locationId,
-          label: 'Location',
-          required: true,
-          describeServiceCenter: true,
-          onRequestChange: (next) => ctx.requestLocationChange(next, { onCancel: () => render() }),
-        }),
+        selectedLocationContext(),
         ctx.location.requiresShippingDestination
           ? shippingDestinationFields({
-              destination: ctx.locationStore.getShippingDestination(),
-              includeZipCode: false,
+              destination: ctx.locationStore.getShippingDestination() ?? {
+                city: state.delivery.city,
+                state: state.delivery.state,
+                zipCode: state.delivery.zipCode,
+              },
+              includeZipCode: true,
               required: true,
               stateOptions: US_STATE_OPTIONS,
               onChange: (value) => {
@@ -644,11 +643,33 @@ export function renderQuoteFormView(ctx, options) {
     ]);
   }
 
+  /** The catalog location is intentionally not editable after products load. */
+  function selectedLocationContext() {
+    const location = resolveLocation(ctx.locationId);
+    return el('div', { class: 'cat-quote-location-context', role: 'status' }, [
+      el('div', { class: 'cat-quote-location-context-copy' }, [
+        el('span', { class: 'cat-quote-location-context-label', text: 'Catalog location' }),
+        el('strong', { text: location.label }),
+        el('p', { text: 'Products and availability are based on this location.' }),
+      ]),
+      el('button', {
+        type: 'button',
+        class: 'cat-linkbtn',
+        text: 'Change in catalog',
+        onClick: options.onBack,
+      }),
+    ]);
+  }
+
   /** Keep the later delivery step in sync with the location asked for here. */
   function syncShippingDestination(destination = ctx.locationStore.getShippingDestination()) {
+    // A recognized client's profile can already contain these values before
+    // the destination is written to the session store. Keep that prefill
+    // visible until the visitor edits it instead of replacing it with blanks.
     if (!destination) return;
     state.delivery.city = destination.city ?? '';
     state.delivery.state = destination.state ?? '';
+    state.delivery.zipCode = destination.zipCode ?? '';
   }
 
   function productRow(item) {
@@ -833,7 +854,12 @@ export function renderQuoteFormView(ctx, options) {
     state.delivery.slot = isDelivery && validValue
       ? getDeliverySlots(validValue.slice(0, 10), scheduleOptions).find((slot) => slot.value === validValue)
       : undefined;
-    const hasSavedShipping = false;
+    const hasSavedShipping = state.clientLookup === 'found' && Boolean(
+      state.delivery.address
+      && state.delivery.city
+      && state.delivery.state
+      && state.delivery.zipCode,
+    );
     const shippingAddressNotice = el('div', { class: 'cat-quote-info-note cat-quote-shipping-address-note' }, [
       el('strong', { text: 'Shipping address' }),
       el('p', {
@@ -1160,9 +1186,20 @@ export function renderQuoteFormView(ctx, options) {
 
   function readDelivery(root) {
     state.delivery.dateTime = root.querySelector('[name="dateTime"]').value;
-    state.delivery.address = root.querySelector('[name="address"]')?.value.trim() ?? '';
-    state.delivery.city = root.querySelector('[name="city"]')?.value.trim() ?? '';
-    state.delivery.state = root.querySelector('[name="state"]')?.value.trim() ?? '';
-    state.delivery.zipCode = root.querySelector('[name="zipCode"]')?.value.trim() ?? '';
+    for (const name of ['address', 'city', 'state', 'zipCode']) {
+      const input = root.querySelector(`[name="${name}"]`);
+      if (input) state.delivery[name] = input.value.trim();
+    }
+    saveShippingDestination();
+  }
+
+  /** Keep the destination entered by a new customer available for later steps. */
+  function saveShippingDestination() {
+    if (!ctx.location.requiresShippingDestination) return;
+    ctx.locationStore.setShippingDestination({
+      city: state.delivery.city,
+      state: state.delivery.state,
+      zipCode: state.delivery.zipCode,
+    });
   }
 }

@@ -463,6 +463,24 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
   } else {
     const pickupField = requireField(fields, 'pickup', 'date');
     answers[pickupField.id] = payload?.deliveryDateTime ?? '';
+
+    // Other U.S. location still needs its destination when the customer
+    // chooses Pickup. Fresa hides the delivery address controls for Pickup,
+    // but accepting these answers preserves the routing data collected by the
+    // catalog for new customers instead of silently dropping it. Branch
+    // pickups do not need a second destination, so leave those submissions
+    // unchanged.
+    if (payload?.selectedLocation === 'OTHER') {
+      for (const [label, value] of [
+        ['City', payload?.delivery?.city],
+        ['State', payload?.delivery?.state],
+        ['Zip Code', payload?.delivery?.zipCode],
+      ]) {
+        const field = findField(fields, label, 'short_text');
+        const text = String(value ?? '').trim();
+        if (field?.id && text) answers[field.id] = text;
+      }
+    }
   }
 
   const notesField = findField(fields, 'Notes for the seller', 'long_text');
