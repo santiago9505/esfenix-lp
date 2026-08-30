@@ -4,6 +4,8 @@
  * from the public form response instead of being duplicated in this project.
  */
 
+import { DELIVERY_MINIMUM_CENTS } from './pricing.js';
+
 /** @param {unknown} value */
 function normalizeLabel(value) {
   return String(value ?? '')
@@ -243,6 +245,68 @@ function catalogPriceForMeasure(item, measure) {
     'precio',
   ]);
   return parseNumber(fallback);
+}
+
+/**
+ * Checks the $150 Delivery rule using the current Fresa catalog reference
+ * values. The calculated total intentionally stays local to this function;
+ * callers receive only the eligibility result and progress percentage.
+ *
+ * @param {any} payload
+ * @param {any} catalogConfig
+ * @returns {{ deliveryAllowed: boolean, deliveryProgress: number, hasUnknownPricing: boolean }}
+ */
+export function getFresaDeliveryEligibility(payload, catalogConfig) {
+  const requested = Array.isArray(payload?.fresa?.products) ? payload.fresa.products : [];
+  if (requested.length === 0) {
+    return { deliveryAllowed: false, deliveryProgress: 0, hasUnknownPricing: false };
+  }
+
+  const items = Array.isArray(catalogConfig?.items) ? catalogConfig.items : [];
+  const itemByValue = new Map(
+    items
+      .filter((item) => item?.value)
+      .map((item) => [String(item.value), item]),
+  );
+  const itemByLabel = new Map(
+    items
+      .filter((item) => item?.value && item?.label)
+      .map((item) => [normalizeLabel(item.label), item]),
+  );
+
+  let totalCents = 0;
+  let hasUnknownPricing = false;
+  for (const row of requested) {
+    const sourceProductId = String(row?.sourceProductId ?? '').trim();
+    const matched = (sourceProductId ? itemByValue.get(sourceProductId) : null)
+      || itemByLabel.get(normalizeLabel(row?.product));
+    const measure = normalizeMeasure(row?.measure);
+    const availableMeasures = catalogMeasureOptions(matched);
+    const quantity = Number(row?.quantity);
+    const unitPrice = catalogPriceForMeasure(matched, measure);
+    const measureIsAvailable = Boolean(measure)
+      && (availableMeasures.length === 0 || availableMeasures.includes(measure));
+
+    if (
+      !matched
+      || !measureIsAvailable
+      || !Number.isFinite(unitPrice)
+      || unitPrice < 0
+      || !Number.isInteger(quantity)
+      || quantity <= 0
+    ) {
+      hasUnknownPricing = true;
+      continue;
+    }
+    totalCents += Math.round(unitPrice * 100) * quantity;
+  }
+
+  const calculatedProgress = Math.min(100, Math.floor((totalCents / DELIVERY_MINIMUM_CENTS) * 100));
+  return {
+    deliveryAllowed: !hasUnknownPricing && totalCents >= DELIVERY_MINIMUM_CENTS,
+    deliveryProgress: hasUnknownPricing ? Math.min(99, calculatedProgress) : calculatedProgress,
+    hasUnknownPricing,
+  };
 }
 
 /** @param {any} input */

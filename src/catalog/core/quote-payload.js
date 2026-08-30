@@ -155,7 +155,10 @@ function buildFresaBlock(items, location, payload) {
     const resolvedProduct = option || sourceProductName || item.productName;
     // Native task ids are the stable contract. Legacy label mapping remains a
     // fallback for older snapshots that do not carry a source task id.
-    const rowKey = sourceProductId || resolvedProduct;
+    // The same native task can be selected more than once with different
+    // measures. Keep those rows separate so Fresa receives the measure the
+    // visitor actually selected for each quantity.
+    const rowKey = `${sourceProductId || resolvedProduct}\u0000${measure ?? ''}`;
     if (!rows.has(rowKey)) rows.set(rowKey, {
       product: resolvedProduct,
       sourceProductId,

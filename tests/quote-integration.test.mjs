@@ -136,12 +136,39 @@ test('without a legacy session endpoint the response is submitted through the Fr
   assert.equal(calls[1].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5?catalogFieldId=products');
   assert.equal(calls[2].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5/submit');
   const body = JSON.parse(calls[2].options.body);
+  assert.equal(Object.hasOwn(body, 'total'), false);
+  assert.equal(Object.hasOwn(body.answers.products[0], 'total'), false);
   assert.deepEqual(body.answers.products, [{
     productId: 'product-task-id',
     quantity: 5,
     size: null,
     measure: 'bunch',
   }]);
+});
+
+test('checks the Delivery minimum from Fresa catalog data without sending a total', async () => {
+  const calls = [];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: null,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, json: async () => publicFormResponse() };
+    },
+  });
+
+  const underMinimum = await integration.checkDeliveryEligibility(payloadWithProducts());
+  assert.equal(underMinimum.ok, true);
+  assert.equal(underMinimum.deliveryAllowed, false);
+  assert.equal(underMinimum.deliveryProgress, 40);
+  assert.ok(calls.every(({ options }) => !Object.hasOwn(options, 'body')));
+
+  const overMinimumPayload = payloadWithProducts();
+  overMinimumPayload.fresa.products[0].quantity = 13;
+  const overMinimum = await integration.checkDeliveryEligibility(overMinimumPayload);
+  assert.equal(overMinimum.ok, true);
+  assert.equal(overMinimum.deliveryAllowed, true);
+  assert.equal(overMinimum.deliveryProgress, 100);
 });
 
 test('each Fresa form phase receives its own timeout budget', async () => {

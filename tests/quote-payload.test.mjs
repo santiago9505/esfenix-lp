@@ -340,6 +340,49 @@ test('different native product tasks create separate subtask rows even when thei
   assert.match(payload.fresa.notes, /Vendela/);
 });
 
+test('the selected measure stays separate when one native product uses two measures', () => {
+  const payload = buildQuotePayload({
+    locationId: 'houston',
+    items: [
+      line({
+        id: 'stems',
+        productId: 'ecuadorian-roses',
+        sourceProductId: '11111111-1111-4111-8111-111111111111',
+        productName: 'Ecuadorian Roses',
+        category: 'roses',
+        lengthCm: 60,
+        measure: 'stem',
+        quantity: 25,
+      }),
+      line({
+        id: 'bunches',
+        productId: 'ecuadorian-roses',
+        sourceProductId: '11111111-1111-4111-8111-111111111111',
+        productName: 'Ecuadorian Roses',
+        category: 'roses',
+        lengthCm: 60,
+        measure: 'bunch',
+        quantity: 3,
+      }),
+    ],
+  });
+
+  assert.deepEqual(payload.fresa.products, [
+    {
+      product: 'Ecuadorian Roses - 60cm',
+      quantity: 25,
+      measure: 'stem',
+      sourceProductId: '11111111-1111-4111-8111-111111111111',
+    },
+    {
+      product: 'Ecuadorian Roses - 60cm',
+      quantity: 3,
+      measure: 'bunch',
+      sourceProductId: '11111111-1111-4111-8111-111111111111',
+    },
+  ]);
+});
+
 test('products the form does not list are reported and described in the notes', () => {
   const payload = buildQuotePayload({
     locationId: 'dmv',

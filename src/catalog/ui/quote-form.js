@@ -14,6 +14,7 @@
 import { getDeliverySlots, normalizeDeliveryDate, normalizeDeliveryValue } from '../core/delivery-schedule.js';
 import { buildQuotePayload } from '../core/quote-payload.js';
 import { clearQuoteDraft, readQuoteDraft, writeQuoteDraft } from '../core/quote-draft.js';
+import { getQuotePricing, quotePricingKey } from '../core/pricing.js';
 import { describeQuoteItem } from '../core/format.js';
 import { resolveSeason } from '../core/season.js';
 import { getCategoryLabel } from '../data/categories.js';
@@ -52,6 +53,7 @@ const DELIVERY_STEP_INDEX = 4;
  *   onBack: () => void,
  *   onOpenProductPicker?: (options?: { onClose?: () => void }) => void,
  *   onLookupClient?: (email: string) => Promise<any>,
+ *   onCheckDeliveryEligibility?: (payload: ReturnType<typeof buildQuotePayload>) => Promise<any>,
  *   onSubmit: (payload: ReturnType<typeof buildQuotePayload>) => Promise<any>,
  * }} options
  */
@@ -89,6 +91,10 @@ export function renderQuoteFormView(ctx, options) {
     editingShippingAddress: false,
     notes: savedDraft?.notes ?? '',
     submitPending: false,
+    pricing: null,
+    pricingKey: '',
+    pricingPending: false,
+    pricingPromise: null,
     error: '',
     result: null,
   };
@@ -767,25 +773,42 @@ export function renderQuoteFormView(ctx, options) {
 
   function orderTypeStep() {
     const selectedSeason = resolveSeason(state.delivery.dateTime);
-    const deliveryBlocked = selectedSeason.type === 'HIGH';
+    const pricing = currentQuotePricing();
+    scheduleQuotePricingRefresh();
+    if (
+      !state.pricingPending
+      && selectedSeason.type !== 'HIGH'
+      && state.orderType === 'Delivery'
+      && !isDeliveryAllowed(pricing)
+    ) {
+      state.orderType = 'Pickup';
+      persistDraft();
+    }
+    const deliveryBlocked = selectedSeason.type === 'HIGH' || !isDeliveryAllowed(pricing);
     return el('form', {
       class: 'cat-quote-step-form',
       onSubmit: (event) => {
         event.preventDefault();
         // The choice is radio buttons, which already write to state.orderType
         // as they change; there is nothing left to read here.
+        const latestPricing = currentQuotePricing();
+        if (selectedSeason.type === 'HIGH' || !isDeliveryAllowed(latestPricing)) {
+          state.orderType = 'Pickup';
+        }
         state.step = 4;
         state.error = '';
         render(true);
       },
     }, [
-      deliveryEligibilityNote(deliveryBlocked ? selectedSeason : null),
+      deliveryEligibilityNote(pricing, selectedSeason.type === 'HIGH' ? selectedSeason : null),
       el('div', { class: 'cat-quote-choice-list' }, [
         choice(
           'Delivery',
-          deliveryBlocked
+          selectedSeason.type === 'HIGH'
             ? `Unavailable during ${selectedSeason.label}.`
-            : 'We’ll deliver to the address you provide.',
+            : deliveryBlocked
+              ? 'Available once the $150 minimum order is met.'
+              : 'We’ll deliver to the address you provide.',
           deliveryBlocked,
         ),
         choice('Pickup', 'You’ll collect the flowers from our team.'),
@@ -794,21 +817,140 @@ export function renderQuoteFormView(ctx, options) {
     ]);
   }
 
-  function deliveryEligibilityNote(blockedSeason = null) {
-    const blocked = blockedSeason?.type === 'HIGH';
+  function currentQuotePricing() {
+    const items = ctx.quoteStore.getItems();
+    const key = quotePricingKey(items);
+    return state.pricing && state.pricingKey === key
+      ? state.pricing
+      : getQuotePricing(items, ctx.products);
+  }
+
+  function isDeliveryAllowed(pricing = currentQuotePricing()) {
+    return state.vip || pricing.deliveryAllowed;
+  }
+
+  function scheduleQuotePricingRefresh() {
+    if (state.vip || state.pricingPending || !options.onCheckDeliveryEligibility) return;
+    const items = ctx.quoteStore.getItems();
+    const key = quotePricingKey(items);
+    if (state.pricing && state.pricingKey === key) return;
+
+    state.pricingKey = key;
+    state.pricingPending = true;
+    const payload = buildQuotePayload({
+      locationId: ctx.locationId,
+      items,
+      vip: state.vip,
+    });
+    const request = Promise.resolve(options.onCheckDeliveryEligibility(payload));
+    state.pricingPromise = request;
+    request
+      .then((result) => {
+        if (state.pricingKey !== key) return;
+        if (result?.ok === true) {
+          state.pricing = {
+            hasUnknownPricing: result.hasUnknownPricing === true,
+            unknownItems: [],
+            deliveryProgress: Number.isInteger(result.deliveryProgress)
+              ? result.deliveryProgress
+              : 0,
+            deliveryAllowed: result.deliveryAllowed === true,
+          };
+        } else {
+          // Cache the safe local result for this selection so a failed Fresa
+          // check does not create a render/retry loop.
+          state.pricing = getQuotePricing(items, ctx.products);
+        }
+      })
+      .catch(() => {
+        // If Fresa cannot confirm the minimum, cache the safe local result:
+        // Pickup remains available and Delivery stays disabled.
+        if (state.pricingKey === key) state.pricing = getQuotePricing(items, ctx.products);
+      })
+      .finally(() => {
+        if (state.pricingPromise !== request) return;
+        state.pricingPending = false;
+        state.pricingPromise = null;
+        if (state.step === 3 && !state.result) render();
+      });
+  }
+
+  async function refreshQuotePricing({ force = false } = {}) {
+    const items = ctx.quoteStore.getItems();
+    const key = quotePricingKey(items);
+    if (!force && state.pricing && state.pricingKey === key) return state.pricing;
+    if (state.pricingPending && state.pricingKey === key && state.pricingPromise) {
+      await state.pricingPromise;
+      return currentQuotePricing();
+    }
+    if (!options.onCheckDeliveryEligibility) return currentQuotePricing();
+
+    state.pricingKey = key;
+    state.pricingPending = true;
+    const payload = buildQuotePayload({ locationId: ctx.locationId, items, vip: state.vip });
+    const request = Promise.resolve(options.onCheckDeliveryEligibility(payload));
+    state.pricingPromise = request;
+    try {
+      const result = await request;
+      if (state.pricingKey !== key || result?.ok !== true) {
+        throw new Error(result?.error || 'Delivery eligibility is unavailable.');
+      }
+      state.pricing = {
+        hasUnknownPricing: result.hasUnknownPricing === true,
+        unknownItems: [],
+        deliveryProgress: Number.isInteger(result.deliveryProgress) ? result.deliveryProgress : 0,
+        deliveryAllowed: result.deliveryAllowed === true,
+      };
+      return state.pricing;
+    } finally {
+      if (state.pricingPromise === request) {
+        state.pricingPending = false;
+        state.pricingPromise = null;
+      }
+    }
+  }
+
+  function deliveryEligibilityNote(pricing, blockedSeason = null) {
+    const seasonBlocked = blockedSeason?.type === 'HIGH';
+    const eligible = !seasonBlocked && isDeliveryAllowed(pricing);
+    const progress = state.vip ? 100 : pricing.deliveryProgress;
+    const description = seasonBlocked
+      ? `Pickup is available during ${blockedSeason.label}.`
+      : state.pricingPending && !state.vip
+        ? 'Checking this selection against the $150 Delivery minimum…'
+        : pricing.hasUnknownPricing
+          ? 'Delivery will be available once the selected product measures and prices can be confirmed.'
+          : eligible
+            ? 'Delivery is available for this selection.'
+            : `Your selection is ${progress}% toward the $150 minimum for Delivery.`;
+
     return el('div', {
-      class: 'cat-quote-delivery-eligibility',
+      class: `cat-quote-delivery-eligibility ${eligible ? 'is-available' : ''}`,
       role: 'status',
       'aria-live': 'polite',
     }, [
       el('div', { class: 'cat-quote-delivery-eligibility-head' }, [
-        el('strong', { text: blocked ? 'Delivery unavailable during high season' : 'Delivery subject to confirmation' }),
+        el('strong', { text: seasonBlocked
+          ? 'Delivery unavailable during high season'
+          : state.pricingPending && !state.vip
+            ? 'Checking delivery'
+            : state.vip
+              ? 'VIP delivery available'
+              : 'Delivery progress' }),
+        el('span', {
+          class: 'cat-quote-delivery-eligibility-percent',
+          text: `${progress}% complete`,
+        }),
       ]),
-      el('p', {
-        text: blocked
-          ? `Pickup is available during ${blockedSeason.label}.`
-          : 'Choose a preferred window. Our team will confirm availability, minimum order and final delivery details with your quote.',
-      }),
+      el('p', { text: description }),
+      el('div', {
+        class: 'cat-quote-delivery-progress',
+        role: 'progressbar',
+        'aria-label': 'Delivery eligibility progress',
+        'aria-valuemin': '0',
+        'aria-valuemax': '100',
+        'aria-valuenow': String(progress),
+      }, [el('span', { class: 'cat-quote-delivery-progress-bar', style: `width:${progress}%` })]),
     ]);
   }
 
@@ -1060,6 +1202,26 @@ export function renderQuoteFormView(ctx, options) {
         state.error = '';
 
         state.orderType = orderType;
+
+        // Re-check at the final boundary so a quantity or measure change
+        // cannot submit Delivery below the $150 minimum.
+        if (orderType === 'Delivery') {
+          let finalPricing = currentQuotePricing();
+          try {
+            finalPricing = await refreshQuotePricing({ force: true });
+          } catch {
+            // Keep the safe local result. Delivery is not sent unless the
+            // minimum can be confirmed.
+          }
+          if (!isDeliveryAllowed(finalPricing)) {
+            state.orderType = 'Pickup';
+            state.error = finalPricing.hasUnknownPricing
+              ? 'Delivery eligibility could not be confirmed. Please choose Pickup or try again.'
+              : 'This selection does not meet the $150 Delivery minimum. Please update it or choose Pickup.';
+            state.step = 3;
+            return;
+          }
+        }
 
         const payload = buildQuotePayload({
           locationId: ctx.locationId,

@@ -23,6 +23,7 @@ import { assertNoPricing, buildQuoteSummaryText } from './quote-payload.js';
 import {
   buildFresaFormSubmission,
   FresaFormConfigurationError,
+  getFresaDeliveryEligibility,
   resolveFresaFormApi,
   resolveFresaProductFieldId,
 } from './fresa-form-submission.js';
@@ -82,6 +83,63 @@ export function createQuoteIntegration(options = {}) {
     /** Validates one email through the public form's scoped list lookup. */
     lookupClient(email) {
       return lookupFresaClient({ formUrl, email, doFetch, timeoutMs });
+    },
+
+    /**
+     * Checks Delivery eligibility against the live Fresa catalog. Only the
+     * selected product ids, measures and quantities are used locally; no order
+     * total or price is sent anywhere.
+     *
+     * @param {ReturnType<typeof import('./quote-payload').buildQuotePayload>} payload
+     * @returns {Promise<{ ok: boolean, deliveryAllowed?: boolean, deliveryProgress?: number, hasUnknownPricing?: boolean, error?: string, code?: string }>}
+     */
+    async checkDeliveryEligibility(payload) {
+      if (payload?.vip === true) {
+        return { ok: true, deliveryAllowed: true, deliveryProgress: 100, hasUnknownPricing: false };
+      }
+
+      try {
+        const { formApiUrl } = resolveFresaFormApi(formUrl);
+        const metadataUrl = new URL(formApiUrl);
+        metadataUrl.searchParams.set('catalog', 'metadata');
+        const metadataResponse = await fetchWithTimeout(doFetch, metadataUrl.toString(), {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+        }, timeoutMs);
+        const metadata = await readJson(metadataResponse);
+        if (!metadataResponse.ok || metadata?.success !== true) {
+          throw new FresaFormConfigurationError(
+            metadata?.error || `Fresa could not load the quote form (${metadataResponse.status}).`,
+          );
+        }
+
+        const productFieldId = resolveFresaProductFieldId(payload, metadata);
+        const catalogUrl = new URL(formApiUrl);
+        catalogUrl.searchParams.set('catalogFieldId', productFieldId);
+        const catalogResponse = await fetchWithTimeout(doFetch, catalogUrl.toString(), {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+        }, timeoutMs);
+        const catalogData = await readJson(catalogResponse);
+        if (!catalogResponse.ok || catalogData?.success !== true) {
+          throw new FresaFormConfigurationError(
+            catalogData?.error || `Fresa could not load the selected catalog (${catalogResponse.status}).`,
+          );
+        }
+
+        const fields = Array.isArray(catalogData?.form?.fields) ? catalogData.form.fields : [];
+        const productField = fields.find((field) => field?.id === productFieldId);
+        const eligibility = getFresaDeliveryEligibility(payload, productField?.catalogConfig);
+        return { ok: true, ...eligibility };
+      } catch (error) {
+        return {
+          ok: false,
+          ...(error?.code ? { code: error.code } : {}),
+          error: error?.name === 'AbortError'
+            ? 'Delivery eligibility took too long to confirm.'
+            : error?.message || 'Delivery eligibility is unavailable.',
+        };
+      }
     },
 
     /**
@@ -340,6 +398,23 @@ async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserve
     }
 
     const submission = buildFresaFormSubmission(payload, formData);
+
+    if (payload.orderType === 'Delivery' && payload.vip !== true) {
+      const fields = Array.isArray(formData?.form?.fields) ? formData.form.fields : [];
+      const productField = fields.find((field) => field?.id === productFieldId);
+      const eligibility = getFresaDeliveryEligibility(payload, productField?.catalogConfig);
+      if (!eligibility.deliveryAllowed) {
+        return {
+          ok: false,
+          mode: 'form-api',
+          code: eligibility.hasUnknownPricing ? 'DELIVERY_ELIGIBILITY_UNAVAILABLE' : 'DELIVERY_MINIMUM_NOT_MET',
+          error: eligibility.hasUnknownPricing
+            ? 'Delivery eligibility could not be confirmed. Please choose Pickup or try again.'
+            : 'This selection does not meet the $150 Delivery minimum. Please update it or choose Pickup.',
+          summary,
+        };
+      }
+    }
 
     if (payload.orderType === 'Delivery') {
       if (!payload.deliverySlot) {

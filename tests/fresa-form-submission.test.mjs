@@ -4,6 +4,7 @@ import test from 'node:test';
 import { buildQuotePayload } from '../src/catalog/core/quote-payload.js';
 import {
   buildFresaFormSubmission,
+  getFresaDeliveryEligibility,
   resolveFresaFormApi,
 } from '../src/catalog/core/fresa-form-submission.js';
 
@@ -147,6 +148,31 @@ test('maps all contact, delivery and product fields to live Fresa ids', () => {
   }]);
   assert.match(submission.answers.notes, /Company: Esfenix Test/);
   assert.match(submission.answers.notes, /Freedom/);
+});
+
+test('checks the $150 Delivery minimum with the selected product measure without returning a total', () => {
+  const underMinimum = getFresaDeliveryEligibility(payload(false), {
+    items: [{
+      value: 'fresa-rose-task',
+      label: 'Ecuadorian Roses - 60cm',
+      referenceValues: { stem_price: 0.92, bunch_price: 23 },
+    }],
+  });
+  assert.equal(underMinimum.deliveryAllowed, false);
+  assert.equal(underMinimum.deliveryProgress, 15);
+  assert.equal(Object.hasOwn(underMinimum, 'totalCents'), false);
+
+  const overMinimumPayload = payload(false);
+  overMinimumPayload.fresa.products[0].quantity = 164;
+  const overMinimum = getFresaDeliveryEligibility(overMinimumPayload, {
+    items: [{
+      value: 'fresa-rose-task',
+      label: 'Ecuadorian Roses - 60cm',
+      referenceValues: { stem_price: 0.92, bunch_price: 23 },
+    }],
+  });
+  assert.equal(overMinimum.deliveryAllowed, true);
+  assert.equal(overMinimum.deliveryProgress, 100);
 });
 
 test('keeps social media profiles when the live form has no dedicated field yet', () => {

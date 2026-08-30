@@ -120,6 +120,24 @@ export function getQuotePricing(items = [], products = []) {
   };
 }
 
+/**
+ * Stable key for the current quote selection. It contains the chosen measure
+ * and quantity, but never a price or a customer detail.
+ *
+ * @param {Array<Record<string, unknown>>} items
+ */
+export function quotePricingKey(items = []) {
+  return items.map((item) => [
+    String(item?.productId ?? ''),
+    String(item?.sourceProductId ?? ''),
+    String(item?.variety ?? ''),
+    String(item?.color ?? ''),
+    String(item?.lengthCm ?? ''),
+    String(item?.measure ?? ''),
+    Number(item?.quantity) || 0,
+  ].join(':')).sort().join('|');
+}
+
 /** @param {unknown} value @returns {number|null} */
 export function priceToCents(value) {
   if (value === null || value === undefined || value === '') return null;

@@ -349,6 +349,10 @@ export function createApp({ head, body }) {
     return integration.lookupClient(email);
   }
 
+  function checkDeliveryEligibility(payload) {
+    return integration.checkDeliveryEligibility(payload);
+  }
+
   /* ---------------------------------------------------------------- */
   /* Rendering                                                         */
   /* ---------------------------------------------------------------- */
@@ -370,6 +374,7 @@ export function createApp({ head, body }) {
             onBack: closeQuoteFormScreen,
             onOpenProductPicker: openProductPicker,
             onLookupClient: lookupClient,
+            onCheckDeliveryEligibility: checkDeliveryEligibility,
             onSubmit: submitQuoteForm,
           })
           : route.view === 'product'
