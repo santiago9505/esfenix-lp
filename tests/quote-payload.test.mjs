@@ -128,7 +128,7 @@ test('delivery metadata preserves the customer timezone and slot capacity', () =
     delivery: {
       dateTime: '2026-08-10T08:00',
       timeZone: 'America/Bogota',
-      slot: { date: '2026-08-10', start: '08:00', end: '10:00', capacity: 2 },
+      slot: { date: '2026-08-10', start: '08:00', end: '12:00', capacity: 2 },
     },
   });
 
@@ -136,7 +136,7 @@ test('delivery metadata preserves the customer timezone and slot capacity', () =
   assert.deepEqual(payload.deliverySlot, {
     date: '2026-08-10',
     start: '08:00',
-    end: '10:00',
+    end: '12:00',
     capacity: 2,
   });
   assert.equal(payload.delivery.timeZone, 'America/Bogota');

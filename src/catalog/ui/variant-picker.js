@@ -155,13 +155,8 @@ export function variantForm(product, options = {}) {
         onChange(value) {
           selectedVariantId = null;
           choice[dimension.key] = dimension.key === 'lengthCm' ? Number(value) : value;
-          // Anything chosen further down may no longer be reachable.
-          let past = false;
-          for (const other of dimensions) {
-            if (past) choice[other.key] = null;
-            if (other.key === dimension.key) past = true;
-          }
-          choice.measure = null;
+          // Keep later choices when the new value still supports them. The
+          // render pass below clears only values that are no longer reachable.
           render();
         },
       };
@@ -231,9 +226,9 @@ export function variantForm(product, options = {}) {
 
       selectedVariantId = null;
       choice.variety = variety ?? null;
-      choice.color = null;
-      choice.lengthCm = null;
-      choice.measure = null;
+      // Preserve color, length, measure and quantity when the new variety
+      // still offers the same selection; render() reconciles incompatible
+      // values one by one.
       render();
     },
 
@@ -246,7 +241,6 @@ export function variantForm(product, options = {}) {
       for (const dimension of DIMENSIONS) {
         choice[dimension.key] = exact[dimension.key] ?? null;
       }
-      choice.measure = null;
       render();
     },
 

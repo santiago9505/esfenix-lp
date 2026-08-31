@@ -387,8 +387,8 @@ and a copyable plain-text summary.
 
 ### Delivery windows
 
-Delivery dates and two-hour windows are local preferences only. The catalog does
-not reserve slots or show persistent capacity. The team confirms availability,
+Delivery dates and the two four-hour windows (8:00 AM–12:00 PM and 12:00–4:00 PM)
+are local preferences only. The catalog does not reserve slots or show persistent capacity. The team confirms availability,
 minimum order and the final delivery time after reviewing the request, so this
 flow does not require Firestore, Authentication or another backend.
 

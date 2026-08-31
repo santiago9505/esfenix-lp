@@ -94,7 +94,7 @@ function deliveryPayloadWithSlot(orderType = 'Delivery') {
   payload.deliverySlot = {
     date: '2026-08-10',
     start: '08:00',
-    end: '10:00',
+    end: '12:00',
     capacity: 2,
   };
   return payload;
@@ -350,7 +350,7 @@ test('Delivery reserves capacity before the quote session and Pickup skips it', 
   assert.deepEqual(reservations, [{
     date: '2026-08-10',
     start: '08:00',
-    end: '10:00',
+    end: '12:00',
     timeZone: 'UTC',
   }]);
 

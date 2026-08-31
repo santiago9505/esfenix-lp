@@ -10,10 +10,10 @@
 export const DELIVERY_SCHEDULE = Object.freeze({
   startMinutes: 8 * 60,
   endMinutes: 16 * 60,
-  slotMinutes: 2 * 60,
+  // Delivery offers only these two windows: 8 AM–12 PM and 12–4 PM.
+  slotMinutes: 4 * 60,
   capacity: 2,
   weekdays: Object.freeze([1, 2, 3, 4, 5]),
-  weekendDays: Object.freeze([0, 6]),
   workingDays: Object.freeze([0, 1, 2, 3, 4, 5, 6]),
   minimumNoticeMs: 24 * 60 * 60 * 1000,
 });
@@ -71,10 +71,10 @@ export function isDateSelectable(dateKey, { now = new Date(), timeZone, isDateAl
 }
 
 /**
- * Creates the two-hour delivery windows for the selected day.
+ * Creates the two four-hour delivery windows for the selected day.
  *
  * `bookedByStart` is the seam for a live availability source: a map of slot
- * value (`2026-08-13T10:00`) to how many requests already hold that window.
+ * value (`2026-08-13T08:00`) to how many requests already hold that window.
  * Without it every window is offered at full capacity, which is what the
  * static catalog does today.
  *
@@ -96,7 +96,7 @@ export function getDeliverySlots(dateKey, { now = new Date(), timeZone, bookedBy
   const selectableDate = isDateSelectable(dateKey, { now, timeZone, isDateAllowed });
 
   const slots = [];
-  for (const start of slotStartsForDate(dateKey)) {
+  for (const start of slotStarts()) {
     const end = start + DELIVERY_SCHEDULE.slotMinutes;
     const startTime = minutesToTime(start);
     const endTime = minutesToTime(end);
@@ -224,7 +224,7 @@ export function formatTime(time, locale = 'en-US') {
 }
 
 /**
- * "8:00 – 10:00 AM" rather than "8:00 AM – 10:00 AM": in a list of windows the
+ * "8:00 AM – 12:00 PM" rather than "8:00 AM – 12:00 PM": in a list of windows the
  * repeated meridiem is noise, so it is only kept when the two ends differ.
  *
  * @param {string} start @param {string} end
@@ -241,11 +241,8 @@ export function formatTimeRange(start, end, locale = 'en-US') {
 }
 
 /** @param {string} dateKey */
-function slotStartsForDate(dateKey) {
-  const day = new Date(`${dateKey}T12:00:00Z`).getUTCDay();
-  const lastStart = DELIVERY_SCHEDULE.weekendDays.includes(day)
-    ? DELIVERY_SCHEDULE.startMinutes + DELIVERY_SCHEDULE.slotMinutes
-    : DELIVERY_SCHEDULE.endMinutes - DELIVERY_SCHEDULE.slotMinutes;
+function slotStarts() {
+  const lastStart = DELIVERY_SCHEDULE.endMinutes - DELIVERY_SCHEDULE.slotMinutes;
   const starts = [];
   for (let start = DELIVERY_SCHEDULE.startMinutes; start <= lastStart; start += DELIVERY_SCHEDULE.slotMinutes) {
     starts.push(start);

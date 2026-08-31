@@ -95,6 +95,7 @@ entrado a `dist/` y que todos los scripts inline estén autorizados por la CSP.
 ## Delivery
 
 Las ventanas de entrega son preferencias locales, no reservas. El visitante
-elige una fecha y franja de dos horas; el equipo confirma disponibilidad,
+elige una fecha y una de estas dos franjas: 8:00 AM–12:00 PM o 12:00–4:00 PM;
+el equipo confirma disponibilidad,
 mínimo de compra y hora final al revisar la solicitud. Así el flujo no necesita
 Firestore ni ningún otro almacenamiento remoto.

@@ -611,7 +611,13 @@ export function renderQuoteFormView(ctx, options) {
     const productRows = items.length > 0
       ? el('ul', { class: 'cat-quote-product-list' }, items.map(productRow))
       : el('div', { class: 'cat-quote-empty-products' }, [
-          el('span', { class: 'cat-quote-empty-products-icon', text: '＋' }),
+          el('button', {
+            type: 'button',
+            class: 'cat-quote-empty-products-icon',
+            'aria-label': 'Add a product',
+            text: '＋',
+            onClick: openCatalogProductPicker,
+          }),
           el('strong', { text: 'No products selected yet' }),
           el('p', { text: 'You can still request a quote and describe what you need in the last step.' }),
         ]);
@@ -655,17 +661,19 @@ export function renderQuoteFormView(ctx, options) {
           type: 'button',
           class: 'cat-linkbtn cat-quote-add-products',
           text: '+ Add or edit products in catalog',
-          onClick: () => {
-            if (options.onOpenProductPicker) {
-              options.onOpenProductPicker({ onClose: () => render() });
-            } else {
-              options.onBack();
-            }
-          },
+          onClick: openCatalogProductPicker,
         }),
       ]),
       stepActions('Continue to order type'),
     ]);
+  }
+
+  function openCatalogProductPicker() {
+    if (options.onOpenProductPicker) {
+      options.onOpenProductPicker({ onClose: () => render() });
+    } else {
+      options.onBack();
+    }
   }
 
   /** The catalog location is intentionally not editable after products load. */
@@ -1068,7 +1076,7 @@ export function renderQuoteFormView(ctx, options) {
     const scheduleField = el('div', { class: 'cat-quote-field cat-quote-schedule-field' }, [
       el('div', { class: 'cat-quote-schedule-label' }, [
         el('label', { text: `${isDelivery ? 'Preferred delivery date and time' : 'Preferred pickup date'} *` }),
-        el('span', { text: isDelivery ? 'Mon–Fri · 8:00 AM–4:00 PM; Sat–Sun · 8:00 AM–12:00 PM' : 'Mon–Sun · 24-hour notice' }),
+        el('span', { text: isDelivery ? 'Mon–Sun · 8:00 AM–4:00 PM · Two delivery windows' : 'Mon–Sun · 24-hour notice' }),
       ]),
       deliverySchedulePicker({
         value: state.delivery.dateTime,
@@ -1089,7 +1097,7 @@ export function renderQuoteFormView(ctx, options) {
       seasonNotice,
       el('small', {
         text: isDelivery
-          ? 'Pick a preferred two-hour window. Our team will confirm the final delivery time.'
+          ? 'Pick a preferred four-hour window. Our team will confirm the final delivery time.'
           : 'Pick the day you’d like to collect your order. We’ll agree the exact time with you.',
       }),
     ]);

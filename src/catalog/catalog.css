@@ -706,7 +706,8 @@
 .cat-quote-product-controls{display:flex;align-items:center;gap:10px}
 .cat-quote-add-products{align-self:flex-start}
 .cat-quote-empty-products{display:grid;justify-items:center;gap:7px;padding:30px 18px;border:1px dashed var(--c-line);border-radius:18px;text-align:center;color:var(--c-muted)}
-.cat-quote-empty-products-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--c-cream-2);color:var(--accent);font-size:23px}
+.cat-quote-empty-products-icon{display:grid;place-items:center;width:38px;height:38px;padding:0;border:0;border-radius:50%;background:var(--c-cream-2);color:var(--accent);font:400 23px/1 var(--ff);cursor:pointer;transition:background var(--d2) var(--e),transform var(--d2) var(--e),box-shadow var(--d2) var(--e)}
+.cat-quote-empty-products-icon:hover,.cat-quote-empty-products-icon:focus-visible{background:#f7eafa;box-shadow:0 0 0 4px rgba(137,36,160,.11);transform:translateY(-1px);outline:none}
 .cat-quote-empty-products strong{color:var(--c-text);font-size:14px}
 .cat-quote-empty-products p{font-size:13px;max-width:38ch}
 .cat-quote-recognized{display:flex;align-items:flex-start;gap:14px;padding:18px;border:1px solid #cfe0d0;border-radius:18px;background:#f2f8f0}

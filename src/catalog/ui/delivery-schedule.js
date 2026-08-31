@@ -20,7 +20,7 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FORM_LOCALE = 'en-US';
 
 /**
- * A date — and, for delivery, two-hour window — picker for the quote form.
+ * A date — and, for delivery, four-hour window — picker for the quote form.
  *
  * Two modes:
  *
@@ -31,9 +31,9 @@ const FORM_LOCALE = 'en-US';
  *           a window would be asking for something we do not hold. Only the
  *           calendar is shown and the value is the date alone.
  *
- * In both modes a day the schedule cannot serve is never selectable: weekends,
- * past days and — for delivery — days whose windows are all taken are disabled
- * in the grid rather than failing after the click.
+ * In both modes a day the schedule cannot serve is never selectable: past days
+ * and — for delivery — days whose windows are all taken are disabled in the
+ * grid rather than failing after the click.
  *
  * It owns only its visual state; the quote form remains the source of truth
  * for the selected value and persists it in the existing draft flow.
@@ -171,7 +171,7 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
       el('p', {
         class: 'cat-quote-calendar-hint',
         text: picksWindow
-          ? `Mon–Fri · ${formatTime(scheduleTime(DELIVERY_SCHEDULE.startMinutes), locale)}–${formatTime(scheduleTime(DELIVERY_SCHEDULE.endMinutes), locale)}; Sat–Sun · ${formatTime(scheduleTime(DELIVERY_SCHEDULE.startMinutes), locale)}–${formatTime(scheduleTime(DELIVERY_SCHEDULE.startMinutes + 2 * DELIVERY_SCHEDULE.slotMinutes), locale)}.`
+          ? `Mon–Sun · ${formatTime(scheduleTime(DELIVERY_SCHEDULE.startMinutes), locale)}–${formatTime(scheduleTime(DELIVERY_SCHEDULE.endMinutes), locale)}.`
           : 'Monday–Sunday · at least 24 hours ahead.',
       }),
     ]);
@@ -189,7 +189,7 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
       class: 'cat-quote-schedule-slots',
       'aria-label': 'Choose a delivery time',
     }, [
-      step('2', 'Pick a 2-hour window'),
+      step('2', 'Pick a four-hour window'),
       el('div', { class: 'cat-quote-slots-head' }, [
         el('strong', { text: capitalize(selectedDateLabel) }),
         el('span', {

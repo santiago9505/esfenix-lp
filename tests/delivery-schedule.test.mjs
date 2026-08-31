@@ -15,48 +15,46 @@ import { resolveSeason } from '../src/catalog/core/season.js';
 
 const timeZone = 'UTC';
 
-test('delivery dates include weekends with shorter weekend windows', () => {
+test('delivery dates expose exactly the two four-hour windows on every working day', () => {
   const now = new Date('2026-08-05T07:30:00Z');
   assert.equal(isDateSelectable('2026-08-05', { now, timeZone }), true);
   assert.equal(isDateSelectable('2026-08-08', { now, timeZone }), true);
   assert.deepEqual(getDeliverySlots('2026-08-05', { now, timeZone }).map((slot) => [slot.start, slot.end]), [
-    ['08:00', '10:00'],
-    ['10:00', '12:00'],
-    ['12:00', '14:00'],
-    ['14:00', '16:00'],
+    ['08:00', '12:00'],
+    ['12:00', '16:00'],
   ]);
   assert.deepEqual(getDeliverySlots('2026-08-08', { now, timeZone }).map((slot) => [slot.start, slot.end]), [
-    ['08:00', '10:00'],
-    ['10:00', '12:00'],
+    ['08:00', '12:00'],
+    ['12:00', '16:00'],
   ]);
 });
 
 test('delivery availability uses the end of each window for the 24-hour notice', () => {
   const now = new Date('2026-08-05T15:59:00Z');
   const slots = getDeliverySlots('2026-08-06', { now, timeZone });
-  assert.deepEqual(slots.map((slot) => slot.available), [false, false, false, true]);
-  assert.equal(slots[3].status, 'open');
+  assert.deepEqual(slots.map((slot) => slot.available), [false, true]);
+  assert.equal(slots[1].status, 'open');
   assert.equal(slots[0].capacity, 2);
 
   const atCutoff = getDeliverySlots('2026-08-06', {
     now: new Date('2026-08-05T16:00:00Z'),
     timeZone,
   });
-  assert.equal(atCutoff[3].available, true, 'exactly 24 hours is allowed');
+  assert.equal(atCutoff[1].available, true, 'exactly 24 hours is allowed');
 
   const afterCutoff = getDeliverySlots('2026-08-06', {
     now: new Date('2026-08-05T16:01:00Z'),
     timeZone,
   });
-  assert.equal(afterCutoff[3].available, false);
-  assert.equal(afterCutoff[3].status, 'too-soon');
+  assert.equal(afterCutoff[1].available, false);
+  assert.equal(afterCutoff[1].status, 'too-soon');
 });
 
 test('the picker can recover an initial weekday and valid selected slot', () => {
   const now = new Date('2026-08-08T12:00:00Z');
   assert.equal(getFirstSelectableDate({ now, timeZone }), '2026-08-09');
-  assert.equal(normalizeDeliveryValue('2026-08-09T10:00', { now, timeZone }), '2026-08-09T10:00');
-  assert.equal(normalizeDeliveryValue('2026-08-09T12:00', { now, timeZone }), '');
+  assert.equal(normalizeDeliveryValue('2026-08-09T12:00', { now, timeZone }), '2026-08-09T12:00');
+  assert.equal(normalizeDeliveryValue('2026-08-09T10:00', { now, timeZone }), '');
 });
 
 test('pickup uses all seven days and requires 24 hours before the 8 AM start', () => {
@@ -81,7 +79,7 @@ test('high-season dates are blocked for delivery but remain available for pickup
 
 test('a window stops being offered once its two spots are taken', () => {
   const now = new Date('2026-08-10T06:00:00Z');
-  const bookedByStart = { '2026-08-11T08:00': 2, '2026-08-11T10:00': 1 };
+  const bookedByStart = { '2026-08-11T08:00': 2, '2026-08-11T12:00': 1 };
   const [first, second] = getDeliverySlots('2026-08-11', { now, timeZone, bookedByStart });
 
   assert.deepEqual(
@@ -99,7 +97,7 @@ test('a window stops being offered once its two spots are taken', () => {
 test('a fully booked day is skipped by the calendar and by the initial date', () => {
   const now = new Date('2026-08-10T06:00:00Z');
   const bookedByStart = Object.fromEntries(
-    ['08:00', '10:00', '12:00', '14:00'].map((start) => [`2026-08-11T${start}`, 2]),
+    ['08:00', '12:00'].map((start) => [`2026-08-11T${start}`, 2]),
   );
 
   assert.equal(hasOpenDeliverySlots('2026-08-11', { now, timeZone, bookedByStart }), false);
@@ -113,7 +111,7 @@ test('a fully booked day is skipped by the calendar and by the initial date', ()
 test('a pickup date keeps the day, drops the time and accepts weekends', () => {
   const now = new Date('2026-08-10T06:00:00Z');
   const options = { now, timeZone, mode: 'pickup' };
-  assert.equal(normalizeDeliveryDate('2026-08-11T10:00', options), '2026-08-11');
+  assert.equal(normalizeDeliveryDate('2026-08-11T12:00', options), '2026-08-11');
   assert.equal(normalizeDeliveryDate('2026-08-11', options), '2026-08-11');
   assert.equal(normalizeDeliveryDate('2026-08-15', options), '2026-08-15', 'Saturday');
   assert.equal(normalizeDeliveryDate('2026-08-07', options), '', 'already past');
@@ -121,8 +119,7 @@ test('a pickup date keeps the day, drops the time and accepts weekends', () => {
   assert.equal(normalizeDeliveryDate('2026-08-10', { ...options, now: new Date('2026-08-10T16:30:00Z') }), '');
 });
 
-test('a window range states the meridiem once when both ends share it', () => {
-  assert.equal(formatTimeRange('08:00', '10:00'), '8:00 – 10:00 AM');
-  assert.equal(formatTimeRange('10:00', '12:00'), '10:00 AM – 12:00 PM');
-  assert.equal(formatTimeRange('14:00', '16:00'), '2:00 – 4:00 PM');
+test('the delivery window labels match the two permitted periods', () => {
+  assert.equal(formatTimeRange('08:00', '12:00'), '8:00 AM – 12:00 PM');
+  assert.equal(formatTimeRange('12:00', '16:00'), '12:00 – 4:00 PM');
 });
