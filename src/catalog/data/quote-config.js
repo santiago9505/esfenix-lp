@@ -17,6 +17,15 @@ export const QUOTE_FORM_URL = String(env.VITE_FRESA_QUOTE_FORM_URL ?? '').trim()
   || (isLocalCatalog ? LOCAL_FORM_URL : PRODUCTION_FORM_URL);
 
 /**
+ * Same-origin endpoint for live client lookup. The browser only sends the
+ * normalized email; the Fresa API key and client directory stay server-side.
+ * Set VITE_FRESA_CLIENT_LOOKUP_URL for local development when the Functions
+ * emulator is not exposed through the local web server.
+ */
+export const CLIENT_LOOKUP_ENDPOINT = String(env.VITE_FRESA_CLIENT_LOOKUP_URL ?? '').trim()
+  || '/api/fresa-client-lookup';
+
+/**
  * Endpoint that exchanges a quote payload for a short-lived session id.
  *
  *   POST <endpoint>  { ...payload }  ->  { quoteSessionId, redirectUrl }

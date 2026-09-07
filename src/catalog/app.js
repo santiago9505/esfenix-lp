@@ -40,11 +40,12 @@ import { renderProductView } from './product-page.js';
 import { resolveLocation } from './data/locations.js';
 import { initReveals } from './ui/site-chrome.js';
 import { getClientTimeZone } from './core/timezone.js';
+import { CLIENT_LOOKUP_ENDPOINT } from './data/quote-config.js';
 
 export function createApp({ head, body }) {
   const locationStore = createLocationStore();
   const quoteStore = createQuoteStore(locationStore.getId());
-  const integration = createQuoteIntegration();
+  const integration = createQuoteIntegration({ clientLookupEndpoint: CLIENT_LOOKUP_ENDPOINT });
   const clientTimeZone = getClientTimeZone();
 
   /** @type {import('./core/types').Product[]} */

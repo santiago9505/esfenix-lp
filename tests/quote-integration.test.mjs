@@ -265,6 +265,96 @@ test('validates one active client email and returns the scoped profile and VIP f
   assert.deepEqual(JSON.parse(calls[1].options.body), { answers: { email: 'buyer@example.com' } });
 });
 
+test('uses the secure live client proxy when the application configures it', async () => {
+  const calls = [];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    clientLookupEndpoint: '/api/fresa-client-lookup',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          found: true,
+          vip: true,
+          profile: { 'First Name': 'Cesar', 'Last Name': 'Ricaurte', 'Phone Number': '+57 350 576 59 62' },
+          taskId: 'active-client-task',
+        }),
+      };
+    },
+  });
+
+  const result = await integration.lookupClient(' Freddy@FresaAI.com ');
+  assert.deepEqual(result, {
+    ok: true,
+    found: true,
+    vip: true,
+    profile: { 'First Name': 'Cesar', 'Last Name': 'Ricaurte', 'Phone Number': '+57 350 576 59 62' },
+    taskId: 'active-client-task',
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, '/api/fresa-client-lookup');
+  assert.equal(calls[0].options.method, 'POST');
+  assert.equal(calls[0].options.cache, 'no-store');
+  assert.deepEqual(JSON.parse(calls[0].options.body), { email: 'freddy@fresaai.com' });
+});
+
+test('keeps the existing public lookup as a compatibility fallback while the proxy is unavailable', async () => {
+  const calls = [];
+  const form = publicFormResponse();
+  form.form.fields[0].actionRules = [{
+    enabled: true,
+    conditions: [{
+      operator: 'exists_in_list',
+      listLookupTarget: { listId: 'clients', target: 'custom_field', customFieldId: 'client-email' },
+    }],
+    thenActions: [{
+      type: 'populate_field_from_lookup',
+      targetFieldId: 'first',
+      lookupValueTarget: { listId: 'clients', target: 'custom_field', customFieldId: 'client-first' },
+    }],
+  }];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    clientLookupEndpoint: '/api/fresa-client-lookup',
+    fetchImpl: async (url, options = {}) => {
+      calls.push({ url, options });
+      if (url === '/api/fresa-client-lookup') {
+        return { ok: false, status: 503, json: async () => ({ success: false }) };
+      }
+      if (String(url).endsWith('/lookup')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            matches: {
+              'clients|custom_field:client-email': {
+                'buyer@example.com': [{
+                  taskId: 'legacy-client-task',
+                  values: { 'clients|custom_field:client-first': 'Ana' },
+                }],
+              },
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => form };
+    },
+  });
+
+  const result = await integration.lookupClient('buyer@example.com');
+  assert.equal(result.ok, true);
+  assert.equal(result.profile['First Name'], 'Ana');
+  assert.deepEqual(calls.map(({ url }) => url), [
+    '/api/fresa-client-lookup',
+    'https://fresaai.app/api/forms/0578f97716840e34cf5472d5?catalog=metadata',
+    'https://fresaai.app/api/forms/0578f97716840e34cf5472d5/lookup',
+  ]);
+});
+
 test('falls back to direct lookup when metadata is unavailable and still prefills a known client', async () => {
   const calls = [];
   const integration = createQuoteIntegration({

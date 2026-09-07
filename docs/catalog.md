@@ -203,6 +203,23 @@ missing category. If a new grouping is needed, authorize the corresponding
 column or list in Fresa. The snapshot generator also rejects a response that
 looks like an unrelated client directory before writing it.
 
+### Live active-client lookup
+
+The quote form sends an email to the same-origin endpoint
+`/api/fresa-client-lookup`. Firebase Hosting rewrites that request to the
+`fresaClientLookup` Cloud Function. The Function keeps `FRESA_CLIENTS_API_KEY`
+in Secret Manager, requests every page of the configured Fresa active-client
+list with `cache: no-store`, validates the list/status/active field, and
+returns only the fields needed to prefill the quote form. It never returns the
+client directory or the Fresa task description to the browser.
+
+There is no server-side directory cache, so a change made in Fresa is used by
+the next email lookup. The endpoint is same-origin, rejects cross-site browser
+requests, limits requests per IP, and returns a non-blocking unavailable result
+to the form when Fresa is temporarily down. A valid new email can therefore
+continue without a profile, while an active email is prefilled from the live
+Fresa record.
+
 ---
 
 ## How to…
