@@ -32,6 +32,7 @@ import { resolveLocation } from '../data/locations.js';
 import { el, firstUsableImage, productMedia, replaceChildren } from './dom.js';
 import { deliverySchedulePicker } from './delivery-schedule.js';
 import { shippingDestinationFields } from './location-select.js';
+import { createLoadingOverlay } from './loading-indicator.js';
 import { NO_PAYMENT_NOTE } from './states.js';
 import { openVariantPicker } from './variant-picker.js';
 
@@ -106,6 +107,8 @@ export function renderQuoteFormView(ctx, options) {
     persistDraft();
   });
   const formHost = el('div', { class: 'cat-quote-form-host' });
+  const lookupLoader = createLoadingOverlay({ kind: 'lookup' });
+  const submitLoader = createLoadingOverlay({ kind: 'submission' });
   const topBack = el('button', {
     type: 'button',
     class: 'cat-quote-back',
@@ -124,6 +127,8 @@ export function renderQuoteFormView(ctx, options) {
     ]),
     layout,
     el('p', { class: 'cat-quote-screen-note', text: NO_PAYMENT_NOTE }),
+    lookupLoader.element,
+    submitLoader.element,
   ]);
 
   render(true);
@@ -168,6 +173,40 @@ export function renderQuoteFormView(ctx, options) {
     state.step -= 1;
     state.error = '';
     render(true);
+  }
+
+  /** Temporarily prevents edits while the final request is in flight. */
+  function setSubmitBusy(isBusy) {
+    screen.setAttribute('aria-busy', String(isBusy));
+    topBack.disabled = isBusy;
+    railSteps.forEach((entry) => {
+      entry.button.disabled = isBusy;
+    });
+    if (isBusy) {
+      formHost.querySelectorAll('input, select, textarea, button').forEach((control) => {
+        control.disabled = true;
+      });
+      submitLoader.show();
+    } else {
+      submitLoader.hide();
+    }
+  }
+
+  /** Temporarily prevents edits while the email is being verified. */
+  function setLookupBusy(isBusy, form) {
+    screen.setAttribute('aria-busy', String(isBusy));
+    topBack.disabled = isBusy;
+    railSteps.forEach((entry) => {
+      entry.button.disabled = isBusy;
+    });
+    if (isBusy) {
+      form.querySelectorAll('input, select, textarea, button').forEach((control) => {
+        control.disabled = true;
+      });
+      lookupLoader.show();
+    } else {
+      lookupLoader.hide();
+    }
   }
 
   function persistDraft() {
@@ -304,9 +343,10 @@ export function renderQuoteFormView(ctx, options) {
       class: 'cat-quote-step-form',
       onSubmit: async (event) => {
         event.preventDefault();
-        const input = event.currentTarget.querySelector('input[name="email"]');
-        if (!event.currentTarget.checkValidity()) {
-          event.currentTarget.reportValidity();
+        const form = event.currentTarget;
+        const input = form.querySelector('input[name="email"]');
+        if (!form.checkValidity()) {
+          form.reportValidity();
           return;
         }
         state.email = input.value.trim();
@@ -317,23 +357,29 @@ export function renderQuoteFormView(ctx, options) {
         state.clientLookup = 'checking';
         button.disabled = true;
         button.textContent = 'Continuing…';
-        const lookup = options.onLookupClient
-          ? await options.onLookupClient(state.email)
-          : { ok: true, found: false, vip: false, profile: {} };
-        state.submitPending = false;
-        if (!lookup?.ok) {
-          state.clientLookup = 'unavailable';
-          state.error = 'We could not continue with this email. Please try again.';
-          render(true);
-          return;
+        setLookupBusy(true, form);
+        let lookup;
+        try {
+          lookup = options.onLookupClient
+            ? await options.onLookupClient(state.email)
+            : { ok: true, found: false, vip: false, profile: {} };
+        } catch {
+          lookup = { ok: false, found: false, vip: false, profile: {} };
         }
-        state.recognized = lookup.found === true;
-        state.vip = lookup.vip === true;
-        state.clientLookup = lookup.found ? 'found' : 'not-found';
-        if (lookup.found) applyLookupProfile(lookup.profile);
-        persistDraft();
+        state.submitPending = false;
+        setLookupBusy(false, form);
+        // Client lookup is an optional prefill. A temporary Fresa failure
+        // must never prevent a new visitor from requesting a quote; only the
+        // native email input validation above can stop this step.
+        state.recognized = lookup?.ok === true && lookup.found === true;
+        state.vip = state.recognized && lookup.vip === true;
+        state.clientLookup = lookup?.ok === true
+          ? lookup.found ? 'found' : 'not-found'
+          : 'unavailable';
+        if (state.recognized) applyLookupProfile(lookup.profile);
         state.step = 1;
         state.error = '';
+        persistDraft();
         render(true);
       },
     }, [
@@ -938,12 +984,17 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function deliveryEligibilityNote(pricing, blockedSeason = null) {
+    // VIP is an internal routing rule. Keep it in state for eligibility and
+    // submission, but do not expose the VIP status or its special delivery
+    // treatment in the customer-facing form.
+    if (state.vip) return null;
+
     const seasonBlocked = blockedSeason?.type === 'HIGH';
     const eligible = !seasonBlocked && isDeliveryAllowed(pricing);
-    const progress = state.vip ? 100 : pricing.deliveryProgress;
+    const progress = pricing.deliveryProgress;
     const description = seasonBlocked
       ? `Pickup is available during ${blockedSeason.label}.`
-      : state.pricingPending && !state.vip
+      : state.pricingPending
         ? 'Checking this selection against the $150 Delivery minimum…'
         : pricing.hasUnknownPricing
           ? 'Delivery will be available once the selected product measures and prices can be confirmed.'
@@ -959,11 +1010,9 @@ export function renderQuoteFormView(ctx, options) {
       el('div', { class: 'cat-quote-delivery-eligibility-head' }, [
         el('strong', { text: seasonBlocked
           ? 'Delivery unavailable during high season'
-          : state.pricingPending && !state.vip
+          : state.pricingPending
             ? 'Checking delivery'
-            : state.vip
-              ? 'VIP delivery available'
-              : 'Delivery progress' }),
+            : 'Delivery progress' }),
         el('span', {
           class: 'cat-quote-delivery-eligibility-percent',
           text: `${progress}% complete`,
@@ -1227,6 +1276,7 @@ export function renderQuoteFormView(ctx, options) {
         button.disabled = true;
         button.textContent = 'Sending request…';
         state.error = '';
+        setSubmitBusy(true);
 
         state.orderType = orderType;
 
@@ -1246,27 +1296,29 @@ export function renderQuoteFormView(ctx, options) {
               ? 'Delivery eligibility could not be confirmed. Please choose Pickup or try again.'
               : 'This selection does not meet the $150 Delivery minimum. Please update it or choose Pickup.';
             state.step = 3;
+            state.submitPending = false;
+            setSubmitBusy(false);
+            render(true);
             return;
           }
         }
 
-        const payload = buildQuotePayload({
-          locationId: ctx.locationId,
-          items: ctx.quoteStore.getItems(),
-          email: state.email,
-          contact: state.contact,
-          phoneCountryCode: dialCodeForCountry(state.phoneCountry),
-          vip: state.vip,
-          orderType,
-          delivery: {
-            ...state.delivery,
-            timeZone: ctx.clientTimeZone ?? 'UTC',
-          },
-          shippingDestination: ctx.locationStore.getShippingDestination(),
-          notes: state.notes,
-        });
-
         try {
+          const payload = buildQuotePayload({
+            locationId: ctx.locationId,
+            items: ctx.quoteStore.getItems(),
+            email: state.email,
+            contact: state.contact,
+            phoneCountryCode: dialCodeForCountry(state.phoneCountry),
+            vip: state.vip,
+            orderType,
+            delivery: {
+              ...state.delivery,
+              timeZone: ctx.clientTimeZone ?? 'UTC',
+            },
+            shippingDestination: ctx.locationStore.getShippingDestination(),
+            notes: state.notes,
+          });
           const result = await options.onSubmit(payload);
           if (result?.ok) {
             ctx.quoteStore.clear();
@@ -1284,6 +1336,7 @@ export function renderQuoteFormView(ctx, options) {
           state.error = 'We could not send your quote request. Please try again.';
         } finally {
           state.submitPending = false;
+          setSubmitBusy(false);
           render(true);
         }
       },

@@ -265,6 +265,68 @@ test('validates one active client email and returns the scoped profile and VIP f
   assert.deepEqual(JSON.parse(calls[1].options.body), { answers: { email: 'buyer@example.com' } });
 });
 
+test('falls back to direct lookup when metadata is unavailable and still prefills a known client', async () => {
+  const calls = [];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: null,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      if (String(url).endsWith('/lookup')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            matches: {
+              'clients|custom_field:client-email': {
+                'Buyer@Example.com': [{
+                  taskId: 'client-task',
+                  values: {
+                    'clients|custom_field:client-first': 'Ana',
+                    'clients|custom_field:client-last': 'Flower',
+                    'clients|custom_field:client-company': 'Flowers Inc.',
+                    'clients|custom_field:client-vip': true,
+                  },
+                }],
+              },
+            },
+          }),
+        };
+      }
+      return {
+        ok: false,
+        status: 500,
+        json: async () => ({ success: false, error: 'metadata unavailable' }),
+      };
+    },
+  });
+
+  const result = await integration.lookupClient(' Buyer@Example.com ');
+  assert.equal(result.ok, true);
+  assert.equal(result.found, true);
+  assert.equal(result.vip, true);
+  assert.equal(result.profile['First Name'], 'Ana');
+  assert.equal(result.profile['Last Name'], 'Flower');
+  assert.equal(result.profile.Company, 'Flowers Inc.');
+  assert.equal(calls.length, 2);
+  assert.deepEqual(JSON.parse(calls[1].options.body), { answers: { email: 'buyer@example.com' } });
+});
+
+test('a metadata and direct lookup outage does not turn a valid new email into a validation error', async () => {
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: null,
+    fetchImpl: async (url) => String(url).endsWith('/lookup')
+      ? { ok: false, status: 503, json: async () => ({ success: false }) }
+      : { ok: false, status: 500, json: async () => ({ success: false }) },
+  });
+
+  const result = await integration.lookupClient('new@example.com');
+  assert.equal(result.ok, false);
+  assert.equal(result.found, false);
+});
+
 test('a failing Fresa form API keeps the quote summary and does not open a tab', async () => {
   const open = recorder();
   const integration = createQuoteIntegration({

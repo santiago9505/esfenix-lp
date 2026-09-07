@@ -253,7 +253,15 @@ function slotStarts() {
 /** @param {string} dateKey @param {string} endTime @param {Date} now @param {string} timeZone */
 function hasMinimumNoticeForSlot(dateKey, endTime, now, timeZone) {
   const slotEnd = wallClockToDate(dateKey, endTime, timeZone);
-  return slotEnd.getTime() - now.getTime() >= DELIVERY_SCHEDULE.minimumNoticeMs;
+  // The form only exposes minute-level times. Comparing at that same
+  // precision keeps the picker and final submit consistent at the cutoff:
+  // 4:00 PM still qualifies, while 4:01 PM does not.
+  return slotEnd.getTime() - minutePrecision(now).getTime() >= DELIVERY_SCHEDULE.minimumNoticeMs;
+}
+
+/** @param {Date} date */
+function minutePrecision(date) {
+  return new Date(Math.floor(date.getTime() / 60_000) * 60_000);
 }
 
 /**

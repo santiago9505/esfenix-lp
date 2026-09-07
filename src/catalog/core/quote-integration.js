@@ -38,6 +38,7 @@ import {
 // more than ten seconds, so keep the user-facing request alive long enough for
 // Fresa to return the created task id.
 const REQUEST_TIMEOUT_MS = 45000;
+const FALLBACK_EMAIL_FIELD_ID = 'email';
 
 /**
  * @param {{
@@ -300,6 +301,103 @@ function lookupProfileFromMatch(fields, rule, match) {
   return values;
 }
 
+/**
+ * The public lookup endpoint can still answer while the form metadata
+ * endpoint is temporarily unavailable. In that case there is no field schema
+ * to translate lookup values into labels, so recover only clearly named
+ * profile fields from the scoped match. Unknown fields stay private.
+ *
+ * @param {any} match
+ */
+function lookupProfileFromFallbackMatch(match) {
+  const values = match?.values && typeof match.values === 'object' ? match.values : {};
+  const profile = {};
+  const labels = [
+    ['First Name', /(?:^|\s)(?:first(?: name)?|firstname|nombre(?: contacto)?)(?:$|\s)/],
+    ['Last Name', /(?:^|\s)(?:last(?: name)?|lastname|surname|apellido(?: contacto)?)(?:$|\s)/],
+    ['Phone Number', /(?:^|\s)(?:phone|phone number|telephone|telefono|mobile|movil)(?:$|\s)/],
+    ['Company', /(?:^|\s)(?:company|company name|empresa|nombre empresa)(?:$|\s)/],
+    ['Social Media Profiles', /(?:^|\s)(?:social media|social media profiles|social media link|social media url)(?:$|\s)/],
+    ['Address', /(?:^|\s)(?:address|shipping address|delivery address|direccion)(?:$|\s)/],
+    ['City', /(?:^|\s)(?:city|shipping city|delivery city|ciudad)(?:$|\s)/],
+    ['State', /(?:^|\s)(?:state|shipping state|delivery state|estado)(?:$|\s)/],
+    ['Zip Code', /(?:^|\s)(?:zip|zip code|postal code|shipping postal code|codigo postal)(?:$|\s)/],
+    ['VIP?', /(?:^|\s)vip(?:$|\s)/],
+  ];
+
+  for (const [label, pattern] of labels) {
+    const entry = Object.entries(values).find(([key, value]) =>
+      value !== null && value !== undefined && pattern.test(normalizeLookupKey(key))
+    );
+    if (entry) profile[label] = entry[1];
+  }
+  return profile;
+}
+
+/** @param {unknown} value */
+function normalizeLookupKey(value) {
+  return normalizeLookupValue(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Finds the first scoped lookup result for an email without assuming that
+ * Fresa preserved the email's casing or used one exact nesting shape.
+ *
+ * @param {unknown} matches
+ * @param {string} email
+ */
+function findLookupMatch(matches, email) {
+  const normalizedEmail = normalizeLookupValue(email);
+  if (!matches || typeof matches !== 'object') return null;
+
+  if (Array.isArray(matches)) {
+    return matches.find((entry) => normalizeLookupValue(entry?.email) === normalizedEmail) ?? null;
+  }
+
+  for (const [key, value] of Object.entries(matches)) {
+    if (normalizeLookupValue(key) === normalizedEmail) {
+      return Array.isArray(value) ? value[0] ?? null : value;
+    }
+    const nested = findLookupMatch(value, normalizedEmail);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+/**
+ * Queries the lookup endpoint with the conventional public-form email field
+ * when metadata cannot be read. The response is still scoped to the entered
+ * email; it never downloads the client directory.
+ *
+ * @param {{ lookupUrl: string, email: string, doFetch: typeof fetch, timeoutMs: number }} options
+ */
+async function lookupWithoutMetadata({ lookupUrl, email, doFetch, timeoutMs }) {
+  const response = await fetchWithTimeout(doFetch, lookupUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ answers: { [FALLBACK_EMAIL_FIELD_ID]: email } }),
+  }, timeoutMs);
+  const data = await readJson(response);
+  if (!response.ok || data?.success !== true) {
+    return { ok: false, found: false, error: data?.error || 'Customer validation is temporarily unavailable.' };
+  }
+
+  const match = findLookupMatch(data?.matches, email);
+  if (!match) return { ok: true, found: false, vip: false, profile: {} };
+  const profile = lookupProfileFromFallbackMatch(match);
+  return {
+    ok: true,
+    found: true,
+    vip: booleanValue(profile['VIP?']),
+    profile,
+    taskId: match.taskId ?? null,
+  };
+}
+
 function booleanValue(value) {
   if (typeof value === 'boolean') return value;
   return ['true', '1', 'yes', 'si', 'sí', 'vip'].includes(normalizeLookupValue(value));
@@ -309,8 +407,11 @@ async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
   const normalizedEmail = normalizeLookupValue(email);
   if (!normalizedEmail) return { ok: false, found: false, error: 'Enter a valid email address.' };
 
+  let lookupUrl = '';
   try {
-    const { formApiUrl, lookupUrl } = resolveFresaFormApi(formUrl);
+    const resolved = resolveFresaFormApi(formUrl);
+    const { formApiUrl } = resolved;
+    lookupUrl = resolved.lookupUrl;
     const metadataUrl = new URL(formApiUrl);
     metadataUrl.searchParams.set('catalog', 'metadata');
     const formResponse = await fetchWithTimeout(doFetch, metadataUrl.toString(), {
@@ -327,7 +428,7 @@ async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
     const lookupCondition = (lookupRule?.conditions ?? []).find((condition) => condition?.operator === 'exists_in_list');
     const emailTargetKey = lookupTargetKey(lookupCondition?.listLookupTarget);
     if (!formResponse.ok || formData?.success !== true || !emailField?.id || !emailTargetKey) {
-      return { ok: false, found: false, error: 'Customer validation is not configured in Fresa.' };
+      return lookupWithoutMetadata({ lookupUrl, email: normalizedEmail, doFetch, timeoutMs });
     }
 
     const response = await fetchWithTimeout(doFetch, lookupUrl, {
@@ -340,7 +441,7 @@ async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
       return { ok: false, found: false, error: data?.error || 'Customer validation is temporarily unavailable.' };
     }
 
-    const match = data?.matches?.[emailTargetKey]?.[normalizedEmail]?.[0] ?? null;
+    const match = findLookupMatch(data?.matches?.[emailTargetKey], normalizedEmail);
     if (!match) return { ok: true, found: false, vip: false, profile: {} };
     const profile = lookupProfileFromMatch(fields, lookupRule, match);
     return {
@@ -351,6 +452,16 @@ async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
       taskId: match.taskId ?? null,
     };
   } catch (error) {
+    // A network failure while loading metadata should not discard a lookup
+    // that the scoped endpoint can still answer. Avoid a second long wait if
+    // the metadata request already timed out.
+    if (lookupUrl && error?.name !== 'AbortError') {
+      try {
+        return await lookupWithoutMetadata({ lookupUrl, email: normalizedEmail, doFetch, timeoutMs });
+      } catch {
+        // Return the same non-blocking failure contract below.
+      }
+    }
     return {
       ok: false,
       found: false,

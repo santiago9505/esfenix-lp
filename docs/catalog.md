@@ -291,9 +291,12 @@ its source task identity.
 
 The landing reads lightweight public-form metadata, then sends only the email
 the visitor entered to `/api/forms/<token>/lookup`. Fresa evaluates the scoped
-`exists_in_list` rule server-side and returns only that match. A match prefills
-the configured contact fields and VIP flag; a missing match remains a valid new
-quote. The browser never receives the active-client list or an API credential.
+`exists_in_list` rule server-side and returns only that match. If metadata is
+temporarily unavailable, the landing retries the scoped lookup with the public
+form's email field instead of blocking the visitor. A match prefills the
+configured contact fields and VIP flag; a missing match remains a valid new
+quote, and a lookup outage also remains non-blocking. The browser never
+receives the active-client list or an API credential.
 For `Other U.S. location`, the catalog also keeps the destination state, city
 and ZIP in the active session and includes them in Pickup submissions, even
 though Fresa hides those fields for Pickup.

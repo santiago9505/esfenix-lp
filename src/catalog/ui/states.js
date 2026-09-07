@@ -4,6 +4,7 @@
  */
 
 import { el } from './dom.js';
+import { loadingIndicator } from './loading-indicator.js';
 
 /** The line the brief requires wherever availability could be misread. */
 export const AVAILABILITY_NOTE = 'Product availability will be confirmed by our team.';
@@ -16,6 +17,7 @@ export const NO_PAYMENT_NOTE = 'This is a quote request. No payment will be coll
 export function loadingSkeleton(cards = 6) {
   return el('div', { class: 'cat-skeleton', role: 'status', 'aria-live': 'polite' }, [
     el('span', { class: 'cat-sr', text: 'Loading the catalog…' }),
+    loadingIndicator({ kind: 'catalog', compact: true, role: null }),
     el('div', { class: 'cat-skeleton-bar' }),
     el(
       'div',

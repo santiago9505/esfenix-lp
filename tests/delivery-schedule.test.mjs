@@ -50,6 +50,28 @@ test('delivery availability uses the end of each window for the 24-hour notice',
   assert.equal(afterCutoff[1].status, 'too-soon');
 });
 
+test('the next-day noon-to-four window stays available until after 4 PM', () => {
+  const tomorrow = '2026-09-01';
+  const customerTimeZone = 'America/Bogota';
+  const beforeCutoff = getDeliverySlots(tomorrow, {
+    now: new Date('2026-08-31T17:36:17Z'), // 12:36 PM in Colombia
+    timeZone: customerTimeZone,
+  });
+  assert.deepEqual(beforeCutoff.map((slot) => slot.available), [false, true]);
+
+  const atCutoff = getDeliverySlots(tomorrow, {
+    now: new Date('2026-08-31T21:00:59Z'), // 4:00 PM in Colombia
+    timeZone: customerTimeZone,
+  });
+  assert.equal(atCutoff[1].available, true, '4:00 PM still qualifies');
+
+  const afterCutoff = getDeliverySlots(tomorrow, {
+    now: new Date('2026-08-31T21:01:00Z'), // 4:01 PM in Colombia
+    timeZone: customerTimeZone,
+  });
+  assert.equal(afterCutoff[1].available, false, '4:01 PM is too late');
+});
+
 test('the picker can recover an initial weekday and valid selected slot', () => {
   const now = new Date('2026-08-08T12:00:00Z');
   assert.equal(getFirstSelectableDate({ now, timeZone }), '2026-08-09');

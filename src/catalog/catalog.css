@@ -258,6 +258,57 @@
 .cat-client-email-help{font-size:13px;color:var(--c-muted)}
 .cat-client-email-status{min-height:0}
 
+/* ---- Branded loading -------------------------------------------- */
+
+.cat-loading{position:relative;isolation:isolate;display:flex;align-items:center;gap:22px;min-height:128px;padding:24px 28px;margin-bottom:26px;overflow:hidden;border:1px solid var(--c-line);border-radius:var(--r-md);background:linear-gradient(115deg,var(--c-white),#fbf1fd 68%,#f5f8ee);box-shadow:0 16px 34px -28px rgba(51,47,42,.75)}
+.cat-loading::before{content:"";position:absolute;z-index:-1;right:-74px;top:-106px;width:224px;height:224px;border:1px solid rgba(137,36,160,.12);border-radius:50%;box-shadow:0 0 0 18px rgba(137,36,160,.035),0 0 0 38px rgba(139,204,47,.025);pointer-events:none}
+.cat-loading::after{content:"";position:absolute;left:0;top:0;width:4px;height:100%;background:linear-gradient(var(--accent),#8bcc2f);opacity:.9}
+.cat-loading-mark{position:relative;display:grid;place-items:center;width:70px;height:70px;flex:none;border-radius:50%;background:var(--c-white);box-shadow:0 10px 26px -18px rgba(51,47,42,.85)}
+.cat-loading-ring{position:absolute;inset:0;border:1px solid transparent;border-radius:50%;pointer-events:none}
+.cat-loading-ring-primary{border-top-color:var(--accent);border-right-color:rgba(175,48,205,.34);animation:cat-loading-orbit 2.4s linear infinite}
+.cat-loading-ring-secondary{inset:8px;border-bottom-color:#8bcc2f;border-left-color:rgba(139,204,47,.26);animation:cat-loading-orbit-reverse 2.8s linear infinite}
+.cat-loading-core{position:relative;display:grid;place-items:center;width:44px;height:44px;border:1px solid #edc7e9;border-radius:50%;background:linear-gradient(145deg,#fff,#f8eef9);box-shadow:inset 0 0 0 4px rgba(255,255,255,.82)}
+.cat-loading-core img{width:21px;height:29px;object-fit:contain;animation:cat-loading-breathe 2.1s var(--e2) infinite}
+.cat-loading-spark{position:absolute;width:5px;height:5px;border-radius:50%;background:#8bcc2f;box-shadow:0 0 0 3px rgba(139,204,47,.1);animation:cat-loading-spark 2.1s var(--e) infinite}
+.cat-loading-spark-one{top:5px;right:10px}
+.cat-loading-spark-two{bottom:10px;left:6px;width:4px;height:4px;background:var(--accent);animation-delay:-.8s}
+.cat-loading-copy{position:relative;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cat-loading-kicker{font-size:10px;font-weight:600;letter-spacing:.19em;text-transform:uppercase;color:var(--accent)}
+.cat-loading-title{font-size:18px;font-weight:500;line-height:1.3;color:var(--c-text)}
+.cat-loading-message{font-size:12px;line-height:1.5;color:var(--c-muted)}
+.cat-loading-compact{min-height:112px;margin:0 0 24px;padding:18px 0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.cat-loading-compact::before{right:-112px;top:-154px}
+.cat-loading-compact::after{display:none}
+
+.cat-loading-overlay{position:fixed;inset:0;z-index:110;display:grid;place-items:center;padding:24px;background:rgba(29,29,27,.34);backdrop-filter:blur(8px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .35s var(--e),visibility .35s var(--e)}
+.cat-loading-overlay[hidden]{display:none}
+.cat-loading-overlay.is-visible{opacity:1;visibility:visible;pointer-events:auto}
+.cat-loading-overlay .cat-loading{width:min(520px,100%);min-height:148px;margin:0;padding:32px 34px;box-shadow:0 24px 80px -30px rgba(29,29,27,.72)}
+.cat-loading-overlay .cat-loading-mark{width:78px;height:78px}
+.cat-loading-overlay .cat-loading-core{width:50px;height:50px}
+.cat-loading-overlay .cat-loading-core img{width:24px;height:33px}
+
+@keyframes cat-loading-orbit{to{transform:rotate(360deg)}}
+@keyframes cat-loading-orbit-reverse{to{transform:rotate(-360deg)}}
+@keyframes cat-loading-breathe{0%,100%{transform:translateY(1px) scale(.94)}50%{transform:translateY(-1px) scale(1)}}
+@keyframes cat-loading-spark{0%,100%{opacity:.34;transform:scale(.7)}50%{opacity:1;transform:scale(1)}}
+
+@media(max-width:560px){
+  .cat-loading{gap:16px;padding:22px 20px}
+  .cat-loading-mark{width:60px;height:60px}
+  .cat-loading-core{width:39px;height:39px}
+  .cat-loading-core img{width:18px;height:25px}
+  .cat-loading-title{font-size:16px}
+  .cat-loading-message{font-size:11px}
+  .cat-loading-overlay{padding:16px}
+  .cat-loading-overlay .cat-loading{padding:26px 22px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .cat-loading-ring,.cat-loading-core img,.cat-loading-spark{animation:none}
+  .cat-loading-overlay{transition:none}
+}
+
 /* ---- Skeleton ---------------------------------------------------- */
 
 .cat-skeleton-bar{height:58px;border-radius:var(--r-pill);background:var(--c-cream-2);margin-bottom:32px;max-width:420px}
