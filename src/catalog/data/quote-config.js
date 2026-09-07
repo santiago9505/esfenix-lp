@@ -17,6 +17,12 @@ export const QUOTE_FORM_URL = String(env.VITE_FRESA_QUOTE_FORM_URL ?? '').trim()
   || (isLocalCatalog ? LOCAL_FORM_URL : PRODUCTION_FORM_URL);
 
 /**
+ * Secure edge endpoint for the live Active clients lookup. It accepts only an
+ * email and never exposes the private Fresa API key or the full client list.
+ */
+export const CLIENT_LOOKUP_ENDPOINT = String(env.VITE_FRESA_CLIENT_LOOKUP_URL ?? '').trim() || null;
+
+/**
  * Endpoint that exchanges a quote payload for a short-lived session id.
  *
  *   POST <endpoint>  { ...payload }  ->  { quoteSessionId, redirectUrl }

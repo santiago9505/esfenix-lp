@@ -44,6 +44,7 @@ const FALLBACK_EMAIL_FIELD_ID = 'email';
  * @param {{
  *   formUrl?: string,
  *   sessionEndpoint?: string|null,
+ *   clientLookupEndpoint?: string|null,
  *   fetchImpl?: typeof fetch,
  *   openImpl?: (url: string) => (Window|null),
  *   timeoutMs?: number,
@@ -54,6 +55,7 @@ export function createQuoteIntegration(options = {}) {
   const formUrl = options.formUrl ?? QUOTE_FORM_URL;
   const sessionEndpoint =
     options.sessionEndpoint === undefined ? QUOTE_SESSION_ENDPOINT : options.sessionEndpoint;
+  const clientLookupEndpoint = options.clientLookupEndpoint ?? null;
   const reserveDeliverySlotImpl = options.reserveDeliverySlotImpl;
   const doFetch = options.fetchImpl ?? ((...args) => globalThis.fetch(...args));
   const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
@@ -81,9 +83,15 @@ export function createQuoteIntegration(options = {}) {
       return sessionEndpoint ? 'session' : 'form-api';
     },
 
-    /** Validates one email through the public form's scoped list lookup. */
+    /** Looks up one email without exposing the private client directory. */
     lookupClient(email) {
-      return lookupFresaClient({ formUrl, email, doFetch, timeoutMs });
+      if (!clientLookupEndpoint) return lookupFresaClient({ formUrl, email, doFetch, timeoutMs });
+      return lookupClientThroughEndpoint({
+        endpoint: clientLookupEndpoint,
+        email,
+        doFetch,
+        timeoutMs,
+      });
     },
 
     /**
@@ -396,6 +404,49 @@ async function lookupWithoutMetadata({ lookupUrl, email, doFetch, timeoutMs }) {
     profile,
     taskId: match.taskId ?? null,
   };
+}
+
+/**
+ * Calls the edge lookup and accepts only the profile fields used by the form.
+ * A failure remains non-blocking in quote-form.js, so every valid email can
+ * continue even while Fresa is temporarily unavailable.
+ */
+async function lookupClientThroughEndpoint({ endpoint, email, doFetch, timeoutMs }) {
+  const normalizedEmail = normalizeLookupValue(email);
+  if (!normalizedEmail) return { ok: false, found: false, error: 'Enter a valid email address.' };
+
+  try {
+    const response = await fetchWithTimeout(doFetch, endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ email: normalizedEmail }),
+    }, timeoutMs);
+    const data = await readJson(response);
+    if (!response.ok || data?.success !== true) {
+      return {
+        ok: false,
+        found: false,
+        error: data?.error || 'Customer validation is temporarily unavailable.',
+      };
+    }
+    if (data.found !== true) return { ok: true, found: false, vip: false, profile: {} };
+    return {
+      ok: true,
+      found: true,
+      vip: booleanValue(data.vip),
+      profile: data.profile && typeof data.profile === 'object' ? data.profile : {},
+      taskId: typeof data.taskId === 'string' ? data.taskId : null,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      found: false,
+      error: error?.name === 'AbortError'
+        ? 'Customer validation took too long. Please try again.'
+        : 'Customer validation is temporarily unavailable.',
+    };
+  }
 }
 
 function booleanValue(value) {

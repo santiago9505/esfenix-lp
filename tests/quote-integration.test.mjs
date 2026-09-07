@@ -327,6 +327,43 @@ test('a metadata and direct lookup outage does not turn a valid new email into a
   assert.equal(result.found, false);
 });
 
+test('uses the secure live client endpoint when it is configured', async () => {
+  const calls = [];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: null,
+    clientLookupEndpoint: 'https://lookup.example.workers.dev',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          found: true,
+          vip: true,
+          taskId: 'client-task',
+          profile: {
+            'First Name': 'Cesar',
+            'Last Name': 'Ricaurte',
+            'Phone Number': '+57 350 576 59 62',
+          },
+        }),
+      };
+    },
+  });
+
+  const result = await integration.lookupClient(' FREDDY@FRESAAI.COM ');
+  assert.equal(result.ok, true);
+  assert.equal(result.found, true);
+  assert.equal(result.vip, true);
+  assert.equal(result.profile['First Name'], 'Cesar');
+  assert.equal(result.taskId, 'client-task');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://lookup.example.workers.dev');
+  assert.deepEqual(JSON.parse(calls[0].options.body), { email: 'freddy@fresaai.com' });
+});
+
 test('a failing Fresa form API keeps the quote summary and does not open a tab', async () => {
   const open = recorder();
   const integration = createQuoteIntegration({

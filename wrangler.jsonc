@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "esfenix-client-lookup",
+  "main": "worker/src/index.js",
+  "compatibility_date": "2026-09-07",
+  "workers_dev": true,
+  "ratelimits": [
+    {
+      "name": "CLIENT_LOOKUP_RATE_LIMITER",
+      "namespace_id": "2026090701",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    }
+  ],
+  "vars": {
+    "FRESA_CLIENTS_API_URL": "https://fresaai.app/api/public/v1/tasks",
+    "FRESA_CLIENTS_LIST_ID": "20cd5f18-e350-492f-97db-fc52b45461bf",
+    "FRESA_CLIENTS_EMAIL_FIELD_ID": "385ea80b-dafe-498a-a153-1d83419149f7",
+    "FRESA_CLIENTS_ACTIVE_FIELD_ID": "e25c3417-f03a-4a32-9809-85951e015a41",
+    "FRESA_CLIENTS_VIP_FIELD_ID": "4350219c-1021-4a5c-932c-d7432b50d09a",
+    "ALLOWED_ORIGINS": "https://esfenix-landing-page.web.app,https://esfenix-landing-page.firebaseapp.com,https://esfenix.com,https://www.esfenix.com"
+  }
+}

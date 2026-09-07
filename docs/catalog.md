@@ -332,12 +332,19 @@ builds the payload and hands it to `quoteIntegrationService`. A new or
 unrecognized email is still allowed to continue so it can request a quote. The
 same screen is used by the quote CTA when no products were selected.
 
-The public Fresa form API validates the client on demand. When the visitor
-sends the request, the landing first loads form metadata, resolves the one
-visible native catalog field from location and VIP status, then reloads only
-that field with `?catalogFieldId=<field-id>`. Personal data stays in the current
-tab draft until submission; there is no custom session endpoint or profile
-database.
+The email step calls the Cloudflare Worker configured by
+`VITE_FRESA_CLIENT_LOOKUP_URL`. On every request the Worker reads Fresa's
+`Active clients` list with the server-only API key, requires an exact normalized
+email match and returns only the fields the landing can prefill. It does not
+cache or persist the directory, and it never sends the API key or the complete
+list to the browser. A lookup failure is non-blocking, so any valid email can
+continue as a new client.
+
+When the visitor sends the request, the landing still uses its existing Fresa
+API adapter: it loads the required metadata, resolves the one visible native
+catalog field from location and VIP status, then reloads only that field with
+`?catalogFieldId=<field-id>`. Personal data stays in the current tab draft until
+submission; there is no custom session endpoint or profile database.
 
 The payload keeps the catalog's own representation **and** a `fresa` block
 holding the same request in the form's terms:

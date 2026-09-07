@@ -70,20 +70,41 @@ npm test
 npm run build
 ```
 
-Las credenciales `FRESA_*` solo se usan para regenerar el respaldo y nunca
-entran al bundle ni se necesitan en producción. El formulario de
-cotización se envía directamente a la API pública del formulario de Fresa. El
-mismo formulario valida únicamente el email enviado contra su lista autorizada,
-devuelve el perfil y el estado VIP cuando existe, y crea la tarea principal con
-sus subtareas. La landing no opera un backend propio ni una Cloud Function; el
-catálogo público vive en Fresa. El borrador vive en `sessionStorage`, y la
-selección de productos puede persistir como wishlist.
+Las credenciales `FRESA_*` nunca entran al bundle. El formulario de cotización
+vive por completo en la landing y envía la solicitud mediante la API existente
+de Fresa. Para prellenar clientes existentes, la landing envía únicamente el email a un Cloudflare
+Worker pequeño; el Worker consulta en ese momento la lista `Active clients`
+con una credencial privada y devuelve solamente el perfil de la coincidencia
+exacta. No usa caché, KV ni base de datos. Un fallo de consulta nunca impide que
+un email válido continúe como cliente nuevo. El borrador vive en
+`sessionStorage`, y la selección de productos puede persistir como wishlist.
 
-## Firebase Hosting (plan básico)
+## Consulta segura de clientes activos
+
+La configuración de despliegue está en `wrangler.jsonc`. Solo la API key se
+guarda como secreto de Cloudflare:
+
+```sh
+npx wrangler secret put FRESA_CLIENTS_API_KEY
+npx wrangler deploy
+```
+
+Después se construye la landing con la URL publicada:
+
+```sh
+VITE_FRESA_CLIENT_LOOKUP_URL=https://esfenix-client-lookup.<cuenta>.workers.dev npm run build
+```
+
+El Worker limita solicitudes, acepta los orígenes declarados en
+`ALLOWED_ORIGINS`, exige POST JSON, valida el email y marca cada respuesta como
+`no-store`. Los IDs de lista/campos son configuración no secreta; la API key
+permanece en el Worker.
+
+## Firebase Hosting estático (plan básico)
 
 La configuración publica únicamente `dist/`. No se despliegan Functions,
-Firestore, Authentication ni secretos; por eso el proyecto puede permanecer en
-el plan básico:
+Firestore, Authentication ni secretos; Firebase se usa solo para los archivos
+estáticos:
 
 ```sh
 firebase deploy --only hosting --project esfenix-landing-page

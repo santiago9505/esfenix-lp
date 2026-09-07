@@ -3,17 +3,19 @@ import path from 'node:path';
 
 const root = process.cwd();
 const dist = path.join(root, 'dist');
-const envFile = path.join(root, '.env.local');
+const envFiles = ['.env.local', '.env.api.local'].map((name) => path.join(root, name));
 
 if (!fs.existsSync(dist)) throw new Error('dist/ does not exist. Run the production build first.');
 
 const secrets = [];
-if (fs.existsSync(envFile)) {
-  for (const line of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
-    const match = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
-    if (!match || !/(?:API_KEY|SECRET|TOKEN|PASSWORD)$/i.test(match[1])) continue;
-    const value = match[2].trim().replace(/^['"]|['"]$/g, '');
-    if (value && !/^(?:replace-|change-me|example)/i.test(value)) secrets.push({ name: match[1], value });
+for (const envFile of envFiles) {
+  if (fs.existsSync(envFile)) {
+    for (const line of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
+      const match = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+      if (!match || !/(?:API_KEY|SECRET|TOKEN|PASSWORD)$/i.test(match[1])) continue;
+      const value = match[2].trim().replace(/^['"]|['"]$/g, '');
+      if (value && !/^(?:replace-|change-me|example)/i.test(value)) secrets.push({ name: match[1], value });
+    }
   }
 }
 
