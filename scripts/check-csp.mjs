@@ -13,9 +13,16 @@ const scriptDirective = policy
   .split(';')
   .map((directive) => directive.trim())
   .find((directive) => directive.startsWith('script-src ')) ?? '';
+const connectDirective = policy
+  .split(';')
+  .map((directive) => directive.trim())
+  .find((directive) => directive.startsWith('connect-src ')) ?? '';
 
 if (!scriptDirective || scriptDirective.includes("'unsafe-inline'")) {
   fail("script-src must exist and must not allow 'unsafe-inline'.");
+}
+if (!connectDirective.includes('https://esfenix-client-lookup.esfenix724.workers.dev')) {
+  fail('connect-src must allow the production client lookup Worker.');
 }
 
 let count = 0;

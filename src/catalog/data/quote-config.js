@@ -9,6 +9,7 @@ const env = typeof import.meta !== 'undefined' ? import.meta.env ?? {} : {};
 
 const PRODUCTION_FORM_URL = 'https://fresaai.app/f/0578f97716840e34cf5472d5';
 const LOCAL_FORM_URL = 'http://localhost:3000/f/0578f97716840e34cf5472d5';
+const PRODUCTION_CLIENT_LOOKUP_URL = 'https://esfenix-client-lookup.esfenix724.workers.dev';
 const isLocalCatalog = typeof window !== 'undefined'
   && ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
@@ -20,7 +21,8 @@ export const QUOTE_FORM_URL = String(env.VITE_FRESA_QUOTE_FORM_URL ?? '').trim()
  * Secure edge endpoint for the live Active clients lookup. It accepts only an
  * email and never exposes the private Fresa API key or the full client list.
  */
-export const CLIENT_LOOKUP_ENDPOINT = String(env.VITE_FRESA_CLIENT_LOOKUP_URL ?? '').trim() || null;
+export const CLIENT_LOOKUP_ENDPOINT = String(env.VITE_FRESA_CLIENT_LOOKUP_URL ?? '').trim()
+  || PRODUCTION_CLIENT_LOOKUP_URL;
 
 /**
  * Endpoint that exchanges a quote payload for a short-lived session id.
