@@ -70,31 +70,24 @@ npm test
 npm run build
 ```
 
-Las credenciales `FRESA_*` solo se usan en procesos server-side y nunca entran
-al bundle del navegador. El formulario de cotización se envía a la API pública
-del formulario de Fresa, pero la validación del cliente pasa por la Function
-`fresaClientLookup`: recibe solo el email, consulta en tiempo real todas las
-páginas de la lista de clientes activos y devuelve únicamente el perfil mínimo
-para precargar el formulario. No hay caché del directorio y la API key vive en
-Firebase Secret Manager. El borrador vive en `sessionStorage`, y la selección
-de productos puede persistir como wishlist.
+Las credenciales `FRESA_*` solo se usan para regenerar el respaldo y nunca
+entran al bundle ni se necesitan en producción. El formulario de
+cotización se envía directamente a la API pública del formulario de Fresa. El
+mismo formulario valida únicamente el email enviado contra su lista autorizada,
+devuelve el perfil y el estado VIP cuando existe, y crea la tarea principal con
+sus subtareas. La landing no opera un backend propio ni una Cloud Function; el
+catálogo público vive en Fresa. El borrador vive en `sessionStorage`, y la
+selección de productos puede persistir como wishlist.
 
-## Firebase Hosting y Functions
+## Firebase Hosting (plan básico)
 
-Hosting publica `dist/` y reescribe `/api/fresa-client-lookup` a la Function
-server-side. El lookup seguro requiere el plan Blaze de Firebase, porque las
-Cloud Functions no están disponibles en el plan Spark:
+La configuración publica únicamente `dist/`. No se despliegan Functions,
+Firestore, Authentication ni secretos; por eso el proyecto puede permanecer en
+el plan básico:
 
 ```sh
-firebase functions:secrets:set FRESA_CLIENTS_API_KEY --project esfenix-landing-page
-firebase deploy --only functions,hosting --project esfenix-landing-page
+firebase deploy --only hosting --project esfenix-landing-page
 ```
-
-Los identificadores no secretos de Fresa tienen valores por defecto en
-`functions/index.js` y pueden cambiarse con parámetros de Functions si Fresa
-los modifica. No uses `VITE_` para la API key. Si todavía no se configura el
-secreto o Functions, la landing permite continuar con cualquier email válido,
-pero no puede completar automáticamente el perfil.
 
 El build verifica automáticamente que ningún secreto de `.env.local` haya
 entrado a `dist/` y que todos los scripts inline estén autorizados por la CSP.

@@ -44,7 +44,6 @@ const FALLBACK_EMAIL_FIELD_ID = 'email';
  * @param {{
  *   formUrl?: string,
  *   sessionEndpoint?: string|null,
- *   clientLookupEndpoint?: string|null,
  *   fetchImpl?: typeof fetch,
  *   openImpl?: (url: string) => (Window|null),
  *   timeoutMs?: number,
@@ -55,7 +54,6 @@ export function createQuoteIntegration(options = {}) {
   const formUrl = options.formUrl ?? QUOTE_FORM_URL;
   const sessionEndpoint =
     options.sessionEndpoint === undefined ? QUOTE_SESSION_ENDPOINT : options.sessionEndpoint;
-  const clientLookupEndpoint = options.clientLookupEndpoint ?? null;
   const reserveDeliverySlotImpl = options.reserveDeliverySlotImpl;
   const doFetch = options.fetchImpl ?? ((...args) => globalThis.fetch(...args));
   const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
@@ -83,26 +81,9 @@ export function createQuoteIntegration(options = {}) {
       return sessionEndpoint ? 'session' : 'form-api';
     },
 
-    /**
-     * Validates one email through the secure live client proxy when configured.
-     * The public-form adapter remains available to older injected integrations.
-     */
+    /** Validates one email through the public form's scoped list lookup. */
     lookupClient(email) {
-      if (!clientLookupEndpoint) return lookupFresaClient({ formUrl, email, doFetch, timeoutMs });
-      return lookupClientThroughEndpoint({ endpoint: clientLookupEndpoint, email, doFetch, timeoutMs })
-        .then(async (result) => {
-          // Preserve the existing public-form path as a non-blocking
-          // compatibility fallback while a Function is being deployed or
-          // temporarily unavailable. A successful proxy response, including
-          // "not found", is authoritative and never triggers a second lookup.
-          if (result.ok) return result;
-          try {
-            const legacy = await lookupFresaClient({ formUrl, email, doFetch, timeoutMs });
-            return legacy.ok ? legacy : result;
-          } catch {
-            return result;
-          }
-        });
+      return lookupFresaClient({ formUrl, email, doFetch, timeoutMs });
     },
 
     /**
@@ -415,51 +396,6 @@ async function lookupWithoutMetadata({ lookupUrl, email, doFetch, timeoutMs }) {
     profile,
     taskId: match.taskId ?? null,
   };
-}
-
-/**
- * Calls the same-origin serverless proxy. It deliberately accepts only the
- * small response contract needed by the quote form; raw Fresa tasks never
- * cross into the browser.
- *
- * @param {{ endpoint: string, email: string, doFetch: typeof fetch, timeoutMs: number }} options
- */
-async function lookupClientThroughEndpoint({ endpoint, email, doFetch, timeoutMs }) {
-  const normalizedEmail = normalizeLookupValue(email);
-  if (!normalizedEmail) return { ok: false, found: false, error: 'Enter a valid email address.' };
-
-  try {
-    const response = await fetchWithTimeout(doFetch, endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      cache: 'no-store',
-      body: JSON.stringify({ email: normalizedEmail }),
-    }, timeoutMs);
-    const data = await readJson(response);
-    if (!response.ok || data?.success !== true) {
-      return {
-        ok: false,
-        found: false,
-        error: data?.error || 'Customer validation is temporarily unavailable.',
-      };
-    }
-    if (data.found !== true) return { ok: true, found: false, vip: false, profile: {} };
-    return {
-      ok: true,
-      found: true,
-      vip: booleanValue(data.vip),
-      profile: data.profile && typeof data.profile === 'object' ? data.profile : {},
-      taskId: typeof data.taskId === 'string' ? data.taskId : null,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      found: false,
-      error: error?.name === 'AbortError'
-        ? 'Customer validation took too long. Please try again.'
-        : 'Customer validation is temporarily unavailable.',
-    };
-  }
 }
 
 function booleanValue(value) {

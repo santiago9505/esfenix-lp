@@ -1,8 +1,4 @@
 {
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs22"
-  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -11,13 +7,6 @@
       "**/node_modules/**"
     ],
     "rewrites": [
-      {
-        "source": "/api/fresa-client-lookup",
-        "function": {
-          "functionId": "fresaClientLookup",
-          "region": "us-central1"
-        }
-      },
       {
         "source": "/catalog",
         "destination": "/catalog.html"
