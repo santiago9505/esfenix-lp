@@ -49,9 +49,10 @@ catalog.html                     one entry for both routes
 Resolution order for the location is URL → last stored choice → default, so a
 shared link always shows what it promises.
 
-**Rendering** is a full re-render of the view body on every change. The catalog
-is a few hundred nodes; this keeps the state model honest and there is no
-diffing to reason about.
+**Rendering** is a full re-render of the view body for navigation, filters,
+location changes and live catalog updates. Adding a product from an already
+visible card or product page keeps that view mounted and updates only the
+quote summary/count, so loaded catalog photography is not needlessly rebuilt.
 
 **Three separate ideas** that are easy to conflate and are kept apart
 everywhere, including in the payload:

@@ -77,6 +77,7 @@ export function productCard(options) {
         el('button', {
           type: 'button',
           class: 'btn btn-light cat-card-add',
+          'data-product-id': product.id,
           text: selected > 0 ? `Added · ${selected}` : 'Add to quote',
           'aria-label': `Add to quote: ${product.name}`,
           'data-selected': selected > 0 ? 'true' : null,

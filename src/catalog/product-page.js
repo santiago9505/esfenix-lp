@@ -114,9 +114,11 @@ function gallery(product, onImageSelect) {
   const thumbsHost = el('div', { class: 'cat-gallery-thumbs-host' });
   let activeVariant = null;
   let activeImageKey = null;
+  let thumbnailsMounted = false;
 
   const imageKey = (image) => image?.id ?? image?.src ?? null;
   const thumbnailKey = (image) => String(image?.src ?? imageKey(image) ?? '').trim();
+  const thumbnailImages = uniqueThumbnailImages(product.images);
 
   function uniqueThumbnailImages(images) {
     const seen = new Set();
@@ -157,7 +159,6 @@ function gallery(product, onImageSelect) {
     // Keep the family gallery visible after selecting one exact variant. The
     // selected variant controls the main image, while the full image list
     // keeps the other varieties available for the next click.
-    const thumbnailImages = uniqueThumbnailImages(product.images);
     const primary = firstUsableImage(
       imageOverride ? [imageOverride, ...images.filter((image) => imageKey(image) !== imageKey(imageOverride))] : images,
     );
@@ -173,46 +174,57 @@ function gallery(product, onImageSelect) {
       product.isNew ? el('span', { class: 'cat-badge-new', text: 'New' }) : null,
     ]);
 
-    replaceChildren(
-      thumbsHost,
-      thumbnailImages.length > 1
-        ? [
-            el(
-              'ul',
-              { class: 'cat-gallery-thumbs' },
-              thumbnailImages.map((image) => {
-                const imageVariant = variantForImage(image);
-                const key = thumbnailKey(image);
-                return el('li', {}, [
-                  el('button', {
-                    type: 'button',
-                    class: 'cat-gallery-thumb-button',
-                    'aria-label': imageVariant?.variety
-                      ? `View ${imageVariant.variety}`
-                      : `View ${product.name} photo`,
-                    'aria-pressed': key !== null && key === activeImageKey ? 'true' : 'false',
-                    onClick() {
-                      activeImageKey = key;
-                      if (imageVariant && onImageSelect) {
-                        onImageSelect(imageVariant);
-                      } else {
-                        render(variant, image);
-                      }
-                    },
-                  }, [
-                    productMedia(image, {
-                      label: imageVariant?.variety ?? product.name,
-                      className: 'cat-gallery-thumb',
-                      width: 160,
-                      height: 120,
-                    }),
-                  ]),
-                ]);
-              }),
-            ),
-          ]
-        : [],
-    );
+    // The family thumbnails do not change when a variant changes. Mount them
+    // once and only sync their pressed state; rebuilding every image here was
+    // needlessly expensive for families such as EC Roses.
+    if (!thumbnailsMounted) {
+      replaceChildren(
+        thumbsHost,
+        thumbnailImages.length > 1
+          ? [
+              el(
+                'ul',
+                { class: 'cat-gallery-thumbs' },
+                thumbnailImages.map((image) => {
+                  const imageVariant = variantForImage(image);
+                  const key = thumbnailKey(image);
+                  return el('li', {}, [
+                    el('button', {
+                      type: 'button',
+                      class: 'cat-gallery-thumb-button',
+                      'data-thumbnail-key': key,
+                      'aria-label': imageVariant?.variety
+                        ? `View ${imageVariant.variety}`
+                        : `View ${product.name} photo`,
+                      'aria-pressed': key !== null && key === activeImageKey ? 'true' : 'false',
+                      onClick() {
+                        activeImageKey = key;
+                        if (imageVariant && onImageSelect) {
+                          onImageSelect(imageVariant);
+                        } else {
+                          render(variant, image);
+                        }
+                      },
+                    }, [
+                      productMedia(image, {
+                        label: imageVariant?.variety ?? product.name,
+                        className: 'cat-gallery-thumb',
+                        width: 160,
+                        height: 120,
+                      }),
+                    ]),
+                  ]);
+                }),
+              ),
+            ]
+          : [],
+      );
+      thumbnailsMounted = true;
+    }
+
+    for (const button of thumbsHost.querySelectorAll('.cat-gallery-thumb-button')) {
+      button.setAttribute('aria-pressed', button.dataset.thumbnailKey === activeImageKey ? 'true' : 'false');
+    }
   }
 
   render();
@@ -261,7 +273,9 @@ function details(ctx, product, initialVariety, onVariantChange, onVarietyChange)
       }
       form.showErrors([]);
       ctx.quoteStore.addItem(product, selection);
-      ctx.render?.();
+      // The product page is already mounted and the quote store updates the
+      // global count. Opening the summary directly avoids rebuilding the
+      // gallery and variant form just before the dialog appears.
       ctx.openQuote();
     },
   });

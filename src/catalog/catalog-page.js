@@ -194,7 +194,9 @@ function grid(ctx, products) {
         product,
         href: ctx.hrefFor(product),
         selectedCount: ctx.selectedCount(product.id),
-        onAdd: (target) => ctx.addProduct(target),
+        // Adding from a card does not change the catalog contents. Keep the
+        // existing grid mounted so its already-loaded images are preserved.
+        onAdd: (target) => ctx.addProduct(target, { render: false }),
         eager: index < 4,
       }),
     ),

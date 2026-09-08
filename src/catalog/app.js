@@ -6,9 +6,10 @@
  * The two views (catalog-page.js, product-page.js) are given this context and
  * only render.
  *
- * Rendering is a full re-render of the view body on each change. The catalog is
- * a few hundred nodes at most, and this keeps the state model simple and
- * predictable; there is no virtual DOM to reason about.
+ * Most view changes are full re-renders, which keeps the state model simple
+ * and predictable. Adding a product from a catalog card is the exception: the
+ * catalog is already visible, so that flow patches the affected card and lets
+ * the quote summary open without rebuilding the grid.
  */
 
 import { announce, replaceChildren } from './ui/dom.js';
@@ -184,6 +185,7 @@ export function createApp({ head, body }) {
   function addProduct(product, options = {}) {
     const complete = () => {
       announce(`${product.name} added to your quote list.`);
+      if (options.render === false) updateRenderedProductSelection(product.id);
       options.onAdded?.();
       if (options.render !== false) render();
       if (options.openSummary !== false) openSummary();
@@ -213,6 +215,25 @@ export function createApp({ head, body }) {
         }
       },
     });
+  }
+
+  /**
+   * Keeps the visible catalog card in sync after a quote addition without
+   * recreating the grid or asking the browser to decode its images again.
+   * Product-list-picker uses its own callback and is intentionally unaffected.
+   * @param {string} productId
+   */
+  function updateRenderedProductSelection(productId) {
+    const selected = ctx.selectedCount(productId);
+    for (const button of document.querySelectorAll('.cat-card-add[data-product-id]')) {
+      if (button.dataset.productId !== productId) continue;
+      button.textContent = selected > 0 ? `Added · ${selected}` : 'Add to quote';
+      button.setAttribute('aria-label', `Add to quote: ${
+        button.closest('.cat-card')?.querySelector('.cat-card-title')?.textContent?.trim() ?? 'product'
+      }`);
+      if (selected > 0) button.dataset.selected = 'true';
+      else delete button.dataset.selected;
+    }
   }
 
   /**
