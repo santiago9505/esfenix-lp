@@ -12,7 +12,28 @@
  */
 
 import { getCategoryLabel } from '../data/categories.js';
+import { resolveInitialVariety } from '../core/product-defaults.js';
 import { el, firstUsableImage, productMedia } from './dom.js';
+
+/**
+ * Uses the same opening variety as the product page before falling back to the
+ * product-family gallery. Only EC Roses currently defines such a preference.
+ *
+ * @param {import('../core/repository').LocationProduct} product
+ */
+export function resolveProductCardImage(product) {
+  const preferredVariety = resolveInitialVariety(product);
+  if (preferredVariety) {
+    const preferredImage = firstUsableImage(
+      (product.variants ?? [])
+        .filter((variant) => variant.variety === preferredVariety)
+        .flatMap((variant) => variant.images ?? []),
+    );
+    if (preferredImage) return preferredImage;
+  }
+
+  return firstUsableImage(product.images);
+}
 
 /** @param {import('../core/repository').LocationProduct} product */
 function productOptionSummary(product) {
@@ -47,7 +68,7 @@ function productOptionSummary(product) {
  */
 export function productCard(options) {
   const { product } = options;
-  const primary = firstUsableImage(product.images);
+  const primary = resolveProductCardImage(product);
   const selected = options.selectedCount ?? 0;
 
   // Catalog results are useful content, not decorative reveals. Keeping cards

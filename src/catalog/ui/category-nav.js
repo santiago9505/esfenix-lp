@@ -70,6 +70,15 @@ function categorySection(config) {
       'aria-current': config.isCurrent ? 'true' : null,
       onClick(event) {
         const expanded = event.currentTarget.getAttribute('aria-expanded') === 'true';
+        if (!expanded) {
+          const nav = event.currentTarget.closest('.cat-sidenav');
+          for (const otherToggle of nav?.querySelectorAll('.cat-sidenav-cat[aria-expanded="true"]') ?? []) {
+            if (otherToggle === event.currentTarget) continue;
+            otherToggle.setAttribute('aria-expanded', 'false');
+            const otherBody = nav.querySelector(`#${otherToggle.getAttribute('aria-controls')}`);
+            if (otherBody) otherBody.hidden = true;
+          }
+        }
         event.currentTarget.setAttribute('aria-expanded', String(!expanded));
         body.hidden = expanded;
       },

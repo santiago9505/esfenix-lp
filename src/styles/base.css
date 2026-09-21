@@ -192,6 +192,7 @@ footer{background:#fff;color:var(--c-muted);padding:72px 0 36px;border-top:1px s
 .cat-modal-body>p+p{margin-top:12px}
 .cat-modal-foot{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:20px 26px 26px;border-top:1px solid var(--c-line)}
 .cat-modal-foot .btn{padding:13px 26px;font-size:14px}
+.cat-modal-foot .cat-quote-keep-shopping{padding-inline:18px;white-space:nowrap}
 .cat-note{font-size:13px;color:var(--c-muted);margin-top:26px;padding-top:18px;border-top:1px solid var(--c-line)}
 .cat-clear{background:none;border:0;padding:0;font-family:var(--ff);font-size:13px;font-weight:600;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .cat-clear:hover{color:var(--c-text)}

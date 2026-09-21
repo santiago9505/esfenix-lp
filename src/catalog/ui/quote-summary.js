@@ -8,7 +8,7 @@
  */
 
 import { describeQuoteItem } from '../core/format.js';
-import { el, productMedia, replaceChildren } from './dom.js';
+import { el, firstUsableImage, productMedia, replaceChildren } from './dom.js';
 import { getCategoryLabel } from '../data/categories.js';
 import { NO_PAYMENT_NOTE, inlineMessage } from './states.js';
 import { openModal } from './modal.js';
@@ -60,10 +60,12 @@ export function quoteBar(options) {
  *   onEdit: (item: QuoteItem) => void,
  *   onClear: () => void,
  *   onContinue: () => Promise<void>|void,
+ *   imageFor?: (item: QuoteItem) => (import('../core/types').ProductImage|null),
  *   title?: string,
  *   description?: string,
  *   onChangeLocation?: () => void,
  *   locationSelectNode?: Node|null,
+ *   onClose?: () => void,
  * }} options
  */
 export function openQuoteSummary(options) {
@@ -93,6 +95,13 @@ export function openQuoteSummary(options) {
     onClick: () => options.onClear(),
   });
 
+  const keepShoppingButton = el('button', {
+    type: 'button',
+    class: 'btn btn-light cat-quote-keep-shopping',
+    text: 'Keep shopping',
+    onClick: () => modal.close(),
+  });
+
   const modal = openModal({
     title: options.title ?? 'Quote summary',
     description:
@@ -100,7 +109,8 @@ export function openQuoteSummary(options) {
       'Review your selected products here, then complete the quote request step by step.',
     variant: 'drawer-right',
     content: [body, status],
-    footer: [continueButton, clearButton],
+    footer: [continueButton, keepShoppingButton, clearButton],
+    onClose: options.onClose,
   });
 
   /**
@@ -175,12 +185,42 @@ function serviceCenterLabel(code) {
 }
 
 /**
+ * Resolves the photograph for the exact catalog option represented by a quote
+ * line. Prefer the stable Fresa product id when it is present; older saved
+ * quote lines fall back to their selected variety, color and stem length.
+ *
+ * A sibling variant's image is deliberately never used. Showing a different
+ * color or variety would be more misleading than the existing placeholder.
+ *
+ * @param {QuoteItem} item
+ * @param {import('../core/repository').LocationProduct[]} products
+ * @returns {import('../core/types').ProductImage|null}
+ */
+export function imageForQuoteItem(item, products) {
+  const product = products.find((candidate) => candidate.id === item.productId);
+  if (!product) return null;
+
+  const bySourceProduct = item.sourceProductId
+    ? product.variants.find((variant) => variant.sourceProductId === item.sourceProductId)
+    : null;
+  const variant = bySourceProduct ?? product.variants.find(
+    (candidate) =>
+      (candidate.variety ?? null) === (item.variety ?? null)
+      && (candidate.color ?? null) === (item.color ?? null)
+      && (candidate.lengthCm ?? null) === (item.lengthCm ?? null)
+      && (item.measure == null || (candidate.availableMeasures ?? []).includes(item.measure)),
+  );
+
+  return firstUsableImage(variant?.images ?? []);
+}
+
+/**
  * @param {QuoteItem} item
  * @param {{
  *   onSetQuantity: (id: string, quantity: number) => void,
  *   onRemove: (id: string) => void,
  *   onEdit: (item: QuoteItem) => void,
- *   imageFor?: (item: QuoteItem) => ({ src: string, alt: string }|null),
+ *   imageFor?: (item: QuoteItem) => (import('../core/types').ProductImage|null),
  * }} options
  */
 function quoteRow(item, options) {

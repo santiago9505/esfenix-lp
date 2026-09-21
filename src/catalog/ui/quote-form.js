@@ -507,6 +507,7 @@ export function renderQuoteFormView(ctx, options) {
       inputmode: name === 'socialMediaProfiles' ? 'url' : undefined,
       spellcheck: name === 'socialMediaProfiles' ? 'false' : undefined,
       autocapitalize: name === 'socialMediaProfiles' ? 'none' : undefined,
+      linkPreview: name === 'socialMediaProfiles',
       maxlength: name === 'company' ? '120' : name === 'socialMediaProfiles' ? '500' : '80',
       required,
       optional: !required,
@@ -670,8 +671,26 @@ export function renderQuoteFormView(ctx, options) {
 
     return el('form', {
       class: 'cat-quote-step-form',
-      onSubmit: (event) => {
+      onSubmit: async (event) => {
         event.preventDefault();
+
+        // The Delivery indicator depends on the current product quantities and
+        // measures. Wait for that check before entering the next step so it
+        // cannot render the previous selection's result.
+        const continueButton = event.currentTarget.querySelector('button[type="submit"]');
+        event.currentTarget.setAttribute('aria-busy', 'true');
+        event.currentTarget.querySelectorAll('input, select, textarea, button').forEach((control) => {
+          control.disabled = true;
+        });
+        if (continueButton) {
+          continueButton.textContent = 'Checking delivery…';
+        }
+        try {
+          await refreshQuotePricing({ force: true });
+        } catch {
+          // The order-type step keeps Pickup available when the live check is
+          // unavailable; the final submission validates Delivery again.
+        }
         state.step = 3;
         state.error = '';
         render(true);
@@ -903,12 +922,17 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function scheduleQuotePricingRefresh() {
-    if (state.vip || state.pricingPending || !options.onCheckDeliveryEligibility) return;
+    if (state.vip || !options.onCheckDeliveryEligibility) return;
     const items = ctx.quoteStore.getItems();
     const key = quotePricingKey(items);
     if (state.pricing && state.pricingKey === key) return;
+    // A pending request for an older selection must not block a fresh request
+    // for the current one. The stale response is ignored by the key check
+    // below, while the latest request owns the pending state.
+    if (state.pricingPending && state.pricingKey === key) return;
 
     state.pricingKey = key;
+    state.pricing = null;
     state.pricingPending = true;
     const payload = buildQuotePayload({
       locationId: ctx.locationId,
@@ -919,7 +943,7 @@ export function renderQuoteFormView(ctx, options) {
     state.pricingPromise = request;
     request
       .then((result) => {
-        if (state.pricingKey !== key) return;
+        if (state.pricingKey !== key || state.pricingPromise !== request) return;
         if (result?.ok === true) {
           state.pricing = {
             hasUnknownPricing: result.hasUnknownPricing === true,
@@ -938,7 +962,9 @@ export function renderQuoteFormView(ctx, options) {
       .catch(() => {
         // If Fresa cannot confirm the minimum, cache the safe local result:
         // Pickup remains available and Delivery stays disabled.
-        if (state.pricingKey === key) state.pricing = getQuotePricing(items, ctx.products);
+        if (state.pricingKey === key && state.pricingPromise === request) {
+          state.pricing = getQuotePricing(items, ctx.products);
+        }
       })
       .finally(() => {
         if (state.pricingPromise !== request) return;
@@ -959,13 +985,14 @@ export function renderQuoteFormView(ctx, options) {
     if (!options.onCheckDeliveryEligibility) return currentQuotePricing();
 
     state.pricingKey = key;
+    state.pricing = null;
     state.pricingPending = true;
     const payload = buildQuotePayload({ locationId: ctx.locationId, items, vip: state.vip });
     const request = Promise.resolve(options.onCheckDeliveryEligibility(payload));
     state.pricingPromise = request;
     try {
       const result = await request;
-      if (state.pricingKey !== key || result?.ok !== true) {
+      if (state.pricingKey !== key || state.pricingPromise !== request || result?.ok !== true) {
         throw new Error(result?.error || 'Delivery eligibility is unavailable.');
       }
       state.pricing = {
@@ -1385,6 +1412,28 @@ export function renderQuoteFormView(ctx, options) {
       : config.optional === true
         ? `${config.label} (Optional)`
         : config.label;
+    const linkPreview = config.linkPreview
+      ? el('a', {
+        class: 'cat-quote-field-link',
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        'aria-label': `Open ${config.label} in a new tab`,
+      })
+      : null;
+    const updateLinkPreview = (value) => {
+      if (!linkPreview) return;
+      const url = normalizeSocialMediaUrl(value);
+      linkPreview.hidden = !url;
+      if (url) {
+        linkPreview.href = url;
+        linkPreview.textContent = url;
+      } else {
+        linkPreview.removeAttribute('href');
+        linkPreview.textContent = '';
+      }
+    };
+    updateLinkPreview(config.value);
+
     return el('div', { class: 'cat-quote-field' }, [
       el('label', { for: id, text: label }),
       el('input', {
@@ -1411,9 +1460,11 @@ export function renderQuoteFormView(ctx, options) {
           if (config.name === 'city') state.delivery.city = event.currentTarget.value;
           if (config.name === 'state') state.delivery.state = event.currentTarget.value;
           if (config.name === 'zipCode') state.delivery.zipCode = event.currentTarget.value;
+          updateLinkPreview(event.currentTarget.value);
           persistDraft();
         },
       }),
+      linkPreview,
       config.help ? el('small', { text: config.help }) : null,
     ]);
   }

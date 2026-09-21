@@ -7,6 +7,29 @@ import { defineConfig } from 'vite';
 import { htmlPartials } from './scripts/vite-plugin-html-partials.mjs';
 
 const page = (name) => fileURLToPath(new URL(`./${name}`, import.meta.url));
+const clientLookupPath = '/api/client-lookup';
+const clientLookupWorker = 'https://esfenix-client-lookup.esfenix724.workers.dev';
+
+/**
+ * Keeps local browser requests same-origin while forwarding only the scoped
+ * email lookup to the production Worker. The Worker deliberately rejects
+ * browser requests from localhost, so the development proxy removes Origin
+ * before forwarding instead of weakening the production CORS allowlist.
+ */
+function clientLookupProxy() {
+  return {
+    [clientLookupPath]: {
+      target: clientLookupWorker,
+      changeOrigin: true,
+      rewrite: () => '/',
+      configure(proxy) {
+        proxy.on('proxyReq', (proxyRequest) => {
+          proxyRequest.removeHeader('origin');
+        });
+      },
+    },
+  };
+}
 
 /**
  * Serves the clean catalog URLs from catalog.html during development.
@@ -115,6 +138,12 @@ export default defineConfig({
   // are private server configuration and must never be transformed by Vite.
   envPrefix: ['VITE_'],
   plugins: [htmlPartials(), cleanRoutes(), optimizeHtmlMarkup(), pruneRedundantBuildAssets()],
+  server: {
+    proxy: clientLookupProxy(),
+  },
+  preview: {
+    proxy: clientLookupProxy(),
+  },
   build: {
     rollupOptions: {
       input: {

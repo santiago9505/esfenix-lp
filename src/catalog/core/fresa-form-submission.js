@@ -145,9 +145,9 @@ function findProductField(fields, locationField, vipField, locationValue, vip) {
 }
 
 /**
- * Resolves the one native catalog field needed for a request. Callers can use
- * this with the lightweight form metadata response, then request only that
- * field's live catalog items.
+ * Resolves the one native catalog field needed for a request from the live
+ * public form response. The selected field carries the catalog items and the
+ * location-specific price reference values used by the Delivery rule.
  *
  * @param {any} payload
  * @param {any} publicFormResponse
@@ -183,6 +183,28 @@ export function resolveFresaProductFieldId(payload, publicFormResponse) {
     );
   }
   return productField.id;
+}
+
+/**
+ * Returns the selected catalog configuration, including rows that Fresa may
+ * hydrate in a response-level lookup for location-specific fields.
+ *
+ * @param {any} publicFormResponse
+ * @param {string} fieldId
+ * @param {any} productField
+ */
+export function getFresaCatalogConfig(publicFormResponse, fieldId, productField) {
+  const baseConfig = productField?.catalogConfig && typeof productField.catalogConfig === 'object'
+    ? productField.catalogConfig
+    : {};
+  const lookup = publicFormResponse?.form?.catalogItemsByFieldId
+    ?? publicFormResponse?.catalogItemsByFieldId;
+  const hydratedItems = lookup && typeof lookup === 'object' && !Array.isArray(lookup)
+    ? lookup[fieldId]
+    : null;
+  return Array.isArray(hydratedItems) && hydratedItems.length > 0
+    ? { ...baseConfig, items: hydratedItems }
+    : baseConfig;
 }
 
 /** @param {unknown} value */
@@ -257,8 +279,8 @@ function findReferenceValue(item, aliases) {
   return null;
 }
 
-/** @param {any} item @param {string|null} measure */
-function catalogPriceForMeasure(item, measure) {
+/** @param {any} item @param {string|null} measure @param {any} catalogConfig */
+function catalogPriceForMeasure(item, measure, catalogConfig = null) {
   const aliasesByMeasure = {
     stem: ['stem_price', 'price_per_stem', 'precio_por_tallo'],
     bunch: ['bunch_price', 'price_per_bunch', 'precio_por_bonche', 'precio_por_ramo'],
@@ -266,8 +288,26 @@ function catalogPriceForMeasure(item, measure) {
     pack: ['pack_price', 'price_per_pack', 'precio_por_paquete'],
     box: ['box_price', 'price_per_box', 'precio_por_caja'],
   };
+  // Newer Fresa forms keep the selected price column as an internal field id
+  // instead of exposing its key (for example, `bunch_price`) in
+  // referenceValues. This configured field is authoritative and is scoped to
+  // the selected location/catalog field.
+  const configuredPriceField = String(
+    catalogConfig?.minimumProgressPriceFieldId
+      ?? catalogConfig?.catalogPriceFieldId
+      ?? '',
+  ).trim();
+  const configured = configuredPriceField
+    ? findReferenceValue(item, [configuredPriceField])
+    : null;
+  if (configured !== null) return parseNumber(configured);
+
+  // Older form responses exposed the price column key directly. Keep those
+  // responses working when the opaque field id is not available.
   const specific = findReferenceValue(item, aliasesByMeasure[measure] ?? []);
-  const fallback = specific ?? findReferenceValue(item, [
+  if (specific !== null) return parseNumber(specific);
+
+  const fallback = findReferenceValue(item, [
     'unit_price',
     'product_price',
     'price',
@@ -312,7 +352,7 @@ export function getFresaDeliveryEligibility(payload, catalogConfig) {
     const measure = normalizeMeasure(row?.measure);
     const availableMeasures = catalogMeasureOptions(matched);
     const quantity = Number(row?.quantity);
-    const unitPrice = catalogPriceForMeasure(matched, measure);
+    const unitPrice = catalogPriceForMeasure(matched, measure, catalogConfig);
     const measureIsAvailable = Boolean(measure)
       && (availableMeasures.length === 0 || availableMeasures.includes(measure));
 
@@ -360,8 +400,9 @@ function lineInputKind(input) {
  * @param {string|null} measure
  * @param {number} quantity
  * @param {Array<any>} lineInputs
+ * @param {any} catalogConfig
  */
-function buildLineValues(row, matched, measure, quantity, lineInputs) {
+function buildLineValues(row, matched, measure, quantity, lineInputs, catalogConfig) {
   const values = {};
   const sourceProductId = String(row?.sourceProductId ?? '').trim();
   if (sourceProductId) values.__fresa_source_product_id = sourceProductId;
@@ -375,7 +416,7 @@ function buildLineValues(row, matched, measure, quantity, lineInputs) {
       sourceProductId,
       sku: String(row?.sku ?? '').trim(),
       productName: String(row?.sourceProductName ?? matched?.label ?? row?.product ?? '').trim(),
-      unitPrice: catalogPriceForMeasure(matched, measure),
+      unitPrice: catalogPriceForMeasure(matched, measure, catalogConfig),
       quantity,
       measure,
     }[kind];
@@ -454,7 +495,7 @@ function buildProductLines(payload, catalogConfig) {
         'FRESA_PRODUCT_MINIMUM_NOT_MET',
       );
     }
-    const values = buildLineValues(row, matched, measure, quantity, lineInputs);
+    const values = buildLineValues(row, matched, measure, quantity, lineInputs, catalogConfig);
     return {
       productId: matched.value,
       quantity,
@@ -538,7 +579,10 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     ...(companyField?.id ? { [companyField.id]: contact.company ?? '' } : {}),
     ...(socialMediaField?.id ? { [socialMediaField.id]: contact.socialMediaProfiles ?? '' } : {}),
     [locationField.id]: locationValue,
-    [productField.id]: buildProductLines(payload, productField.catalogConfig),
+    [productField.id]: buildProductLines(
+      payload,
+      getFresaCatalogConfig(publicFormResponse, productField.id, productField),
+    ),
     [orderTypeField.id]: orderTypeValue,
   };
 

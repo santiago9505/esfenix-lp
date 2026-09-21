@@ -18,6 +18,7 @@ import {
 import {
   applyLocalProductImageFallbacks,
   LOCAL_PRODUCT_IMAGE_FALLBACK_PRODUCT_IDS,
+  LOCAL_VARIANT_IMAGE_FALLBACK_PRODUCT_IDS,
 } from './local-image-fallback.js';
 import {
   LIVE_CATALOG_POLL_INTERVAL_MS,
@@ -256,6 +257,7 @@ function prepareProducts(products) {
     {
       enabled: true,
       productIds: LOCAL_PRODUCT_IMAGE_FALLBACK_PRODUCT_IDS,
+      variantProductIds: LOCAL_VARIANT_IMAGE_FALLBACK_PRODUCT_IDS,
     },
   );
 }

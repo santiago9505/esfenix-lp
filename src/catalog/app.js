@@ -31,7 +31,7 @@ import { createQuoteStore, lineId } from './core/quote-store.js';
 import { emptyFilters, pruneFilters, toggleFilter } from './core/facets.js';
 import { errorState, loadingSkeleton } from './ui/states.js';
 import { needsVariantChoice } from './core/format.js';
-import { openQuoteSummary } from './ui/quote-summary.js';
+import { imageForQuoteItem, openQuoteSummary } from './ui/quote-summary.js';
 import { openVariantPicker } from './ui/variant-picker.js';
 import { openProductListPicker } from './ui/product-list-picker.js';
 import { renderQuoteFormView } from './ui/quote-form.js';
@@ -57,6 +57,8 @@ export function createApp({ head, body }) {
   let loadError = null;
   let refreshPromise = null;
   let refreshTimer = null;
+  /** @type {import('./core/types').Product[]|null} */
+  let pendingProducts = null;
   /** @type {ReturnType<typeof openQuoteSummary>|null} */
   let summary = null;
 
@@ -270,6 +272,7 @@ export function createApp({ head, body }) {
     summary = openQuoteSummary({
       items: quoteStore.getItems(),
       locationId: locationStore.getId(),
+      imageFor: (item) => imageForQuoteItem(item, locationProducts),
       onSetQuantity(id, quantity) {
         quoteStore.setQuantity(id, quantity);
         summary?.update(quoteStore.getItems());
@@ -380,6 +383,7 @@ export function createApp({ head, body }) {
   /* ---------------------------------------------------------------- */
 
   function render() {
+    applyPendingProducts();
     syncUrl(ctx.urlState());
 
     if (loadError) {
@@ -406,6 +410,23 @@ export function createApp({ head, body }) {
     replaceChildren(head, view.head ? [view.head] : []);
     replaceChildren(body, view.body);
     initReveals(body);
+  }
+
+  /**
+   * Commits a catalog update only when the app is already going to render for
+   * a user-driven transition. Background polling must not replace an active
+   * product form: doing so discards its local selection and forces every
+   * gallery image to load again.
+   */
+  function applyPendingProducts() {
+    if (!pendingProducts) return;
+
+    allProducts = pendingProducts;
+    pendingProducts = null;
+    locationProducts = getProductsForLocation(allProducts, locationStore.getId());
+    filters = pruneFilters(locationProducts, filters);
+    quoteStore.reconcile(locationProducts);
+    summary?.update(quoteStore.getItems());
   }
 
   /* ---------------------------------------------------------------- */
@@ -469,12 +490,10 @@ export function createApp({ head, body }) {
       const result = await refreshPromise;
       if (!result.changed) return;
 
-      allProducts = result.products;
-      locationProducts = getProductsForLocation(allProducts, locationStore.getId());
-      filters = pruneFilters(locationProducts, filters);
-      quoteStore.reconcile(locationProducts);
-      summary?.update(quoteStore.getItems());
-      render();
+      // Keep the mounted catalog stable while someone is browsing or choosing
+      // a variant. The fresh data is committed on the next transition that
+      // already requires a render (filter, location, quote step or history).
+      pendingProducts = result.products;
     } catch (error) {
       // A background failure must never replace a working live catalog or its
       // bundled fallback with an error state. The next interval retries.

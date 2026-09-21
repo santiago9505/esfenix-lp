@@ -175,6 +175,67 @@ test('checks the $150 Delivery minimum with the selected product measure without
   assert.equal(overMinimum.deliveryProgress, 100);
 });
 
+test('uses Fresa\'s configured price-field id when reference values are opaque', () => {
+  const selected = payload(false);
+  selected.fresa.products[0].measure = 'bunch';
+  selected.fresa.products[0].quantity = 6;
+
+  const eligibility = getFresaDeliveryEligibility(selected, {
+    minimumProgressPriceFieldId: 'fresa-field-opaque-bunch-price',
+    items: [{
+      value: 'fresa-rose-task',
+      label: 'Ecuadorian Roses - 60cm',
+      measureOptions: [{ value: 'bunch', label: 'Bunch' }],
+      referenceValues: { 'fresa-field-opaque-bunch-price': 25 },
+    }],
+  });
+
+  assert.equal(eligibility.deliveryProgress, 100);
+  assert.equal(eligibility.deliveryAllowed, true);
+});
+
+test('prefers Fresa\'s configured price field over a generic reference value', () => {
+  const selected = payload(false);
+  selected.fresa.products[0].measure = 'bunch';
+  selected.fresa.products[0].quantity = 6;
+
+  const eligibility = getFresaDeliveryEligibility(selected, {
+    catalogPriceFieldId: 'fresa-field-bunch-price',
+    items: [{
+      value: 'fresa-rose-task',
+      label: 'Ecuadorian Roses - 60cm',
+      referenceValues: {
+        price: 1,
+        'fresa-field-bunch-price': 25,
+      },
+    }],
+  });
+
+  assert.equal(eligibility.deliveryProgress, 100);
+  assert.equal(eligibility.deliveryAllowed, true);
+});
+
+test('uses Fresa\'s configured price field before a conflicting measure alias', () => {
+  const selected = payload(false);
+  selected.fresa.products[0].measure = 'bunch';
+  selected.fresa.products[0].quantity = 6;
+
+  const eligibility = getFresaDeliveryEligibility(selected, {
+    catalogPriceFieldId: 'fresa-field-bunch-price',
+    items: [{
+      value: 'fresa-rose-task',
+      label: 'Ecuadorian Roses - 60cm',
+      referenceValues: {
+        bunch_price: 1,
+        'fresa-field-bunch-price': 25,
+      },
+    }],
+  });
+
+  assert.equal(eligibility.deliveryProgress, 100);
+  assert.equal(eligibility.deliveryAllowed, true);
+});
+
 test('keeps social media profiles when the live form has no dedicated field yet', () => {
   const response = formResponse();
   response.form.fields = response.form.fields.filter((field) => field.id !== 'social-link');

@@ -23,6 +23,7 @@ import { assertNoPricing, buildQuoteSummaryText } from './quote-payload.js';
 import {
   buildFresaFormSubmission,
   FresaFormConfigurationError,
+  getFresaCatalogConfig,
   getFresaDeliveryEligibility,
   resolveFresaFormApi,
   resolveFresaProductFieldId,
@@ -109,36 +110,24 @@ export function createQuoteIntegration(options = {}) {
 
       try {
         const { formApiUrl } = resolveFresaFormApi(formUrl);
-        const metadataUrl = new URL(formApiUrl);
-        metadataUrl.searchParams.set('catalog', 'metadata');
-        const metadataResponse = await fetchWithTimeout(doFetch, metadataUrl.toString(), {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
-        }, timeoutMs);
-        const metadata = await readJson(metadataResponse);
-        if (!metadataResponse.ok || metadata?.success !== true) {
-          throw new FresaFormConfigurationError(
-            metadata?.error || `Fresa could not load the quote form (${metadataResponse.status}).`,
-          );
-        }
+        const formData = await loadFresaFormData({
+          formApiUrl,
+          payload,
+          doFetch,
+          timeoutMs,
+        });
 
-        const productFieldId = resolveFresaProductFieldId(payload, metadata);
-        const catalogUrl = new URL(formApiUrl);
-        catalogUrl.searchParams.set('catalogFieldId', productFieldId);
-        const catalogResponse = await fetchWithTimeout(doFetch, catalogUrl.toString(), {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
-        }, timeoutMs);
-        const catalogData = await readJson(catalogResponse);
-        if (!catalogResponse.ok || catalogData?.success !== true) {
-          throw new FresaFormConfigurationError(
-            catalogData?.error || `Fresa could not load the selected catalog (${catalogResponse.status}).`,
-          );
-        }
-
-        const fields = Array.isArray(catalogData?.form?.fields) ? catalogData.form.fields : [];
+        // Fresa's public form response carries the location-specific catalog
+        // configuration, including its price reference fields. Keep the
+        // selection logic in one place so Houston/Seattle/DMV and VIP catalogs
+        // use the prices belonging to the selected location.
+        const productFieldId = resolveFresaProductFieldId(payload, formData);
+        const fields = Array.isArray(formData?.form?.fields) ? formData.form.fields : [];
         const productField = fields.find((field) => field?.id === productFieldId);
-        const eligibility = getFresaDeliveryEligibility(payload, productField?.catalogConfig);
+        const eligibility = getFresaDeliveryEligibility(
+          payload,
+          getFresaCatalogConfig(formData, productFieldId, productField),
+        );
         return { ok: true, ...eligibility };
       } catch (error) {
         return {
@@ -526,45 +515,23 @@ async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
 async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserveSlot, summary }) {
   try {
     const { formApiUrl, submitUrl } = resolveFresaFormApi(formUrl);
-    const metadataUrl = new URL(formApiUrl);
-    metadataUrl.searchParams.set('catalog', 'metadata');
-    const metadataResponse = await fetchWithTimeout(doFetch, metadataUrl.toString(), {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    }, timeoutMs);
-    const metadata = await readJson(metadataResponse);
-    if (!metadataResponse.ok || metadata?.success !== true) {
-      return {
-        ok: false,
-        mode: 'form-api',
-        error: metadata?.error || `Fresa could not load the quote form (${metadataResponse.status}).`,
-        summary,
-      };
-    }
+    const formData = await loadFresaFormData({
+      formApiUrl,
+      payload,
+      doFetch,
+      timeoutMs,
+    });
 
-    const productFieldId = resolveFresaProductFieldId(payload, metadata);
-    const scopedFormUrl = new URL(formApiUrl);
-    scopedFormUrl.searchParams.set('catalogFieldId', productFieldId);
-    const formResponse = await fetchWithTimeout(doFetch, scopedFormUrl.toString(), {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    }, timeoutMs);
-    const formData = await readJson(formResponse);
-    if (!formResponse.ok || formData?.success !== true) {
-      return {
-        ok: false,
-        mode: 'form-api',
-        error: formData?.error || `Fresa could not load the selected catalog (${formResponse.status}).`,
-        summary,
-      };
-    }
-
+    const productFieldId = resolveFresaProductFieldId(payload, formData);
     const submission = buildFresaFormSubmission(payload, formData);
 
     if (payload.orderType === 'Delivery' && payload.vip !== true) {
       const fields = Array.isArray(formData?.form?.fields) ? formData.form.fields : [];
       const productField = fields.find((field) => field?.id === productFieldId);
-      const eligibility = getFresaDeliveryEligibility(payload, productField?.catalogConfig);
+      const eligibility = getFresaDeliveryEligibility(
+        payload,
+        getFresaCatalogConfig(formData, productFieldId, productField),
+      );
       if (!eligibility.deliveryAllowed) {
         return {
           ok: false,
@@ -654,6 +621,83 @@ async function readJson(response) {
     return await response.json();
   } catch {
     return null;
+  }
+}
+
+/**
+ * Reads the live form schema. Fresa currently returns the catalog in the full
+ * form response, while older deployments expose it through the metadata plus
+ * `catalogFieldId` requests. Supporting both keeps existing forms working
+ * while still using the current API shape when available.
+ *
+ * @param {{ formApiUrl: string, payload: any, doFetch: typeof fetch, timeoutMs: number }} options
+ */
+async function loadFresaFormData({ formApiUrl, payload, doFetch, timeoutMs }) {
+  let formData = null;
+  try {
+    const formResponse = await fetchWithTimeout(doFetch, formApiUrl, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    }, timeoutMs);
+    formData = await readJson(formResponse);
+    if (
+      formResponse.ok
+      && formData?.success === true
+      && hasUsableFresaCatalog(formData, payload)
+    ) return formData;
+  } catch {
+    // Continue with the metadata/scoped-catalog contract below. This keeps
+    // older Fresa deployments usable when the newer full response is offline.
+  }
+
+  const metadataUrl = new URL(formApiUrl);
+  metadataUrl.searchParams.set('catalog', 'metadata');
+  const metadataResponse = await fetchWithTimeout(doFetch, metadataUrl.toString(), {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  }, timeoutMs);
+  const metadata = await readJson(metadataResponse);
+  if (!metadataResponse.ok || metadata?.success !== true) {
+    throw new FresaFormConfigurationError(
+      metadata?.error
+        || formData?.error
+        || `Fresa could not load the quote form (${metadataResponse.status}).`,
+    );
+  }
+
+  const productFieldId = resolveFresaProductFieldId(payload, metadata);
+  const scopedFormUrl = new URL(formApiUrl);
+  scopedFormUrl.searchParams.set('catalogFieldId', productFieldId);
+  const scopedResponse = await fetchWithTimeout(doFetch, scopedFormUrl.toString(), {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  }, timeoutMs);
+  const scopedFormData = await readJson(scopedResponse);
+  if (!scopedResponse.ok || scopedFormData?.success !== true) {
+    throw new FresaFormConfigurationError(
+      scopedFormData?.error || `Fresa could not load the selected catalog (${scopedResponse.status}).`,
+    );
+  }
+  return scopedFormData;
+}
+
+/**
+ * A successful full-form response is usable for pricing only when it carries
+ * the selected catalog rows, either inline or in Fresa's response-level
+ * hydration map.
+ *
+ * @param {any} formData
+ * @param {any} payload
+ */
+function hasUsableFresaCatalog(formData, payload) {
+  try {
+    const productFieldId = resolveFresaProductFieldId(payload, formData);
+    const fields = Array.isArray(formData?.form?.fields) ? formData.form.fields : [];
+    const productField = fields.find((field) => field?.id === productFieldId);
+    const catalogConfig = getFresaCatalogConfig(formData, productFieldId, productField);
+    return Array.isArray(catalogConfig?.items) && catalogConfig.items.length > 0;
+  } catch {
+    return false;
   }
 }
 

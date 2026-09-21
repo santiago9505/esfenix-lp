@@ -17,7 +17,7 @@ let openCount = 0;
  *   description?: string,
  *   content: Node|Node[],
  *   footer?: Node|Node[]|null,
- *   variant?: 'center'|'drawer-left'|'drawer-right'|'sheet',
+ *   variant?: 'center'|'drawer-left'|'drawer-right'|'sheet'|'image',
  *   labelledBy?: string,
  *   onClose?: () => void,
  *   closeLabel?: string,

@@ -100,6 +100,10 @@ El Worker limita solicitudes, acepta los orígenes declarados en
 `no-store`. Los IDs de lista/campos son configuración no secreta; la API key
 permanece en el Worker.
 
+En `npm run dev` y `npm run preview`, Vite reenvía `/api/client-lookup` al mismo
+Worker. Así localhost puede probar clientes activos sin exponer credenciales ni
+ampliar la lista CORS usada en producción.
+
 ## Firebase Hosting estático (plan básico)
 
 La configuración publica únicamente `dist/`. No se despliegan Functions,

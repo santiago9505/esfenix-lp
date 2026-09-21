@@ -132,10 +132,9 @@ test('without a legacy session endpoint the response is submitted through the Fr
   assert.equal(result.ok, true);
   assert.equal(result.mode, 'form-api');
   assert.equal(result.taskId, 'created-task');
-  assert.equal(calls[0].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5?catalog=metadata');
-  assert.equal(calls[1].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5?catalogFieldId=products');
-  assert.equal(calls[2].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5/submit');
-  const body = JSON.parse(calls[2].options.body);
+  assert.equal(calls[0].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5');
+  assert.equal(calls[1].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5/submit');
+  const body = JSON.parse(calls[1].options.body);
   assert.equal(Object.hasOwn(body, 'total'), false);
   assert.equal(Object.hasOwn(body.answers.products[0], 'total'), false);
   assert.deepEqual(body.answers.products, [{
@@ -169,6 +168,126 @@ test('checks the Delivery minimum from Fresa catalog data without sending a tota
   assert.equal(overMinimum.ok, true);
   assert.equal(overMinimum.deliveryAllowed, true);
   assert.equal(overMinimum.deliveryProgress, 100);
+});
+
+test('uses the price field from the Fresa catalog selected by location', async () => {
+  const form = publicFormResponse();
+  const locationField = form.form.fields.find((field) => field.id === 'location');
+  locationField.options.push({ value: 'tx__houston', label: 'TX - HOUSTON' });
+
+  const baseCatalog = form.form.fields.find((field) => field.id === 'products');
+  const houstonCatalog = JSON.parse(JSON.stringify(baseCatalog));
+  houstonCatalog.id = 'houston-products';
+  houstonCatalog.label = 'Products TX - HOUSTON';
+  houstonCatalog.actionRules[0].conditions[0].value = 'tx__houston';
+  houstonCatalog.catalogConfig.items[0].value = 'houston-product-task-id';
+  houstonCatalog.catalogConfig.items[0].referenceValues = { bunch_price: 40 };
+  form.form.fields.splice(form.form.fields.indexOf(baseCatalog), 0, houstonCatalog);
+
+  const calls = [];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: null,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, json: async () => form };
+    },
+  });
+
+  const houstonPayload = payloadWithProducts();
+  houstonPayload.fresa.location = 'TX - HOUSTON';
+  houstonPayload.fresa.products[0].sourceProductId = 'houston-product-task-id';
+  const result = await integration.checkDeliveryEligibility(houstonPayload);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.deliveryProgress, 100);
+  assert.equal(result.deliveryAllowed, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5');
+});
+
+test('uses hydrated catalog items when Fresa returns them outside the field config', async () => {
+  const form = publicFormResponse();
+  const productField = form.form.fields.find((field) => field.id === 'products');
+  productField.catalogConfig.items = [];
+  form.form.catalogItemsByFieldId = {
+    products: [{
+      value: 'product-task-id',
+      label: 'Sunflowers',
+      referenceValues: { bunch_price: 40 },
+    }],
+  };
+
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: null,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => form }),
+  });
+  const selected = payloadWithProducts();
+  selected.fresa.products[0].quantity = 4;
+  const result = await integration.checkDeliveryEligibility(selected);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.deliveryProgress, 100);
+  assert.equal(result.deliveryAllowed, true);
+});
+
+test('keeps the previous metadata and scoped-catalog contract as a fallback', async () => {
+  const calls = [];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: null,
+    fetchImpl: async (url) => {
+      calls.push(url);
+      if (String(url).includes('catalog=metadata')) {
+        return { ok: true, status: 200, json: async () => publicFormResponse() };
+      }
+      if (String(url).includes('catalogFieldId=products')) {
+        return { ok: true, status: 200, json: async () => publicFormResponse() };
+      }
+      return { ok: false, status: 500, json: async () => ({ success: false }) };
+    },
+  });
+
+  const selected = payloadWithProducts();
+  selected.fresa.products[0].quantity = 13;
+  const result = await integration.checkDeliveryEligibility(selected);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.deliveryAllowed, true);
+  assert.deepEqual(calls.map((url) => new URL(url).search), [
+    '',
+    '?catalog=metadata',
+    '?catalogFieldId=products',
+  ]);
+});
+
+test('falls back when the full Fresa form request fails before returning a response', async () => {
+  const calls = [];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: null,
+    fetchImpl: async (url) => {
+      calls.push(url);
+      if (!String(url).includes('?')) throw new Error('temporary network failure');
+      if (String(url).includes('catalog=metadata')) {
+        return { ok: true, status: 200, json: async () => publicFormResponse() };
+      }
+      return { ok: true, status: 200, json: async () => publicFormResponse() };
+    },
+  });
+
+  const selected = payloadWithProducts();
+  selected.fresa.products[0].quantity = 13;
+  const result = await integration.checkDeliveryEligibility(selected);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.deliveryAllowed, true);
+  assert.deepEqual(calls.map((url) => new URL(url).search), [
+    '',
+    '?catalog=metadata',
+    '?catalogFieldId=products',
+  ]);
 });
 
 test('each Fresa form phase receives its own timeout budget', async () => {

@@ -15,8 +15,6 @@ import { LOCATIONS, resolveLocation } from './data/locations.js';
 import { breadcrumbs } from './ui/breadcrumbs.js';
 import { categoryNav, categoryNavTrigger } from './ui/category-nav.js';
 import {
-  distinctLengths,
-  distinctMeasures,
   distinctValues,
   listSentence,
   capitalize,
@@ -27,12 +25,27 @@ import { getCategoryLabel } from './data/categories.js';
 import { locationSelect } from './ui/location-select.js';
 import { openModal } from './ui/modal.js';
 import { productCard } from './ui/product-card.js';
+import { resolveInitialVariety } from './core/product-defaults.js';
 import { productExistsAnywhere } from './core/repository.js';
 import { slugify } from './core/slug.js';
 import { validateSelection } from './core/quote-store.js';
 import { variantForm } from './ui/variant-picker.js';
 
 const MEASURE_LABELS = { stem: 'Stem', bunch: 'Bunch', unit: 'Unit', pack: 'Pack', box: 'Box' };
+
+/**
+ * An explicitly selected variety must win even when another family image is
+ * marked as primary. The family gallery is only the fallback.
+ *
+ * @param {Array<{ src?: string|null, isPrimary?: boolean }>} images
+ * @param {{ src?: string|null, isPrimary?: boolean }|null} imageOverride
+ */
+export function resolveGalleryPrimaryImage(images, imageOverride = null) {
+  return firstUsableImage(imageOverride ? [imageOverride] : [])
+    ?? firstUsableImage(images);
+}
+
+export { resolveInitialVariety } from './core/product-defaults.js';
 
 /**
  * @param {any} ctx
@@ -44,13 +57,17 @@ export function renderProductView(ctx, route) {
   if (!product) return notFoundView(ctx, route);
 
   const varietyParam = new URLSearchParams(window.location.search).get('variety');
-  const initialVariety = varietyParam
+  const requestedVariety = varietyParam
     ? distinctValues(product.variants, 'variety').find((v) => slugify(v) === varietyParam) ?? null
     : null;
+  const initialVariety = resolveInitialVariety(product, requestedVariety);
 
   const related = getRelatedProducts(product, ctx.products, 6);
   let detailView = null;
-  const galleryView = gallery(product, (variant) => detailView?.selectVariant(variant));
+  const galleryView = gallery(product, {
+    onVariantSelect: (variant) => detailView?.selectVariant(variant),
+    onVarietySelect: (variety) => detailView?.selectVariety(variety),
+  });
   detailView = details(ctx, product, initialVariety, galleryView.setVariant, galleryView.setVariety);
 
   return {
@@ -89,7 +106,15 @@ export function renderProductView(ctx, route) {
           ]),
 
           el('div', { class: 'cat-product-main' }, [
-            galleryView.element,
+            el('div', { class: 'cat-product-visual' }, [
+              galleryView.element,
+              detailView.varietyElement
+                ? el('section', {
+                    class: 'cat-product-variety-panel',
+                    'aria-label': 'Choose a variety',
+                  }, [detailView.varietyElement])
+                : null,
+            ]),
             detailView.element,
           ]),
         ]),
@@ -102,23 +127,34 @@ export function renderProductView(ctx, route) {
 
 /**
  * @param {import('./core/repository').LocationProduct} product
- * @param {(variant: import('./core/types').ProductVariant) => void} [onImageSelect]
+ * @param {{
+ *   onVariantSelect?: (variant: import('./core/types').ProductVariant) => void,
+ *   onVarietySelect?: (variety: string) => void,
+ * }} [options]
  * @returns {{
  *   element: HTMLElement,
  *   setVariant: (variant: import('./core/types').ProductVariant|null) => void,
  *   setVariety: (variety: string|null) => void,
  * }}
  */
-function gallery(product, onImageSelect) {
+function gallery(product, options = {}) {
   const mainHost = el('div', { class: 'cat-gallery-main' });
   const thumbsHost = el('div', { class: 'cat-gallery-thumbs-host' });
+  const varietyIsTheGallery = distinctValues(product.variants, 'variety').length > 0;
   let activeVariant = null;
+  let activeVariety = null;
   let activeImageKey = null;
+  let renderedMainKey = null;
   let thumbnailsMounted = false;
 
   const imageKey = (image) => image?.id ?? image?.src ?? null;
   const thumbnailKey = (image) => String(image?.src ?? imageKey(image) ?? '').trim();
   const thumbnailImages = uniqueThumbnailImages(product.images);
+
+  const labelForVariant = (variant) =>
+    variant?.variety && variant.variety !== 'generic'
+      ? variant.variety
+      : variant?.color ?? product.name;
 
   function uniqueThumbnailImages(images) {
     const seen = new Set();
@@ -131,11 +167,11 @@ function gallery(product, onImageSelect) {
   }
 
   function variantForImage(image) {
-    const key = imageKey(image);
+    const key = thumbnailKey(image);
     if (!key) return null;
 
     return product.variants.find((variant) =>
-      (variant.images ?? []).some((candidate) => imageKey(candidate) === key),
+      (variant.images ?? []).some((candidate) => thumbnailKey(candidate) === key),
     ) ?? null;
   }
 
@@ -152,6 +188,139 @@ function gallery(product, onImageSelect) {
     });
   }
 
+  function viewerItems() {
+    if (varietyIsTheGallery) {
+      return distinctValues(product.variants, 'variety').flatMap((variety) => {
+        const image = firstUsableImage(imagesForVariety(variety));
+        if (!image) return [];
+        const variant = product.variants.find((candidate) =>
+          candidate.variety === variety && firstUsableImage(candidate.images ?? []),
+        );
+        return [{
+          image,
+          variety,
+          title: variety === 'generic' ? product.name : variety,
+          color: variant?.color ?? null,
+        }];
+      });
+    }
+
+    return thumbnailImages.map((image) => {
+      const variant = variantForImage(image);
+      return {
+        image,
+        variety: null,
+        title: variant?.variety ?? variant?.color ?? product.name,
+        color: variant?.color ?? null,
+      };
+    });
+  }
+
+  function openImageViewer(primary) {
+    const items = viewerItems();
+    if (items.length === 0) return;
+
+    let index = items.findIndex((item) =>
+      (activeVariety && item.variety === activeVariety)
+      || (!activeVariety && thumbnailKey(item.image) === thumbnailKey(primary)),
+    );
+    if (index < 0) index = 0;
+
+    const imageHost = el('div', { class: 'cat-image-viewer-media' });
+    const captionTitle = el('strong');
+    const captionMeta = el('span');
+    const counter = el('span', { class: 'cat-image-viewer-counter' });
+    const selectVariety = el('button', {
+      type: 'button',
+      class: 'btn btn-primary cat-image-viewer-select',
+      text: 'Select this variety',
+      onClick() {
+        const item = items[index];
+        if (!item?.variety || !options.onVarietySelect) return;
+        options.onVarietySelect(item.variety);
+        modal?.close();
+      },
+    });
+    const previous = el('button', {
+      type: 'button',
+      class: 'cat-image-viewer-nav cat-image-viewer-prev',
+      'aria-label': 'Previous variety',
+      hidden: items.length < 2,
+      text: '‹',
+      onClick: () => show(index - 1),
+    });
+    const next = el('button', {
+      type: 'button',
+      class: 'cat-image-viewer-nav cat-image-viewer-next',
+      'aria-label': 'Next variety',
+      hidden: items.length < 2,
+      text: '›',
+      onClick: () => show(index + 1),
+    });
+    let modal = null;
+
+    const viewer = el('div', { class: 'cat-image-viewer' }, [
+      el('div', { class: 'cat-image-viewer-stage' }, [previous, imageHost, next]),
+      el('div', {
+        class: 'cat-image-viewer-caption',
+        role: 'status',
+        'aria-live': 'polite',
+        'aria-atomic': 'true',
+      }, [
+        el('div', { class: 'cat-image-viewer-copy' }, [captionTitle, captionMeta]),
+        el('div', { class: 'cat-image-viewer-actions' }, [selectVariety, counter]),
+      ]),
+    ]);
+
+    function show(nextIndex) {
+      index = (nextIndex + items.length) % items.length;
+      const item = items[index];
+      replaceChildren(imageHost, [
+        productMedia(item.image, {
+          label: item.title,
+          className: 'cat-image-viewer-image',
+          width: 1600,
+          height: 1200,
+          eager: true,
+        }),
+      ]);
+      captionTitle.textContent = item.title;
+      captionMeta.textContent = [product.name, item.color]
+        .filter((value, itemIndex, values) => value && values.indexOf(value) === itemIndex && value !== item.title)
+        .join(' · ');
+      counter.textContent = `${index + 1} of ${items.length}`;
+      const canSelect = Boolean(item.variety && options.onVarietySelect);
+      const isSelected = canSelect && item.variety === activeVariety;
+      selectVariety.hidden = !canSelect;
+      selectVariety.disabled = isSelected;
+      selectVariety.textContent = isSelected ? 'Selected' : 'Select this variety';
+      const modalTitle = modal?.element.querySelector('.cat-modal-title');
+      if (modalTitle) modalTitle.textContent = item.title;
+    }
+
+    function handleKeydown(event) {
+      if (event.key === 'ArrowLeft' && items.length > 1) {
+        event.preventDefault();
+        show(index - 1);
+      } else if (event.key === 'ArrowRight' && items.length > 1) {
+        event.preventDefault();
+        show(index + 1);
+      }
+    }
+
+    modal = openModal({
+      title: items[index].title,
+      variant: 'image',
+      closeLabel: 'Close image viewer',
+      content: viewer,
+      onClose() {
+        document.removeEventListener('keydown', handleKeydown);
+      },
+    });
+    document.addEventListener('keydown', handleKeydown);
+    show(index);
+  }
+
   function render(variant = activeVariant, imageOverride = null) {
     // Once a variant is selected, do not borrow another variant's photo. A
     // missing image for that exact option must remain a placeholder.
@@ -159,28 +328,46 @@ function gallery(product, onImageSelect) {
     // Keep the family gallery visible after selecting one exact variant. The
     // selected variant controls the main image, while the full image list
     // keeps the other varieties available for the next click.
-    const primary = firstUsableImage(
-      imageOverride ? [imageOverride, ...images.filter((image) => imageKey(image) !== imageKey(imageOverride))] : images,
-    );
+    const primary = resolveGalleryPrimaryImage(images, imageOverride);
+    const primaryVariant = variant ?? variantForImage(primary);
+    const primaryLabel = activeVariety && activeVariety !== 'generic'
+      ? activeVariety
+      : labelForVariant(primaryVariant);
+    renderedMainKey = `${thumbnailKey(primary) || (variant ? `placeholder:${variant.id}` : 'product-placeholder')}|${primaryLabel}`;
+
+    const media = productMedia(primary, {
+      label: primaryLabel,
+      className: 'cat-gallery-img',
+      width: 960,
+      height: 720,
+      eager: true,
+    });
 
     replaceChildren(mainHost, [
-      productMedia(primary, {
-        label: product.name,
-        className: 'cat-gallery-img',
-        width: 960,
-        height: 720,
-        eager: true,
-      }),
+      primary
+        ? el('button', {
+            type: 'button',
+            class: 'cat-gallery-open',
+            'aria-label': `Enlarge ${primaryLabel} photo`,
+            onClick: () => openImageViewer(primary),
+          }, [
+            media,
+            el('span', { class: 'cat-gallery-expand', 'aria-hidden': 'true' }, [
+              el('span', { class: 'cat-gallery-expand-icon', text: '↗' }),
+              el('span', { text: 'View larger' }),
+            ]),
+          ])
+        : media,
       product.isNew ? el('span', { class: 'cat-badge-new', text: 'New' }) : null,
     ]);
 
-    // The family thumbnails do not change when a variant changes. Mount them
-    // once and only sync their pressed state; rebuilding every image here was
-    // needlessly expensive for families such as EC Roses.
+    // Varieties are rendered as labelled image choices in the order form, so
+    // repeating all of them below the main image creates two competing pickers.
+    // Products without varieties keep their ordinary photo thumbnails.
     if (!thumbnailsMounted) {
       replaceChildren(
         thumbsHost,
-        thumbnailImages.length > 1
+        !varietyIsTheGallery && thumbnailImages.length > 1
           ? [
               el(
                 'ul',
@@ -199,8 +386,8 @@ function gallery(product, onImageSelect) {
                       'aria-pressed': key !== null && key === activeImageKey ? 'true' : 'false',
                       onClick() {
                         activeImageKey = key;
-                        if (imageVariant && onImageSelect) {
-                          onImageSelect(imageVariant);
+                        if (imageVariant && options.onVariantSelect) {
+                          options.onVariantSelect(imageVariant);
                         } else {
                           render(variant, image);
                         }
@@ -231,12 +418,17 @@ function gallery(product, onImageSelect) {
   return {
     element: el('div', { class: 'cat-gallery' }, [mainHost, thumbsHost]),
     setVariant(variant) {
+      const nextImageKey = thumbnailKey(firstUsableImage(variant?.images ?? []));
+      const nextMainKey = `${nextImageKey || (variant ? `placeholder:${variant.id}` : 'product-placeholder')}|${labelForVariant(variant)}`;
       activeVariant = variant;
-      activeImageKey = thumbnailKey(firstUsableImage(variant?.images ?? []));
+      activeVariety = variant?.variety ?? null;
+      activeImageKey = nextImageKey;
+      if (renderedMainKey === nextMainKey) return;
       render(variant);
     },
     setVariety(variety) {
       activeVariant = null;
+      activeVariety = variety;
       const image = firstUsableImage(imagesForVariety(variety));
       activeImageKey = thumbnailKey(image);
       render(null, image);
@@ -252,9 +444,19 @@ function gallery(product, onImageSelect) {
  * @param {(variety: string|null) => void} [onVarietyChange]
  */
 function details(ctx, product, initialVariety, onVariantChange, onVarietyChange) {
+  const summary = selectionSummary(product);
+  const hasVariety = distinctValues(product.variants, 'variety').length > 0;
+  const activeName = el('h1', {
+    class: 'eyebrow cat-product-active-name',
+    text: initialVariety ?? product.name,
+  });
   const form = variantForm(product, {
     initial: { variety: initialVariety },
-    onSelectionChange: ({ variant, variety }) => {
+    splitVariety: true,
+    onSelectionChange: (selection) => {
+      const { variant, variety } = selection;
+      summary.update(selection);
+      activeName.textContent = variety && variety !== 'generic' ? variety : product.name;
       if (variant) onVariantChange?.(variant);
       else onVarietyChange?.(variety);
     },
@@ -272,7 +474,11 @@ function details(ctx, product, initialVariety, onVariantChange, onVarietyChange)
         return;
       }
       form.showErrors([]);
-      ctx.quoteStore.addItem(product, selection);
+      const added = ctx.quoteStore.addItem(product, selection);
+      if (!added.ok) {
+        form.showErrors(added.errors);
+        return;
+      }
       // The product page is already mounted and the quote store updates the
       // global count. Opening the summary directly avoids rebuilding the
       // gallery and variant form just before the dialog appears.
@@ -283,12 +489,11 @@ function details(ctx, product, initialVariety, onVariantChange, onVarietyChange)
   return {
     element: el('div', { class: 'cat-product-info' }, [
       el('div', { class: 'cat-product-kicker' }, [
-        el('span', { class: 'eyebrow', text: getCategoryLabel(product.category) }),
+        activeName,
         product.groupLabel && product.groupLabel !== getCategoryLabel(product.category)
           ? el('span', { class: 'cat-product-family', text: product.groupLabel })
           : null,
       ]),
-      el('h1', { class: 'cat-product-title', text: product.name }),
 
       product.description
         ? el('p', { class: 'cat-product-desc', text: product.description })
@@ -297,18 +502,16 @@ function details(ctx, product, initialVariety, onVariantChange, onVarietyChange)
             text: 'Choose the option that fits your order. The image and available formats update as you make your selection.',
           }),
 
-      el('div', { class: 'cat-product-selection-note' }, [
-        el('span', { class: 'cat-product-selection-step', text: '1' }),
-        el('p', {}, [
-          el('strong', { text: 'Build your selection' }),
-          ' Start with the variety, then choose the stem length and presentation.',
-        ]),
-      ]),
+      summary.element,
 
       el('div', { class: 'cat-product-form' }, [
         el('div', { class: 'cat-product-form-head' }, [
-          el('h2', { text: 'Choose your options' }),
-          el('p', { text: 'Only combinations available for this location are shown.' }),
+          el('h2', { text: 'Build your order' }),
+          el('p', {
+            text: hasVariety
+              ? 'Continue with stem length, quantity and unit.'
+              : 'Choose each available option in order.',
+          }),
         ]),
         form.element,
       ]),
@@ -325,70 +528,123 @@ function details(ctx, product, initialVariety, onVariantChange, onVarietyChange)
 
       el('div', { class: 'cat-product-facts' }, [
         el('div', { class: 'cat-product-facts-head' }, [
-          el('span', { class: 'eyebrow', text: 'Product details' }),
+          el('h2', { text: 'Availability' }),
           el('span', { class: 'cat-product-facts-rule', 'aria-hidden': 'true' }),
         ]),
-        characteristics(product, ctx),
+        productContext(product, ctx),
         attachmentLinks(product),
       ]),
 
       availabilityNote(PRODUCT_AVAILABILITY_NOTE),
     ]),
+    varietyElement: form.hasVariety ? form.varietyElement : null,
     selectVariety: form.selectVariety,
     selectVariant: form.selectVariant,
   };
 }
 
 /**
- * The characteristics table. Only rows the product actually has are rendered —
- * no "—" placeholders for attributes that do not apply.
- *
+ * @param {import('./core/repository').LocationProduct} product
+ */
+function selectionSummary(product) {
+  const status = el('span', { class: 'cat-selection-status', text: 'In progress' });
+  const helper = el('p', {
+    class: 'cat-selection-helper',
+    text: 'Start by choosing a variety.',
+  });
+  const values = {
+    variety: el('dd', { text: 'Not selected' }),
+    color: el('dd', { text: '—' }),
+    length: el('dd', { text: 'Not selected' }),
+    quantity: el('dd', { text: '1' }),
+    measure: el('dd', { text: 'Not selected' }),
+  };
+  const hasColor = product.variants.some((variant) => variant.color);
+  const hasLength = product.variants.some(
+    (variant) => variant.lengthCm !== null && variant.lengthCm !== undefined,
+  );
+  const hasMeasure = product.variants.some((variant) => (variant.availableMeasures ?? []).length > 0);
+
+  const item = (label, value, visible = true) => visible
+    ? el('div', { class: 'cat-selection-item' }, [el('dt', { text: label }), value])
+    : null;
+
+  const element = el('section', {
+    class: 'cat-selection-summary',
+    'aria-label': 'Current selection',
+    'aria-live': 'polite',
+  }, [
+    el('div', { class: 'cat-selection-summary-head' }, [
+      el('h2', { text: 'Your selection' }),
+      status,
+    ]),
+    helper,
+    el('dl', { class: 'cat-selection-values' }, [
+      item('Variety', values.variety),
+      item('Color', values.color, hasColor),
+      item('Stem length', values.length, hasLength),
+      item('Quantity', values.quantity),
+      item('Unit', values.measure, hasMeasure),
+    ]),
+  ]);
+
+  const displayValue = (node, value, fallback = 'Not selected') => {
+    node.textContent = value || fallback;
+    node.classList.toggle('is-pending', !value);
+  };
+
+  return {
+    element,
+    update(selection) {
+      const variety = selection.variety === 'generic' ? 'Standard' : selection.variety;
+      displayValue(values.variety, variety);
+      displayValue(values.color, selection.color, '—');
+      displayValue(
+        values.length,
+        selection.lengthCm !== null && selection.lengthCm !== undefined
+          ? `${selection.lengthCm} cm`
+          : null,
+      );
+      displayValue(
+        values.quantity,
+        Number.isInteger(selection.quantity) && selection.quantity > 0 ? String(selection.quantity) : null,
+      );
+      displayValue(
+        values.measure,
+        selection.measure ? (MEASURE_LABELS[selection.measure] ?? capitalize(selection.measure)) : null,
+      );
+
+      const complete = Boolean(selection.variant && (!hasMeasure || selection.measure));
+      status.textContent = complete ? 'Ready to add' : 'In progress';
+      status.classList.toggle('is-complete', complete);
+      helper.textContent = !selection.variety
+        ? 'Start by choosing a variety.'
+        : hasLength && (selection.lengthCm === null || selection.lengthCm === undefined)
+          ? 'Variety selected. Choose the stem length next.'
+          : hasMeasure && !selection.measure
+            ? 'Set the quantity, then choose the unit.'
+            : 'Your selection is complete and ready to add.';
+    },
+  };
+}
+
+/**
+ * Keeps only stable context below the order controls. Variant-specific facts
+ * live in the selection summary above instead of describing the whole family.
  * @param {import('./core/repository').LocationProduct} product
  * @param {any} ctx
  */
-function characteristics(product, ctx) {
+function productContext(product, ctx) {
   const rows = [];
   const add = (label, value) => {
     if (value) rows.push(el('dt', { text: label }), el('dd', { text: value }));
   };
 
-  add('Category', getCategoryLabel(product.category));
+  add('Catalog location', ctx.location.label);
   if (product.groupLabel && product.groupLabel !== getCategoryLabel(product.category)) {
-    add('Group', product.groupLabel);
+    add('Family', product.groupLabel);
   }
-
-  const varieties = distinctValues(product.variants, 'variety');
-  if (varieties.length > 0) {
-    add('Variety', varieties.length > 6 ? `${varieties.length} varieties available` : listSentence(varieties));
-  }
-
-  const colors = distinctValues(product.variants, 'color');
-  if (colors.length > 0) add('Available colors', listSentence(colors));
-
-  const lengths = distinctLengths(product.variants);
-  if (lengths.length > 0) add('Available stem lengths', lengths.map((l) => `${l} cm`).join(' · '));
-
-  const measures = distinctMeasures(product.variants);
-  if (measures.length > 0) {
-    add('Available as', measures.map((m) => MEASURE_LABELS[m] ?? capitalize(m)).join(' · '));
-  }
-
-  // Origin is shown only when it is confirmed in the data, never inferred.
   if (product.origin) add('Origin', product.origin);
-
-  const attributes = new Map();
-  for (const variant of product.variants) {
-    for (const [key, value] of Object.entries(variant.attributes ?? {})) {
-      if (value !== null && value !== undefined && value !== '') attributes.set(key, String(value));
-    }
-  }
-  for (const [key, value] of attributes) add(key, value);
-
-  const sources = getCatalogSourcesForProduct(ctx.allProducts, product.slug);
-  const locationLabels = LOCATIONS.filter((location) => sources.includes(location.catalogSource)).map(
-    (location) => location.label,
-  );
-  if (locationLabels.length > 0) add('Locations where available', locationLabels.join(' · '));
 
   if (rows.length === 0) return null;
 
