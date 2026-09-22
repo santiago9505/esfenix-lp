@@ -145,8 +145,10 @@ test('maps all contact, delivery and product fields to live Fresa ids', () => {
     measure: 'stem',
     values: {
       __fresa_source_product_id: '6bf5f887-207f-448a-97b8-946d8f6f3e5e',
+      __fresa_item_id: '564',
     },
   }]);
+  assert.equal(typeof submission.answers['regular-products'][0].values.__fresa_item_id, 'string');
   assert.match(submission.answers.notes, /Company: Esfenix Test/);
   assert.match(submission.answers.notes, /Freedom/);
 });
@@ -315,6 +317,7 @@ test('populates every configured Fresa subtask input from the exact catalog line
   const submission = buildFresaFormSubmission(payload(false), response);
   assert.deepEqual(submission.answers['regular-products'][0].values, {
     __fresa_source_product_id: '6bf5f887-207f-448a-97b8-946d8f6f3e5e',
+    __fresa_item_id: '564',
     'api-source-id': '6bf5f887-207f-448a-97b8-946d8f6f3e5e',
     'api-item-id': '564',
     'api-product-name': 'EC ROSES 60',

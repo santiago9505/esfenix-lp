@@ -40,6 +40,8 @@ function readyPickupPayload() {
       {
         id: 'a',
         productId: 'sunflowers',
+        sourceProductId: 'product-task-id',
+        itemId: 564,
         productName: 'Sunflowers',
         category: 'other-flowers',
         selectedLocation: 'other',
@@ -142,7 +144,12 @@ test('without a legacy session endpoint the response is submitted through the Fr
     quantity: 5,
     size: null,
     measure: 'bunch',
+    values: {
+      __fresa_source_product_id: 'product-task-id',
+      __fresa_item_id: '564',
+    },
   }]);
+  assert.equal(typeof body.answers.products[0].values.__fresa_item_id, 'string');
 });
 
 test('checks the Delivery minimum from Fresa catalog data without sending a total', async () => {

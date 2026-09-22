@@ -393,9 +393,9 @@ function lineInputKind(input) {
 }
 
 /**
- * Fresa line inputs are the supported way to write values directly onto each
- * generated product subtask. Populate only inputs configured in the live form
- * so new attributes can be added without coupling this site to field UUIDs.
+ * Reserved __fresa_* values transport stable product identity without relying
+ * on visible form controls. Other values are populated only for line inputs
+ * configured in the live form, avoiding coupling this site to field UUIDs.
  *
  * @param {any} row
  * @param {any} matched
@@ -407,7 +407,9 @@ function lineInputKind(input) {
 function buildLineValues(row, matched, measure, quantity, lineInputs, catalogConfig) {
   const values = {};
   const sourceProductId = String(row?.sourceProductId ?? '').trim();
+  const itemId = String(row?.itemId ?? '').trim();
   if (sourceProductId) values.__fresa_source_product_id = sourceProductId;
+  if (itemId) values.__fresa_item_id = itemId;
 
   for (const input of lineInputs) {
     const inputId = String(input?.id ?? '').trim();
@@ -416,7 +418,7 @@ function buildLineValues(row, matched, measure, quantity, lineInputs, catalogCon
 
     const value = {
       sourceProductId,
-      itemId: String(row?.itemId ?? '').trim(),
+      itemId,
       sku: String(row?.sku ?? '').trim(),
       productName: String(row?.sourceProductName ?? matched?.label ?? row?.product ?? '').trim(),
       unitPrice: catalogPriceForMeasure(matched, measure, catalogConfig),
