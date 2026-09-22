@@ -4,6 +4,7 @@
  * from the public form response instead of being duplicated in this project.
  */
 
+import { formatZonedDateTime } from './delivery-schedule.js';
 import { DELIVERY_MINIMUM_CENTS } from './pricing.js';
 
 /** @param {unknown} value */
@@ -526,6 +527,40 @@ function buildProductLines(payload, catalogConfig) {
 }
 
 /**
+ * Fresa's date field applies its one-day notice to one instant, while Esfenix
+ * applies it to the end of a four-hour delivery window. Submit that window end
+ * with an explicit offset so Fresa validates the same cutoff as the picker.
+ * Capacity and the customer-facing selection continue to use the slot start.
+ *
+ * @param {any} payload
+ */
+function deliveryDateTimeForFresa(payload) {
+  const selectedValue = String(payload?.deliveryDateTime ?? '').trim();
+  const slot = payload?.deliverySlot ?? payload?.delivery?.slot;
+  const date = String(slot?.date ?? '').trim();
+  const start = String(slot?.start ?? '').trim();
+  const end = String(slot?.end ?? '').trim();
+  const timeZone = String(payload?.deliveryTimeZone ?? payload?.delivery?.timeZone ?? '').trim();
+
+  if (!date || !start || !end || !timeZone || selectedValue !== `${date}T${start}`) {
+    return selectedValue;
+  }
+  return formatZonedDateTime(date, end, timeZone) || selectedValue;
+}
+
+/** @param {any} payload */
+function deliveryWindowNote(payload) {
+  if (payload?.orderType !== 'Delivery') return '';
+  const slot = payload?.deliverySlot ?? payload?.delivery?.slot;
+  const date = String(slot?.date ?? '').trim();
+  const start = String(slot?.start ?? '').trim();
+  const end = String(slot?.end ?? '').trim();
+  if (!date || !start || !end) return '';
+  const timeZone = String(payload?.deliveryTimeZone ?? payload?.delivery?.timeZone ?? '').trim();
+  return `Requested delivery window: ${date} ${start}–${end}${timeZone ? ` (${timeZone})` : ''}.`;
+}
+
+/**
  * Builds the body accepted by POST /api/forms/:token/submit.
  *
  * @param {ReturnType<typeof import('./quote-payload').buildQuotePayload>} payload
@@ -597,7 +632,7 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     const cityField = requireField(fields, 'City', 'short_text');
     const stateField = requireField(fields, 'State', 'short_text');
     const zipField = requireField(fields, 'Zip Code', 'short_text');
-    answers[deliveryField.id] = payload?.deliveryDateTime ?? '';
+    answers[deliveryField.id] = deliveryDateTimeForFresa(payload);
     answers[addressField.id] = payload?.delivery?.address ?? '';
     answers[cityField.id] = payload?.delivery?.city ?? '';
     answers[stateField.id] = payload?.delivery?.state ?? '';
@@ -628,6 +663,7 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
   const notesField = findField(fields, 'Notes for the seller', 'long_text');
   const notes = [
     contact.company ? `Company: ${contact.company}` : '',
+    deliveryWindowNote(payload),
     !socialMediaField && contact.socialMediaProfiles
       ? `Social media profiles (business): ${contact.socialMediaProfiles}`
       : '',

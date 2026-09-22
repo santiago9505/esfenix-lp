@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   formatTimeRange,
+  formatZonedDateTime,
   getDeliverySlots,
   getFirstSelectableDate,
   hasOpenDeliverySlots,
@@ -144,4 +145,16 @@ test('a pickup date keeps the day, drops the time and accepts weekends', () => {
 test('the delivery window labels match the two permitted periods', () => {
   assert.equal(formatTimeRange('08:00', '12:00'), '8:00 AM – 12:00 PM');
   assert.equal(formatTimeRange('12:00', '16:00'), '12:00 – 4:00 PM');
+});
+
+test('wall-clock delivery times include the selected timezone offset', () => {
+  assert.equal(
+    formatZonedDateTime('2026-09-23', '16:00', 'America/Bogota'),
+    '2026-09-23T16:00:00-05:00',
+  );
+  assert.equal(
+    formatZonedDateTime('2026-08-14', '12:00', 'America/New_York'),
+    '2026-08-14T12:00:00-04:00',
+  );
+  assert.equal(formatZonedDateTime('invalid', '16:00', 'America/Bogota'), '');
 });

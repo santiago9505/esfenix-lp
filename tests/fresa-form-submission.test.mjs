@@ -153,6 +153,28 @@ test('maps all contact, delivery and product fields to live Fresa ids', () => {
   assert.match(submission.answers.notes, /Freedom/);
 });
 
+test('submits the end of a delivery window so Fresa uses the same 24-hour cutoff', () => {
+  const selected = payload(false);
+  selected.deliveryDateTime = '2026-09-23T12:00';
+  selected.deliveryTimeZone = 'America/Bogota';
+  selected.delivery.timeZone = 'America/Bogota';
+  selected.deliverySlot = {
+    date: '2026-09-23',
+    start: '12:00',
+    end: '16:00',
+    capacity: 2,
+  };
+  selected.delivery.slot = selected.deliverySlot;
+
+  const submission = buildFresaFormSubmission(selected, formResponse());
+
+  assert.equal(submission.answers.delivery, '2026-09-23T16:00:00-05:00');
+  assert.match(
+    submission.answers.notes,
+    /Requested delivery window: 2026-09-23 12:00–16:00 \(America\/Bogota\)\./,
+  );
+});
+
 test('checks the $150 Delivery minimum with the selected product measure without returning a total', () => {
   const underMinimum = getFresaDeliveryEligibility(payload(false), {
     items: [{

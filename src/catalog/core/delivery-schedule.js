@@ -240,6 +240,42 @@ export function formatTimeRange(start, end, locale = 'en-US') {
   return `${shortFrom} – ${to}`;
 }
 
+/**
+ * Serializes a wall-clock value with the UTC offset of its named timezone.
+ * Keeping both the visible time and its offset lets APIs validate the actual
+ * instant without reinterpreting a customer-local value in the server's
+ * timezone.
+ *
+ * @param {string} dateKey
+ * @param {string} time
+ * @param {string} timeZone
+ */
+export function formatZonedDateTime(dateKey, time, timeZone) {
+  const minutes = timeToMinutes(time);
+  if (!isDeliveryDate(dateKey) || minutes === null) return '';
+
+  const normalizedTime = minutesToTime(minutes);
+  try {
+    const instant = wallClockToDate(dateKey, normalizedTime, timeZone);
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const wallClockAsUtc = Date.UTC(
+      year,
+      month - 1,
+      day,
+      Math.floor(minutes / 60),
+      minutes % 60,
+    );
+    const offsetMinutes = Math.round((wallClockAsUtc - instant.getTime()) / 60_000);
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absoluteOffset = Math.abs(offsetMinutes);
+    const offsetHours = String(Math.floor(absoluteOffset / 60)).padStart(2, '0');
+    const offsetRemainder = String(absoluteOffset % 60).padStart(2, '0');
+    return `${dateKey}T${normalizedTime}:00${sign}${offsetHours}:${offsetRemainder}`;
+  } catch {
+    return '';
+  }
+}
+
 /** @param {string} dateKey */
 function slotStarts() {
   const lastStart = DELIVERY_SCHEDULE.endMinutes - DELIVERY_SCHEDULE.slotMinutes;
