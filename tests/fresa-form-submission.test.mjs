@@ -99,6 +99,7 @@ function payload(vip = false) {
       productId: 'ecuadorian-roses',
       sourceProductId: '6bf5f887-207f-448a-97b8-946d8f6f3e5e',
       sourceProductName: 'EC ROSES 60',
+      itemId: 564,
       sku: 'RO601000',
       productName: 'Ecuadorian Roses',
       category: 'roses',
@@ -302,6 +303,7 @@ test('populates every configured Fresa subtask input from the exact catalog line
     .forEach((field) => {
       field.catalogConfig.lineInputs = [
         { id: 'api-source-id', label: 'Source Product ID', type: 'text', targetFieldId: 'item-id' },
+        { id: 'api-item-id', label: 'ITEM_ID', type: 'number', targetFieldId: 'accounting-item-id' },
         { id: 'api-product-name', label: 'Product Name', type: 'text', targetFieldId: 'product-name' },
         { id: 'api-sku', label: 'Product SKU', type: 'text', targetFieldId: 'product-sku' },
         { id: 'api-unit-price', label: 'Unit Price', type: 'number', targetFieldId: 'product-price' },
@@ -314,6 +316,7 @@ test('populates every configured Fresa subtask input from the exact catalog line
   assert.deepEqual(submission.answers['regular-products'][0].values, {
     __fresa_source_product_id: '6bf5f887-207f-448a-97b8-946d8f6f3e5e',
     'api-source-id': '6bf5f887-207f-448a-97b8-946d8f6f3e5e',
+    'api-item-id': '564',
     'api-product-name': 'EC ROSES 60',
     'api-sku': 'RO601000',
     'api-unit-price': 0.92,

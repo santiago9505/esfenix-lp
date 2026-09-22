@@ -12,6 +12,7 @@ const columns = [
   { list_id: 'flowers', key: 'stem_size', field_name: 'Stem length', field_type: 'text', is_file: false },
   { list_id: 'flowers', key: 'gallery_field', field_name: 'Gallery', field_type: 'attachments', is_file: true },
   { list_id: 'flowers', key: 'download_field', field_name: 'Technical sheet', field_type: 'attachments', is_file: true },
+  { list_id: 'flowers', key: 'accounting_item_id', field_name: 'ITEM_ID', field_type: 'number', is_file: false },
   { list_id: 'flowers', key: 'formula_sku_field', field_name: 'formula_sku', field_type: 'formula', is_file: false },
   { list_id: 'flowers', key: 'price_field', field_name: 'Wholesale amount', field_type: 'currency', is_file: false },
 ];
@@ -34,6 +35,7 @@ test('normalizes Fresa columns, prices and attachments without assuming field ke
             floral_variant: 'Freedom',
             shade_attr: 'Red',
             stem_size: '60 cm',
+            accounting_item_id: 564,
             formula_sku_field: 'RO601000',
             gallery_field: [
               { id: 'image-1', name: 'freedom.webp', type: 'image/webp', isImage: true, url: 'https://cdn/freedom.webp' },
@@ -66,6 +68,7 @@ test('normalizes Fresa columns, prices and attachments without assuming field ke
   assert.equal(products[0].locations[0].variants[0].color, 'Red');
   assert.equal(products[0].locations[0].variants[0].lengthCm, 60);
   assert.equal(products[0].locations[0].variants[0].sourceProductName, 'Roses');
+  assert.equal(products[0].locations[0].variants[0].itemId, '564');
   assert.equal(products[0].locations[0].variants[0].sku, 'RO601000');
   assert.deepEqual(products[0].locations[0].variants[0].availableMeasures, ['unit']);
   assert.equal(getVariantPriceCents(products[0].locations[0].variants[0], 'unit'), 2_500_000);

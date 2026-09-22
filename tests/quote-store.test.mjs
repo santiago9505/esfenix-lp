@@ -185,7 +185,7 @@ test('reconcile keeps lines that are still listed', () => {
   assert.equal(store.getCount(), 1);
 });
 
-test('reconcile enriches a saved quote line with its current Fresa product id', () => {
+test('reconcile enriches a saved quote line with its current Fresa product identifiers', () => {
   const store = quoteStoreModule.createQuoteStore('houston');
   store.addItem(roses(), { variantId: 'freedom_red_50cm', measure: 'stem', quantity: 1 });
   assert.equal(store.getItems()[0].sourceProductId, null);
@@ -193,9 +193,12 @@ test('reconcile enriches a saved quote line with its current Fresa product id', 
   const currentProduct = structuredClone(roses());
   currentProduct.variants.find((variant) => variant.id === 'freedom_red_50cm').sourceProductId =
     '11111111-1111-4111-8111-111111111111';
+  currentProduct.variants.find((variant) => variant.id === 'freedom_red_50cm').itemId = 564;
 
   assert.deepEqual(store.reconcile([currentProduct]), []);
   assert.equal(store.getItems()[0].sourceProductId, '11111111-1111-4111-8111-111111111111');
+  assert.equal(store.getItems()[0].itemId, '564');
+  assert.equal(typeof store.getItems()[0].itemId, 'string');
 });
 
 test('a product with a single unambiguous configuration needs no choice', async () => {

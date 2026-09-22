@@ -297,6 +297,7 @@ test('different native product tasks create separate subtask rows even when thei
         id: 'freedom',
         productId: 'ecuadorian-roses',
         sourceProductId: '11111111-1111-4111-8111-111111111111',
+        itemId: 564,
         productName: 'Ecuadorian Roses',
         category: 'roses',
         selectedLocation: 'houston',
@@ -322,12 +323,15 @@ test('different native product tasks create separate subtask rows even when thei
     ],
   });
 
+  assert.equal(payload.products[0].itemId, '564');
+  assert.equal(typeof payload.products[0].itemId, 'string');
   assert.deepEqual(payload.fresa.products, [
     {
       product: 'Ecuadorian Roses - 60cm',
       quantity: 25,
       measure: 'stem',
       sourceProductId: '11111111-1111-4111-8111-111111111111',
+      itemId: '564',
     },
     {
       product: 'Ecuadorian Roses - 60cm',

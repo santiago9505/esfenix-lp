@@ -16,6 +16,7 @@ import { buildQuotePayload } from '../core/quote-payload.js';
 import { clearQuoteDraft, readQuoteDraft, writeQuoteDraft } from '../core/quote-draft.js';
 import { getQuotePricing, quotePricingKey } from '../core/pricing.js';
 import { describeQuoteItem } from '../core/format.js';
+import { normalizeSocialMediaUrl } from '../core/social-media-url.js';
 import { resolveSeason } from '../core/season.js';
 import { getCategoryLabel } from '../data/categories.js';
 // Temporarily disabled with the advisor portrait block below.
@@ -419,7 +420,7 @@ export function renderQuoteFormView(ctx, options) {
         phoneField(),
         contactField('Company', 'company', 'organization', false),
       ]),
-      contactField('Social media link', 'socialMediaProfiles', 'url', false, 'url'),
+      contactField('Social media link', 'socialMediaProfiles', 'url', false),
     ];
 
     return el('form', {
@@ -512,18 +513,6 @@ export function renderQuoteFormView(ctx, options) {
       required,
       optional: !required,
     });
-  }
-
-  /** @param {unknown} value */
-  function normalizeSocialMediaUrl(value) {
-    const text = String(value ?? '').trim();
-    if (!text) return '';
-    try {
-      const url = new URL(text);
-      return url.protocol === 'http:' || url.protocol === 'https:' ? text : '';
-    } catch {
-      return '';
-    }
   }
 
   function phoneField() {
@@ -1434,36 +1423,59 @@ export function renderQuoteFormView(ctx, options) {
     };
     updateLinkPreview(config.value);
 
+    const validateLink = (input) => {
+      if (config.name !== 'socialMediaProfiles') return;
+      const value = input.value.trim();
+      input.setCustomValidity(
+        value && !normalizeSocialMediaUrl(value)
+          ? 'Enter a valid website or social media link.'
+          : '',
+      );
+    };
+
+    const input = el('input', {
+      id,
+      name: config.name,
+      type: config.type ?? 'text',
+      value: config.value ?? '',
+      placeholder: config.placeholder,
+      autocomplete: config.autocomplete,
+      inputmode: config.inputmode,
+      spellcheck: config.spellcheck,
+      autocapitalize: config.autocapitalize,
+      maxlength: config.maxlength,
+      required: config.required,
+      readonly: config.readonly,
+      onInput: (event) => {
+        if (config.name === 'firstName') state.contact.firstName = event.currentTarget.value;
+        if (config.name === 'lastName') state.contact.lastName = event.currentTarget.value;
+        if (config.name === 'phone') state.contact.phone = event.currentTarget.value;
+        if (config.name === 'company') state.contact.company = event.currentTarget.value;
+        if (config.name === 'socialMediaProfiles') state.contact.socialMediaProfiles = event.currentTarget.value;
+        if (config.name === 'email') state.email = event.currentTarget.value;
+        if (config.name === 'address') state.delivery.address = event.currentTarget.value;
+        if (config.name === 'city') state.delivery.city = event.currentTarget.value;
+        if (config.name === 'state') state.delivery.state = event.currentTarget.value;
+        if (config.name === 'zipCode') state.delivery.zipCode = event.currentTarget.value;
+        validateLink(event.currentTarget);
+        updateLinkPreview(event.currentTarget.value);
+        persistDraft();
+      },
+      onBlur: (event) => {
+        if (config.name !== 'socialMediaProfiles') return;
+        const normalized = normalizeSocialMediaUrl(event.currentTarget.value);
+        if (!normalized) return;
+        event.currentTarget.value = normalized;
+        state.contact.socialMediaProfiles = normalized;
+        updateLinkPreview(normalized);
+        persistDraft();
+      },
+    });
+    validateLink(input);
+
     return el('div', { class: 'cat-quote-field' }, [
       el('label', { for: id, text: label }),
-      el('input', {
-        id,
-        name: config.name,
-        type: config.type ?? 'text',
-        value: config.value ?? '',
-        placeholder: config.placeholder,
-        autocomplete: config.autocomplete,
-        inputmode: config.inputmode,
-        spellcheck: config.spellcheck,
-        autocapitalize: config.autocapitalize,
-        maxlength: config.maxlength,
-        required: config.required,
-        readonly: config.readonly,
-        onInput: (event) => {
-          if (config.name === 'firstName') state.contact.firstName = event.currentTarget.value;
-          if (config.name === 'lastName') state.contact.lastName = event.currentTarget.value;
-          if (config.name === 'phone') state.contact.phone = event.currentTarget.value;
-          if (config.name === 'company') state.contact.company = event.currentTarget.value;
-          if (config.name === 'socialMediaProfiles') state.contact.socialMediaProfiles = event.currentTarget.value;
-          if (config.name === 'email') state.email = event.currentTarget.value;
-          if (config.name === 'address') state.delivery.address = event.currentTarget.value;
-          if (config.name === 'city') state.delivery.city = event.currentTarget.value;
-          if (config.name === 'state') state.delivery.state = event.currentTarget.value;
-          if (config.name === 'zipCode') state.delivery.zipCode = event.currentTarget.value;
-          updateLinkPreview(event.currentTarget.value);
-          persistDraft();
-        },
-      }),
+      input,
       linkPreview,
       config.help ? el('small', { text: config.help }) : null,
     ]);
@@ -1473,7 +1485,11 @@ export function renderQuoteFormView(ctx, options) {
     const fields = ['firstName', 'lastName', 'phone', 'company', 'socialMediaProfiles'];
     fields.forEach((name) => {
       const input = root.querySelector(`[name="${name}"]`);
-      if (input && !input.readOnly) state.contact[name] = input.value.trim();
+      if (input && !input.readOnly) {
+        state.contact[name] = name === 'socialMediaProfiles'
+          ? normalizeSocialMediaUrl(input.value)
+          : input.value.trim();
+      }
     });
     const country = root.querySelector('[name="phoneCountry"]');
     if (country && !country.disabled) state.phoneCountry = country.value;

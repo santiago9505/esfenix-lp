@@ -382,7 +382,9 @@ export function getFresaDeliveryEligibility(payload, catalogConfig) {
 function lineInputKind(input) {
   const identity = normalizeLabel(`${input?.id ?? ''} ${input?.label ?? ''}`);
   if (/\bsku\b|stock keeping unit/.test(identity)) return 'sku';
-  if (/source product id|product source id|item id prod|\bproduct id\b/.test(identity)) return 'sourceProductId';
+  if (/source product id|product source id/.test(identity)) return 'sourceProductId';
+  if (/\bitem id\b/.test(identity)) return 'itemId';
+  if (/\bproduct id\b/.test(identity)) return 'sourceProductId';
   if (/product name|nombre (?:del )?producto/.test(identity)) return 'productName';
   if (/unit price|product price|precio (?:unitario|del producto)|\bprice\b|\bprecio\b/.test(identity)) return 'unitPrice';
   if (/\bquantity\b|\bcantidad\b/.test(identity)) return 'quantity';
@@ -414,6 +416,7 @@ function buildLineValues(row, matched, measure, quantity, lineInputs, catalogCon
 
     const value = {
       sourceProductId,
+      itemId: String(row?.itemId ?? '').trim(),
       sku: String(row?.sku ?? '').trim(),
       productName: String(row?.sourceProductName ?? matched?.label ?? row?.product ?? '').trim(),
       unitPrice: catalogPriceForMeasure(matched, measure, catalogConfig),

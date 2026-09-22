@@ -50,6 +50,8 @@ export interface ProductVariant {
   sourceProductIds?: string[];
   /** Exact task name supplied by the Fresa catalog. */
   sourceProductName?: string | null;
+  /** External accounting ITEM_ID supplied by the Fresa catalog. */
+  itemId?: string | null;
   /** Exact SKU supplied by the Fresa catalog for this variant. */
   sku?: string | null;
 
@@ -120,6 +122,8 @@ export interface QuoteItem {
   sourceProductId?: string | null;
   /** Exact task name backing the selected catalog variant. */
   sourceProductName?: string | null;
+  /** External accounting ITEM_ID backing the selected catalog variant. */
+  itemId?: string | null;
   /** Exact Fresa SKU backing the selected catalog variant. */
   sku?: string | null;
   productName: string;
@@ -193,6 +197,9 @@ export interface QuotePayload {
   };
   products: Array<{
     productId: string;
+    sourceProductName?: string;
+    itemId?: string;
+    sku?: string;
     productName: string;
     category: ProductCategory;
     variety: string | null;

@@ -38,6 +38,11 @@ function locationCode(locationId) {
   return String(locationId ?? '').toUpperCase().replace(/-/g, '_');
 }
 
+/** @param {unknown} value */
+function normalizeItemId(value) {
+  return String(value ?? '').trim() || null;
+}
+
 /**
  * @param {{
  *   locationId: string,
@@ -66,18 +71,22 @@ export function buildQuotePayload(input) {
     serviceCenter: locationServiceMap[location.id] ?? location.serviceCenter,
     email: String(input.email ?? '').trim(),
     vip: input.vip === true,
-    products: items.map((item) => ({
-      productId: item.productId,
-      ...(item.sourceProductName ? { sourceProductName: item.sourceProductName } : {}),
-      ...(item.sku ? { sku: item.sku } : {}),
-      productName: item.productName,
-      category: item.category,
-      variety: item.variety ?? null,
-      color: item.color ?? null,
-      lengthCm: item.lengthCm ?? null,
-      quantity: item.quantity,
-      measure: item.measure ?? null,
-    })),
+    products: items.map((item) => {
+      const itemId = normalizeItemId(item.itemId);
+      return {
+        productId: item.productId,
+        ...(item.sourceProductName ? { sourceProductName: item.sourceProductName } : {}),
+        ...(itemId ? { itemId } : {}),
+        ...(item.sku ? { sku: item.sku } : {}),
+        productName: item.productName,
+        category: item.category,
+        variety: item.variety ?? null,
+        color: item.color ?? null,
+        lengthCm: item.lengthCm ?? null,
+        quantity: item.quantity,
+        measure: item.measure ?? null,
+      };
+    }),
     orderType: String(input.orderType ?? '').trim() || null,
     season,
     delivery: {
@@ -137,7 +146,7 @@ export function buildQuotePayload(input) {
  * @param {QuotePayload} payload
  */
 function buildFresaBlock(items, location, payload) {
-  /** @type {Map<string, { product: string, sourceProductId: string|null, sourceProductName: string|null, sku: string|null, quantity: number, measure: string|null, details: string[] }>} */
+  /** @type {Map<string, { product: string, sourceProductId: string|null, sourceProductName: string|null, itemId: string|null, sku: string|null, quantity: number, measure: string|null, details: string[] }>} */
   const rows = new Map();
   /** @type {Array<{ item: QuoteItem, tried: string[] }>} */
   const unmapped = [];
@@ -146,6 +155,7 @@ function buildFresaBlock(items, location, payload) {
     const { option, candidates } = resolveFresaProductForItem(item);
     const sourceProductId = String(item.sourceProductId ?? '').trim() || null;
     const sourceProductName = String(item.sourceProductName ?? '').trim() || null;
+    const itemId = normalizeItemId(item.itemId);
     if (!option && !sourceProductId) {
       unmapped.push({ item, tried: candidates });
       continue;
@@ -163,6 +173,7 @@ function buildFresaBlock(items, location, payload) {
       product: resolvedProduct,
       sourceProductId,
       sourceProductName,
+      itemId,
       sku,
       quantity: 0,
       measure,
@@ -172,6 +183,7 @@ function buildFresaBlock(items, location, payload) {
     row.quantity += item.quantity;
     row.sourceProductId ??= sourceProductId;
     row.sourceProductName ??= sourceProductName;
+    row.itemId ??= itemId;
     row.sku ??= sku;
     row.measure ??= measure;
 
@@ -190,6 +202,7 @@ function buildFresaBlock(items, location, payload) {
       measure: row.measure,
       ...(row.sourceProductId ? { sourceProductId: row.sourceProductId } : {}),
       ...(row.sourceProductName ? { sourceProductName: row.sourceProductName } : {}),
+      ...(row.itemId ? { itemId: row.itemId } : {}),
       ...(row.sku ? { sku: row.sku } : {}),
     })),
     // Step 3 — Type of Order. The catalog does not ask; the visitor picks it.

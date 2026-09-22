@@ -26,6 +26,11 @@ const STORAGE_KEY = 'quote';
 const MAX_QUOTE_LINES = 100;
 const MAX_QUANTITY = 10_000;
 
+/** @param {unknown} value */
+function normalizeItemId(value) {
+  return String(value ?? '').trim() || null;
+}
+
 /**
  * @typedef {{ location: string, items: QuoteItem[] }} QuoteState
  */
@@ -34,7 +39,12 @@ const MAX_QUANTITY = 10_000;
 function initialState(defaultLocation) {
   const stored = read(STORAGE_KEY, null);
   if (stored && typeof stored.location === 'string' && Array.isArray(stored.items)) {
-    return { location: stored.location, items: stored.items.filter(isWellFormed) };
+    return {
+      location: stored.location,
+      items: stored.items
+        .filter(isWellFormed)
+        .map((item) => ({ ...item, itemId: normalizeItemId(item.itemId) })),
+    };
   }
   return { location: defaultLocation, items: [] };
 }
@@ -119,6 +129,7 @@ export function createQuoteStore(defaultLocation) {
         productId: product.id,
         sourceProductId: variant.sourceProductId ?? null,
         sourceProductName: variant.sourceProductName ?? null,
+        itemId: normalizeItemId(variant.itemId),
         sku: variant.sku ?? null,
         productName: product.name,
         category: product.category,
@@ -145,6 +156,7 @@ export function createQuoteStore(defaultLocation) {
                   ...entry,
                   sourceProductId: item.sourceProductId ?? entry.sourceProductId ?? null,
                   sourceProductName: item.sourceProductName ?? entry.sourceProductName ?? null,
+                  itemId: item.itemId ?? entry.itemId ?? null,
                   sku: item.sku ?? entry.sku ?? null,
                   quantity: entry.quantity + selection.quantity,
                 }
@@ -231,13 +243,15 @@ export function createQuoteStore(defaultLocation) {
 
         const sourceProductId = matchingVariant.sourceProductId ?? item.sourceProductId ?? null;
         const sourceProductName = matchingVariant.sourceProductName ?? item.sourceProductName ?? null;
+        const itemId = normalizeItemId(matchingVariant.itemId ?? item.itemId);
         const sku = matchingVariant.sku ?? item.sku ?? null;
         if (
           sourceProductId !== (item.sourceProductId ?? null)
           || sourceProductName !== (item.sourceProductName ?? null)
+          || itemId !== (item.itemId ?? null)
           || sku !== (item.sku ?? null)
         ) {
-          kept.push({ ...item, sourceProductId, sourceProductName, sku });
+          kept.push({ ...item, sourceProductId, sourceProductName, itemId, sku });
           changed = true;
         } else {
           kept.push(item);

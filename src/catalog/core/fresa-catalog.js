@@ -540,6 +540,7 @@ function normalizeProduct(raw, columns) {
     location: findColumn(columns, 'location'),
     origin: findColumn(columns, 'origin'),
     isNew: findColumn(columns, 'isNew'),
+    itemId: findColumn(columns, 'itemId'),
     sku: findColumn(columns, 'sku'),
     stemPrice: findColumn(columns, 'stemPrice'),
     bunchPrice: findColumn(columns, 'bunchPrice'),
@@ -770,6 +771,7 @@ function buildVariants(raw, fields, columns, roleColumns, category) {
       .map(normalizeMeasure)
       .filter(Boolean),
   };
+  const itemId = safeString(firstScalar(readColumnValue(fields, roleColumns.itemId))) || null;
   const sku = safeString(firstScalar(readColumnValue(fields, roleColumns.sku))) || null;
   const explicitPriceColumns = [
     roleColumns.stemPrice,
@@ -842,6 +844,7 @@ function buildVariants(raw, fields, columns, roleColumns, category) {
       id: `${safeString(raw.id)}__variant_${index + 1}`,
       sourceProductId: safeString(raw.id),
       sourceProductName: safeString(raw.name),
+      itemId,
       sku,
       variety: variant.variety,
       color: variant.color,
@@ -888,7 +891,7 @@ function cartesianVariants(values) {
   );
 }
 
-/** @param {Array<Record<string, unknown>>} columns @param {'typeProduct'|'category'|'group'|'variety'|'color'|'lengthCm'|'measure'|'location'|'origin'|'isNew'|'sku'|'stemPrice'|'bunchPrice'|'unitPrice'|'packPrice'|'boxPrice'} role */
+/** @param {Array<Record<string, unknown>>} columns @param {'typeProduct'|'category'|'group'|'variety'|'color'|'lengthCm'|'measure'|'location'|'origin'|'isNew'|'itemId'|'sku'|'stemPrice'|'bunchPrice'|'unitPrice'|'packPrice'|'boxPrice'} role */
 function findColumn(columns, role) {
   const aliases = ROLE_ALIASES[role];
   let best = null;
@@ -954,6 +957,7 @@ const ROLE_ALIASES = {
   location: ['location', 'ubicacion', 'sede', 'branch', 'market', 'region'],
   origin: ['origin', 'origen', 'grown in', 'procedencia'],
   isNew: ['is new', 'new', 'nuevo', 'novedad'],
+  itemId: ['item id', 'item_id'],
   sku: ['formula sku', 'formula_sku', 'sku', 'product sku', 'stock keeping unit'],
   stemPrice: ['stem price', 'stem_price', 'price per stem', 'precio por tallo'],
   bunchPrice: ['bunch price', 'bunch_price', 'price per bunch', 'precio por ramo'],
