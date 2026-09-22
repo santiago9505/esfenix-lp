@@ -48,6 +48,7 @@ const STEPS = [
 
 /** The step whose rail label follows the chosen order type. */
 const DELIVERY_STEP_INDEX = 4;
+const PRODUCTS_REQUIRED_ERROR = 'Select at least one product to continue.';
 
 /**
  * @param {ReturnType<typeof import('../app.js').createApp>['ctx']} ctx
@@ -143,6 +144,13 @@ export function renderQuoteFormView(ctx, options) {
   };
 
   function render(shouldFocus = false) {
+    // A resumed draft must not bypass the product step if its separately
+    // persisted quote list was cleared or is no longer available.
+    if (!state.result && state.step > 2 && ctx.quoteStore.isEmpty()) {
+      state.step = 2;
+      state.error = PRODUCTS_REQUIRED_ERROR;
+    }
+
     // Only a real step change animates. Re-rendering after, say, a quantity
     // edit must not slide the whole step back in under the visitor's cursor.
     const moved = state.step !== renderedStep;
@@ -644,6 +652,7 @@ export function renderQuoteFormView(ctx, options) {
   function productsStep() {
     syncShippingDestination();
     const items = ctx.quoteStore.getItems();
+    const hasProducts = items.length > 0;
     const productRows = items.length > 0
       ? el('ul', { class: 'cat-quote-product-list' }, items.map(productRow))
       : el('div', { class: 'cat-quote-empty-products' }, [
@@ -655,13 +664,18 @@ export function renderQuoteFormView(ctx, options) {
             onClick: openCatalogProductPicker,
           }),
           el('strong', { text: 'No products selected yet' }),
-          el('p', { text: 'You can still request a quote and describe what you need in the last step.' }),
+          el('p', { text: 'Add at least one product from the catalog to continue.' }),
         ]);
 
     return el('form', {
       class: 'cat-quote-step-form',
       onSubmit: async (event) => {
         event.preventDefault();
+        if (ctx.quoteStore.isEmpty()) {
+          state.error = PRODUCTS_REQUIRED_ERROR;
+          render(true);
+          return;
+        }
 
         // The Delivery indicator depends on the current product quantities and
         // measures. Wait for that check before entering the next step so it
@@ -718,13 +732,18 @@ export function renderQuoteFormView(ctx, options) {
           onClick: openCatalogProductPicker,
         }),
       ]),
-      stepActions('Continue to order type'),
+      stepActions('Continue to order type', { disabled: !hasProducts }),
     ]);
   }
 
   function openCatalogProductPicker() {
     if (options.onOpenProductPicker) {
-      options.onOpenProductPicker({ onClose: () => render() });
+      options.onOpenProductPicker({
+        onClose: () => {
+          if (!ctx.quoteStore.isEmpty() && state.error === PRODUCTS_REQUIRED_ERROR) state.error = '';
+          render();
+        },
+      });
     } else {
       options.onBack();
     }
@@ -1388,9 +1407,14 @@ export function renderQuoteFormView(ctx, options) {
     ]);
   }
 
-  function stepActions(nextLabel) {
+  function stepActions(nextLabel, { disabled = false } = {}) {
     return el('div', { class: 'cat-quote-form-actions' }, [
-      el('button', { type: 'submit', class: 'btn btn-primary cat-quote-submit', text: nextLabel }),
+      el('button', {
+        type: 'submit',
+        class: 'btn btn-primary cat-quote-submit',
+        disabled,
+        text: nextLabel,
+      }),
     ]);
   }
 

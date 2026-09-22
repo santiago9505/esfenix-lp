@@ -906,6 +906,7 @@
 .cat-quote-review .cat-note{font-size:12px}
 .cat-quote-form-actions{display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding-top:12px}
 .cat-quote-submit{min-width:230px;justify-content:center}
+.cat-quote-submit:disabled,.cat-quote-submit:disabled:hover{background:var(--c-muted);color:#fff;border-color:transparent;box-shadow:none;cursor:not-allowed;opacity:.5}
 .cat-quote-form-error{width:100%;max-width:440px;margin-bottom:20px;padding:13px 16px;border-radius:14px;background:#fbeaf0;color:#b72558;font-size:13px;line-height:1.5;text-align:left}
 .cat-quote-success{display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;padding:70px 20px 80px}
 .cat-quote-success-icon{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:var(--c-sage);color:#fff;font-size:30px}
