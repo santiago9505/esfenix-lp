@@ -44,6 +44,18 @@ Ejecuta las pruebas:
 npm test
 ```
 
+## Idiomas
+
+El sitio usa inglés como texto fuente y permite cambiar a español desde el
+encabezado o el menú móvil. La elección se guarda en `localStorage` y también
+puede abrirse directamente con `?lang=es` o `?lang=en`. El módulo
+`src/i18n/locale.js` aplica el idioma a ambas páginas y al contenido que el
+catálogo crea después de cargar. Las traducciones de textos, mensajes y nombres
+genéricos de productos están en `src/i18n/translations.js`; al añadir una frase
+visible nueva hay que incluir su versión en español allí y ampliar
+`tests/i18n.test.mjs` si introduce un estado nuevo. Los nombres comerciales de
+variedades, direcciones y códigos de inventario permanecen como datos propios.
+
 ## Catálogo y Fresa
 
 El navegador pinta primero `public/data/catalog-snapshot.json`, que la portada

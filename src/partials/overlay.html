@@ -6,7 +6,14 @@
   <div class="ov-inner">
     <div class="ov-top">
       <a href="/#inicio" class="logo" aria-label="Esfenix - home"><img src="/assets/esfenix-logo.svg" alt="Esfenix" class="logo-img"></a>
-      <button class="ov-close" id="menuClose" aria-label="Close menu">Close <span>&times;</span></button>
+      <div class="ov-actions">
+        <div class="language-switch" role="group" aria-label="Language">
+          <span class="language-switch-thumb" aria-hidden="true"></span>
+          <button type="button" data-lang-switch="en" aria-label="English" aria-pressed="true">EN</button>
+          <button type="button" data-lang-switch="es" aria-label="Español" aria-pressed="false">ES</button>
+        </div>
+        <button class="ov-close" id="menuClose" aria-label="Close menu">Close <span>&times;</span></button>
+      </div>
     </div>
     <nav aria-label="Primary">
       <a href="/#inicio"><span class="idx">01</span> Home</a>

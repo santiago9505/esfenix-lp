@@ -13,11 +13,10 @@ import {
 } from '../core/delivery-schedule.js';
 import { formatTimeZoneOffset } from '../core/timezone.js';
 import { el, replaceChildren } from './dom.js';
+import { getLanguage } from '../../i18n/locale.js';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-// The quote flow is English. Do not let the browser's regional language turn
-// the selected date into Spanish (or another language) in an English form.
-const FORM_LOCALE = 'en-US';
+const formLocale = () => getLanguage() === 'es' ? 'es-US' : 'en-US';
 
 /**
  * A date — and, for delivery, four-hour window — picker for the quote form.
@@ -50,7 +49,7 @@ const FORM_LOCALE = 'en-US';
  */
 export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', bookedByStart, isDateAllowed = () => true, availabilityProvider = null, onChange }) {
   const now = new Date();
-  const locale = FORM_LOCALE;
+  let locale = formLocale();
   const picksWindow = mode !== 'date';
   let remoteBookedByStart = bookedByStart ?? {};
   let availabilityState = picksWindow && availabilityProvider ? 'loading' : 'disabled';
@@ -67,6 +66,15 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
   const host = el('div', { class: `cat-quote-schedule ${picksWindow ? '' : 'is-date-only'}` });
 
   render();
+  function onLanguageChange() {
+    if (!host.isConnected) {
+      window.removeEventListener('site-language-change', onLanguageChange);
+      return;
+    }
+    locale = formLocale();
+    render();
+  }
+  window.addEventListener('site-language-change', onLanguageChange);
   if (picksWindow && availabilityProvider) void loadAvailability(selectedDate);
   return host;
 

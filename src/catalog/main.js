@@ -8,11 +8,13 @@
 
 import { createApp } from './app.js';
 import { initSiteChrome } from './ui/site-chrome.js';
+import { initLanguage } from '../i18n/locale.js';
 
 const head = document.getElementById('cat-head');
 const body = document.getElementById('cat-app');
 
 if (head && body) {
+  initLanguage();
   initSiteChrome();
   const app = createApp({ head, body });
   // Views call ctx.render() after mutating the quote list from inside a form.

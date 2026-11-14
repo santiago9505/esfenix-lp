@@ -187,7 +187,9 @@ export function productMedia(image, options) {
   return el('div', { class: `${className} cat-media-img` }, [
     el('img', {
       src,
-      alt: image.alt || options.label,
+      alt: image.alt && !/\.(?:jpe?g|png|webp|avif|gif|svg)$/i.test(image.alt)
+        ? image.alt
+        : options.label,
       width,
       height: options.height ?? 480,
       loading: options.eager ? 'eager' : 'lazy',

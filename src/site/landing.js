@@ -1,4 +1,5 @@
 import './feature-carousel.js';
+import { initLanguage } from '../i18n/locale.js';
 
 /**
  * Landing-page wiring for interactions that also exist in the catalog.
@@ -39,6 +40,7 @@ function startHeroVideoWhenReady() {
 }
 
 const quoteStore = createQuoteStore('other');
+initLanguage();
 let summary = null;
 
 function updateWishlistCount(count = quoteStore.getCount()) {

@@ -607,7 +607,7 @@ function normalizeProduct(raw, columns) {
     ],
     catalogOrder: familyMeta?.order ?? catalogOrderForFamily(resolvedFamilyName),
     familyKey: familyMeta?.familyKey ?? buildFamilyKey(category, raw.name, variants),
-    familyName: resolvedFamilyName,
+    familyName: familyMeta?.name ?? resolvedFamilyName,
   };
 }
 

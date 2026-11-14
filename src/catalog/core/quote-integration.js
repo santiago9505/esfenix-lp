@@ -574,10 +574,16 @@ async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserve
     }, timeoutMs);
     const data = await readJson(response);
     if (!response.ok || data?.success !== true || typeof data?.taskId !== 'string') {
+      const deliveryOptionRejected = payload.orderType === 'Delivery'
+        && /["“]?Type of Order["”]?\s+(?:has an invalid option|tiene una opción no válida)/i
+          .test(String(data?.error ?? ''));
       return {
         ok: false,
         mode: 'form-api',
-        error: data?.error || `Fresa could not record the quote request (${response.status}).`,
+        ...(deliveryOptionRejected ? { code: 'DELIVERY_OPTION_REJECTED' } : {}),
+        error: deliveryOptionRejected
+          ? 'Fresa could not accept Delivery for this selection. Please try another selection or choose Pickup.'
+          : data?.error || `Fresa could not record the quote request (${response.status}).`,
         summary,
       };
     }

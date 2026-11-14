@@ -36,6 +36,7 @@ import { shippingDestinationFields } from './location-select.js';
 import { createLoadingOverlay } from './loading-indicator.js';
 import { NO_PAYMENT_NOTE } from './states.js';
 import { openVariantPicker } from './variant-picker.js';
+import { t } from '../../i18n/locale.js';
 
 const STEPS = [
   'Email',
@@ -1452,7 +1453,7 @@ export function renderQuoteFormView(ctx, options) {
       const value = input.value.trim();
       input.setCustomValidity(
         value && !normalizeSocialMediaUrl(value)
-          ? 'Enter a valid website or social media link.'
+          ? t('Enter a valid website or social media link.')
           : '',
       );
     };

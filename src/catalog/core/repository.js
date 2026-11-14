@@ -406,7 +406,9 @@ function sortProducts(products) {
  * @returns {LocationProduct|null}
  */
 export function findProductBySlug(products, slug) {
-  return products.find((product) => product.slug === slug) ?? null;
+  return products.find((product) => product.slug === slug)
+    ?? products.find((product) => product.slug === legacyFamilySlug(slug))
+    ?? null;
 }
 
 /**
@@ -416,7 +418,7 @@ export function findProductBySlug(products, slug) {
  * @param {string} slug
  */
 export function productExistsAnywhere(products, slug) {
-  return products.some((product) => product.slug === slug);
+  return Boolean(findProductBySlug(products, slug));
 }
 
 /**
@@ -426,9 +428,16 @@ export function productExistsAnywhere(products, slug) {
  * @returns {string[]} catalog source ids
  */
 export function getCatalogSourcesForProduct(products, slug) {
-  const product = products.find((p) => p.slug === slug);
+  const product = findProductBySlug(products, slug);
   if (!product) return [];
   return product.locations.filter((l) => l.catalogAvailable).map((l) => l.location);
+}
+
+function legacyFamilySlug(slug) {
+  return {
+    alstroemerias: 'alstroemeria',
+    ranunculos: 'ranunculus',
+  }[slug] ?? slug;
 }
 
 /* ------------------------------------------------------------------ */

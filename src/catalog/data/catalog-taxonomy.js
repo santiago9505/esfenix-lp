@@ -31,6 +31,24 @@ const KNOWN_FAMILIES = [
     category: 'roses',
     order: 3,
   },
+  {
+    aliases: ['alstroemeria', 'alstroemerias'],
+    familyKey: 'catalog:alstroemeria',
+    name: 'Alstroemeria',
+    group: 'alstroemeria',
+    groupLabel: 'Alstroemeria',
+    category: 'other-flowers',
+    order: 9,
+  },
+  {
+    aliases: ['ranunculos', 'ranunculus'],
+    familyKey: 'catalog:ranunculus',
+    name: 'Ranunculus',
+    group: 'ranunculus',
+    groupLabel: 'Ranunculus',
+    category: 'other-flowers',
+    order: 35,
+  },
 ];
 
 // This follows the visual sequence in the printed catalogue. Products that
@@ -127,7 +145,7 @@ function familySlug(value) {
  * because they happen to share a label.
  *
  * @param {unknown} value
- * @returns {{ familyKey: string, group: string, groupLabel: string, category: string, order: number }|null}
+ * @returns {{ familyKey: string, name?: string, group: string, groupLabel: string, category: string, order: number }|null}
  */
 export function resolveCatalogFamily(value) {
   const family = FAMILY_BY_ALIAS.get(normalizeLabel(value));

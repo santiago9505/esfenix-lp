@@ -19,6 +19,11 @@ test('localhost uses the same-origin client lookup proxy', async () => {
   assert.equal(config.CLIENT_LOOKUP_ENDPOINT, '/api/client-lookup');
 });
 
+test('localhost uses the active public quote form by default', async () => {
+  const config = await importQuoteConfig('localhost');
+  assert.equal(config.QUOTE_FORM_URL, 'https://fresaai.app/f/0578f97716840e34cf5472d5');
+});
+
 test('production continues using the deployed client lookup Worker', async () => {
   const config = await importQuoteConfig('esfenix.com');
   assert.equal(

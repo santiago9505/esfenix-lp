@@ -403,6 +403,33 @@ are local preferences only. The catalog does not reserve slots or show persisten
 minimum order and the final delivery time after reviewing the request, so this
 flow does not require Firestore, Authentication or another backend.
 
+### Delivery minimum in the Fresa form
+
+The landing checks the $150 minimum using the selected product measure. Fresa
+must make the same check when it decides whether the `delivery` option is
+visible. Its catalog formula evaluator exposes
+`<catalog field>.origen.selected_price`: the source stem price for `stem`
+(falling back to the source unit price) or the source bunch price for `bunch`.
+The submitted quantity and measure are retained; client-supplied prices are
+never used for this formula.
+
+After deploying the Fresa evaluator change, update these variables in the
+Esfenix Quote orders form. Keep their existing IDs, keys, conditions and $150
+threshold. Change only the formulas:
+
+| Variable ID | Formula |
+|---|---|
+| `field_cdc9fa108e` (Houston) | `SUMPRODUCT({Products TX - HOUSTON.quantity}, {Products TX - HOUSTON.origen.selected_price})` |
+| `field_a042e16651` (Seattle) | `SUMPRODUCT({Products - SEATTLE.quantity}, {Products - SEATTLE.origen.selected_price})` |
+| `field_58a50e370c` (DMV) | `SUMPRODUCT({Products - DMV.quantity}, {Products - DMV.origen.selected_price})` |
+| `field_c75c7887c7` (The Woodlands) | `SUMPRODUCT({Products TX - THE WOODLANDS.quantity}, {Products TX - THE WOODLANDS.origen.selected_price})` |
+| `field_706e26691b` (Nation Wide) | `SUMPRODUCT({Products TX - NATION WIDE.cantidad}, {Products TX - NATION WIDE.origen.selected_price})` |
+
+Deploy the evaluator before changing these live formulas. Verify both a stem
+only product and a bunch product above $150 in Houston and Seattle, then a
+selection below $150 and Pickup. The Seattle formula previously had a trailing
+`{Products - SEATTLE.origin.length_cm}` expression, which must be removed.
+
 ---
 
 ## Known data issues

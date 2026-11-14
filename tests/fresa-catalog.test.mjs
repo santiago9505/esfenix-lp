@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { FresaCatalogError, fetchCatalogPages, normalizeCatalog } from '../src/catalog/core/fresa-catalog.js';
 import { getVariantPriceCents } from '../src/catalog/core/pricing.js';
+import { findProductBySlug, getCatalogSourcesForProduct, productExistsAnywhere } from '../src/catalog/core/repository.js';
 
 const columns = [
   { list_id: 'flowers', key: 'classification_01', field_name: 'Categoría', field_type: 'text', is_file: false },
@@ -301,6 +303,58 @@ test('merges equivalent rose families even when Fresa classifies one duplicate i
   assert.equal(gardenRoses.category, 'roses');
   assert.equal(gardenRoses.groupLabel, 'Garden Roses');
   assert.deepEqual(gardenRoses.sourceProductIds, ['garden-roses-50', 'garden-roses-60-other']);
+});
+
+test('merges only the confirmed flower name aliases and retains their source variants', () => {
+  const names = ['Ranunculos', 'Alstroemerias', 'Ranunculus', 'Alstroemeria', 'Hydrangeas', 'Hydrangeas Premium'];
+  const products = normalizeCatalog({
+    catalog: {
+      columns,
+      products: names.map((name, index) => ({
+        id: `flower-${index}`,
+        listId: 'flowers',
+        listName: 'Seattle',
+        name,
+        fields: {
+          type_product_field: 'Other Flowers',
+          shade_attr: ['White', 'Green', 'Pink', 'Purple', 'Blue', 'Yellow'][index],
+        },
+      })),
+    },
+  });
+
+  assert.deepEqual(products.map((product) => product.name), [
+    'Ranunculus', 'Alstroemeria', 'Hydrangeas', 'Hydrangeas Premium',
+  ]);
+  for (const [name, slug, sourceIds] of [
+    ['Ranunculus', 'ranunculus', ['flower-0', 'flower-2']],
+    ['Alstroemeria', 'alstroemeria', ['flower-1', 'flower-3']],
+  ]) {
+    const product = products.find((entry) => entry.name === name);
+    assert.equal(product.slug, slug);
+    assert.deepEqual(product.sourceProductIds, sourceIds);
+    assert.deepEqual(product.locations[0].variants.map((variant) => variant.sourceProductId), sourceIds);
+  }
+});
+
+test('the bundled catalog has one card per confirmed family and accepts older links', () => {
+  const { products } = JSON.parse(readFileSync(new URL('../public/data/catalog-snapshot.json', import.meta.url), 'utf8'));
+  for (const [name, slug, oldSlug] of [
+    ['Alstroemeria', 'alstroemeria', 'alstroemerias'],
+    ['Ranunculus', 'ranunculus', 'ranunculos'],
+  ]) {
+    const matches = products.filter((product) => product.name === name);
+    assert.equal(matches.length, 1);
+    const product = matches[0];
+    assert.equal(product.slug, slug);
+    assert.equal(new Set(product.sourceProductIds).size, product.sourceProductIds.length);
+    for (const location of product.locations) {
+      assert.ok(location.variants.length > 1);
+    }
+    assert.equal(findProductBySlug(products, oldSlug)?.id, product.id);
+    assert.equal(productExistsAnywhere(products, oldSlug), true);
+    assert.deepEqual(getCatalogSourcesForProduct(products, oldSlug), ['seattle', 'houston']);
+  }
 });
 
 test('fetches every Fresa page with bearer auth and the required pagination', async () => {
