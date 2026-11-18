@@ -150,19 +150,25 @@ html[data-lang="es"] .hero-wordmark.wordmark-en{display:none}
 .features{display:grid;gap:48px 40px;grid-template-columns:1fr}
 @media(min-width:620px){.features{grid-template-columns:repeat(2,1fr)}}
 @media(min-width:1000px){.features{grid-template-columns:repeat(4,1fr)}}
-.feature .ph{height:clamp(280px,32vw,420px);margin-bottom:24px;border-radius:var(--r-md)}
+.feature .ph{aspect-ratio:4/5;margin-bottom:24px;border-radius:var(--r-md)}
+@media(min-width:1000px){.feature .ph{aspect-ratio:2/3}}
 .feature .n{font-size:20px;letter-spacing:.16em;color:#af30cd;font-weight:600}
 .feature h3{font-size:clamp(22px,2.6vw,30px);font-weight:300;margin:10px 0 12px}
 .feature p{font-size:15px;color:var(--c-muted)}
-.feature-carousel-control{position:absolute;top:50%;z-index:2;display:grid;place-items:center;width:42px;height:42px;border:1px solid rgba(255,255,255,.7);border-radius:50%;background:rgba(29,29,27,.42);color:#fff;cursor:pointer;transform:translateY(-50%);backdrop-filter:blur(5px);transition:background-color var(--d2) var(--e),transform var(--d2) var(--e)}
-.feature-carousel-control.prev{left:12px}
-.feature-carousel-control.next{right:12px}
-.feature-carousel.is-carousel-wide{background-size:auto 90%,cover;background-position:center,center;background-repeat:no-repeat}
-.feature-carousel-control:hover{background:rgba(137,36,160,.82);transform:translateY(-50%) scale(1.06)}
+.feature-carousel-control{position:absolute;bottom:14px;z-index:2;display:grid;place-items:center;width:40px;height:40px;border:1px solid rgba(255,255,255,.7);border-radius:50%;background:rgba(29,29,27,.42);color:#fff;cursor:pointer;backdrop-filter:blur(5px);transition:background-color var(--d2) var(--e),transform var(--d2) var(--e)}
+.feature-carousel-control.prev{left:14px}
+.feature-carousel-control.next{right:14px}
+.feature-carousel{touch-action:pan-y}
+.feature-carousel-layer{position:absolute;inset:0;z-index:1;background-size:cover;background-position:center;opacity:0;transition:opacity .45s var(--e);pointer-events:none}
+.feature-carousel-layer.is-visible{opacity:1}
+.feature-carousel-dots{position:absolute;left:50%;bottom:31px;z-index:2;display:flex;gap:6px;transform:translateX(-50%);pointer-events:none}
+.feature-carousel-dots span{width:7px;height:7px;border-radius:4px;background:rgba(255,255,255,.6);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:width var(--d2) var(--e),background-color var(--d2) var(--e)}
+.feature-carousel-dots span.is-active{width:20px;background:#fff}
+.feature-carousel-control:hover{background:rgba(137,36,160,.82);transform:scale(1.06)}
 .feature-carousel-control:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .feature-carousel-control svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .feature-carousel-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(prefers-reduced-motion:reduce){.feature-carousel-control{transition:none}}
+@media(prefers-reduced-motion:reduce){.feature-carousel-control,.feature-carousel-layer,.feature-carousel-dots span{transition:none}}
 
 /* ---- Full-bleed alternating scene (Coverage · C) ---- */
 .scene{display:grid;grid-template-columns:1fr;align-items:stretch;min-height:78vh}
@@ -330,21 +336,59 @@ html[data-lang="es"] .hero-wordmark.wordmark-en{display:none}
       <h2>A supplier you can <em>rely on</em></h2>
     </div>
     <div class="features">
-      <article class="feature reveal"><div class="ph" data-label="variety" data-img data-src="/assets/images/variety-feature.webp"></div><span class="n">Variety</span><h3>Global Trading</h3><p>Flowers and floral products sourced from around the world to offer exceptional variety.</p></article>
-      <article class="feature reveal"><div class="ph" data-label="quality" data-img data-src="/assets/images/quality-feature.webp"></div><span class="n">Quality</span><h3>Farm freshness</h3><p>Quality control at every step of the way. Handled with care from farm to delivery to ensure exceptional blooms.</p></article>
-      <article class="feature reveal"><div class="ph" data-label="trust" data-img data-src="/assets/images/trust-feature.webp"></div><span class="n">Excellence</span><h3>Trust</h3><p>Competitive pricing, consistent service, and dependable solutions for every order.</p></article>
       <article class="feature reveal">
-        <div class="ph feature-carousel" data-label="communication" data-img data-src="/assets/images/farm-feature.webp" data-feature-carousel role="group" aria-roledescription="carousel" aria-label="Communication image options">
-          <span hidden data-carousel-slide data-src="/assets/images/communication-team-van.webp" data-description="Esfenix team beside a delivery van"></span>
-          <span hidden data-carousel-slide data-src="/assets/images/communication-flower-shipment.webp" data-description="Esfenix team holding a flower shipment beside a delivery van"></span>
-          <span hidden data-carousel-slide data-src="/assets/images/communication-facility.webp" data-description="Esfenix team member carrying flower boxes through the facility"></span>
+        <div class="ph feature-carousel" data-label="variety" data-img data-src="/assets/images/why-variety-1.webp" data-description="Woman holding a large bouquet of roses in the greenhouse" data-feature-carousel role="group" aria-roledescription="carousel" aria-label="Variety image options">
+          <span hidden data-carousel-slide data-src="/assets/images/why-variety-2.webp" data-description="Woman holding a bouquet of red roses"></span>
+          <span hidden data-carousel-slide data-src="/assets/images/why-variety-3.webp" data-description="Woman holding a bouquet of pink roses"></span>
+          <button class="feature-carousel-control prev" type="button" data-carousel-previous aria-label="Previous variety image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button class="feature-carousel-control next" type="button" data-carousel-next aria-label="Next variety image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <span class="feature-carousel-status" data-carousel-status aria-live="polite">Image 1 of 3: Woman holding a large bouquet of roses in the greenhouse</span>
+        </div>
+        <span class="n">Variety</span><h3>Global Trading</h3><p>Flowers and floral products sourced from around the world to offer exceptional variety.</p>
+      </article>
+      <article class="feature reveal">
+        <div class="ph feature-carousel" data-label="quality" data-img data-src="/assets/images/why-quality-1.webp" data-description="Esfenix farm worker checking a yellow rose" data-feature-carousel role="group" aria-roledescription="carousel" aria-label="Quality image options">
+          <span hidden data-carousel-slide data-src="/assets/images/why-quality-2.webp" data-description="Close-up of fresh white roses"></span>
+          <span hidden data-carousel-slide data-src="/assets/images/why-quality-3.webp" data-description="Woman holding red roses at the Middle of the World monument in Ecuador"></span>
+          <button class="feature-carousel-control prev" type="button" data-carousel-previous aria-label="Previous quality image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button class="feature-carousel-control next" type="button" data-carousel-next aria-label="Next quality image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <span class="feature-carousel-status" data-carousel-status aria-live="polite">Image 1 of 3: Esfenix farm worker checking a yellow rose</span>
+        </div>
+        <span class="n">Quality</span><h3>Farm freshness</h3><p>Quality control at every step of the way. Handled with care from farm to delivery to ensure exceptional blooms.</p>
+      </article>
+      <article class="feature reveal">
+        <div class="ph feature-carousel" data-label="trust" data-img data-src="/assets/images/why-excellence-1.webp" data-description="Esfenix team member preparing roses for shipping" data-feature-carousel role="group" aria-roledescription="carousel" aria-label="Excellence image options">
+          <span hidden data-carousel-slide data-src="/assets/images/why-excellence-2.webp" data-description="Esfenix team loading flower boxes onto a delivery truck"></span>
+          <span hidden data-carousel-slide data-src="/assets/images/why-excellence-3.webp" data-description="Esfenix representative in front of Esfenix flower boxes"></span>
+          <button class="feature-carousel-control prev" type="button" data-carousel-previous aria-label="Previous excellence image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button class="feature-carousel-control next" type="button" data-carousel-next aria-label="Next excellence image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <span class="feature-carousel-status" data-carousel-status aria-live="polite">Image 1 of 3: Esfenix team member preparing roses for shipping</span>
+        </div>
+        <span class="n">Excellence</span><h3>Trust</h3><p>Competitive pricing, consistent service, and dependable solutions for every order.</p>
+      </article>
+      <article class="feature reveal">
+        <div class="ph feature-carousel" data-label="communication" data-img data-src="/assets/images/why-communication-2.webp" data-description="Esfenix team beside a delivery van" data-feature-carousel role="group" aria-roledescription="carousel" aria-label="Communication image options">
+          <span hidden data-carousel-slide data-src="/assets/images/why-communication-3.webp" data-description="Esfenix team holding a flower shipment beside a delivery van"></span>
+          <span hidden data-carousel-slide data-src="/assets/images/why-communication-4.webp" data-description="Esfenix team member carrying flower boxes through the facility"></span>
           <button class="feature-carousel-control prev" type="button" data-carousel-previous aria-label="Previous communication image">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
           </button>
           <button class="feature-carousel-control next" type="button" data-carousel-next aria-label="Next communication image">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
           </button>
-          <span class="feature-carousel-status" data-carousel-status aria-live="polite">Image 1 of 4: Esfenix team member at the flower farm</span>
+          <span class="feature-carousel-status" data-carousel-status aria-live="polite">Image 1 of 3: Esfenix team beside a delivery van</span>
         </div>
         <span class="n">Communication</span><h3>Quick response</h3><p>Personal attention and expert guidance for every order.</p>
       </article>
