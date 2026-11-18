@@ -30,12 +30,14 @@ export function htmlPartials(options = {}) {
     transformIndexHtml: {
       order: 'pre',
       handler(html) {
-        return html.replace(INCLUDE, (match, name) => {
+        // CSP hashes depend on exact inline-script bytes. Git's Windows
+        // checkout/export conversion must not change the production hashes.
+        return html.replace(/\r\n?/g, '\n').replace(INCLUDE, (match, name) => {
           const file = resolve(root, dir, `${name}.html`);
           if (!existsSync(file)) {
             throw new Error(`html-partials: no partial named "${name}" at ${file}`);
           }
-          return readFileSync(file, 'utf8').trimEnd();
+          return readFileSync(file, 'utf8').replace(/\r\n?/g, '\n').trimEnd();
         });
       },
     },
