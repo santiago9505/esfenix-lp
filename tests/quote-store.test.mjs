@@ -206,3 +206,38 @@ test('a product with a single unambiguous configuration needs no choice', async 
   assert.equal(needsVariantChoice(greens()), false, 'one variant, one measure');
   assert.equal(needsVariantChoice(roses()), true, 'several variants');
 });
+
+test('saved quotes survive family regrouping by native task id without changing quantities', () => {
+  const store = quoteStoreModule.createQuoteStore('houston');
+  const before = {
+    id: 'large-card', name: 'Preserved rose Large', category: 'other-flowers',
+    variants: [{ id: 'large-variant', sourceProductId: 'fresa-large', sourceProductName: 'Preserved rose Large', variety: null, color: null, lengthCm: null, availableMeasures: ['stem'] }],
+  };
+  store.addItem(before, { variantId: 'large-variant', measure: 'stem', quantity: 7 });
+  const after = {
+    id: 'preserved-card', name: 'Preserved Roses', category: 'other-flowers',
+    variants: [
+      { ...before.variants[0], id: 'jumbo-variant', sourceProductId: 'fresa-jumbo', variety: 'Jumbo' },
+      { ...before.variants[0], variety: 'Large' },
+    ],
+  };
+  assert.deepEqual(store.reconcile([after]), []);
+  assert.equal(store.getItems()[0].sourceProductId, 'fresa-large');
+  assert.equal(store.getItems()[0].productName, 'Preserved Roses');
+  assert.equal(store.getItems()[0].variety, 'Large');
+  assert.equal(store.getItems()[0].quantity, 7);
+  store.addItem(after, { variantId: 'large-variant', measure: 'stem', quantity: 2 });
+  assert.equal(store.getCount(), 1);
+  assert.equal(store.getItems()[0].quantity, 9);
+});
+
+test('reconcile never replaces an unavailable native task with a similarly named sibling', () => {
+  const store = quoteStoreModule.createQuoteStore('houston');
+  const before = structuredClone(roses());
+  before.variants[0].sourceProductId = 'original-row';
+  store.addItem(before, { variantId: before.variants[0].id, measure: 'stem', quantity: 3 });
+  const after = structuredClone(before);
+  after.variants[0].sourceProductId = 'different-row';
+  assert.equal(store.reconcile([after]).length, 1);
+  assert.equal(store.getCount(), 0);
+});

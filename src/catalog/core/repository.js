@@ -26,6 +26,7 @@ import {
   LIVE_CATALOG_URL,
 } from '../data/live-catalog-config.js';
 import { resolveSalesMeasures } from './sales-measures.js';
+import { groupCatalogPresentations } from './catalog-presentations.js';
 
 /**
  * @typedef {import('./types').Product} Product
@@ -252,7 +253,7 @@ async function loadProductSnapshot(options) {
 function prepareProducts(products) {
   return applyLocalProductImageFallbacks(
     normalizePublicSalesMeasures(
-      stripPublicPrices(sanitizeProductDescriptions(inheritImagesAcrossStemLengths(products))),
+      stripPublicPrices(sanitizeProductDescriptions(inheritImagesAcrossStemLengths(groupCatalogPresentations(products)))),
     ),
     {
       enabled: true,
@@ -407,6 +408,7 @@ function sortProducts(products) {
  */
 export function findProductBySlug(products, slug) {
   return products.find((product) => product.slug === slug)
+    ?? products.find((product) => product.legacySlugs?.includes(slug))
     ?? products.find((product) => product.slug === legacyFamilySlug(slug))
     ?? null;
 }

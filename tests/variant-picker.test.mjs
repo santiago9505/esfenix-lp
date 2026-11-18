@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   quantityAfterVarietyChange,
   usesColorAsVarietyFilter,
+  resolveVariantChoice,
 } from '../src/catalog/ui/variant-picker.js';
 
 test('uses color as a variety filter when each variety has one color across stem lengths', () => {
@@ -15,6 +16,17 @@ test('uses color as a variety filter when each variety has one color across stem
   ];
 
   assert.equal(usesColorAsVarietyFilter(variants), true);
+});
+
+test('Canada can be selected without inventing a color or length used only by Standard', () => {
+  const standard = { id: 'standard', variety: 'Standard', color: 'White', lengthCm: 60 };
+  const canada = { id: 'canada', variety: 'Canada', color: null, lengthCm: null };
+  const variants = [standard, canada];
+  assert.equal(resolveVariantChoice(variants, { variety: 'Canada', color: null, lengthCm: null }), canada);
+  assert.equal(resolveVariantChoice(variants, { variety: 'Standard', color: null, lengthCm: null }), null);
+  assert.equal(resolveVariantChoice(variants, { variety: 'Standard', color: 'White', lengthCm: 60 }), standard);
+  assert.equal(resolveVariantChoice(variants, { variety: null, color: null, lengthCm: null }), null);
+  assert.equal(resolveVariantChoice(variants, { variety: 'Canada', color: 'White', lengthCm: 60 }), null);
 });
 
 test('keeps color as a selection when one variety is sold in multiple colors', () => {

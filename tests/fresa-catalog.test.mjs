@@ -305,7 +305,7 @@ test('merges equivalent rose families even when Fresa classifies one duplicate i
   assert.deepEqual(gardenRoses.sourceProductIds, ['garden-roses-50', 'garden-roses-60-other']);
 });
 
-test('merges only the confirmed flower name aliases and retains their source variants', () => {
+test('groups equivalent families and keeps Premium as a distinct native presentation', () => {
   const names = ['Ranunculos', 'Alstroemerias', 'Ranunculus', 'Alstroemeria', 'Hydrangeas', 'Hydrangeas Premium'];
   const products = normalizeCatalog({
     catalog: {
@@ -324,7 +324,11 @@ test('merges only the confirmed flower name aliases and retains their source var
   });
 
   assert.deepEqual(products.map((product) => product.name), [
-    'Ranunculus', 'Alstroemeria', 'Hydrangeas', 'Hydrangeas Premium',
+    'Ranunculus', 'Alstroemeria', 'Hydrangeas',
+  ]);
+  const hydrangeas = products.find(product => product.slug === 'hydrangeas');
+  assert.deepEqual(hydrangeas.locations[0].variants.map(variant => [variant.variety, variant.sourceProductId]), [
+    ['Standard', 'flower-4'], ['Premium', 'flower-5'],
   ]);
   for (const [name, slug, sourceIds] of [
     ['Ranunculus', 'ranunculus', ['flower-0', 'flower-2']],

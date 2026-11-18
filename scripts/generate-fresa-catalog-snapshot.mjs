@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 import { fetchCatalogPages, normalizeCatalog } from '../src/catalog/core/fresa-catalog.js';
+import { LIVE_CATALOG_URL } from '../src/catalog/data/live-catalog-config.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outputPath = path.join(root, 'public', 'data', 'catalog-snapshot.json');
@@ -42,7 +43,18 @@ function extensionFor(attachment, contentType) {
   return byType[String(contentType ?? '').split(';')[0].trim().toLowerCase()] ?? '.bin';
 }
 
-async function snapshotAttachment(attachment) {
+const attachmentSnapshots = new Map();
+
+function snapshotAttachment(attachment) {
+  const key = attachment?.contentKey || attachment?.url || attachment?.src;
+  if (!key) return Promise.resolve(attachment);
+  if (!attachmentSnapshots.has(key)) {
+    attachmentSnapshots.set(key, downloadAttachment(attachment));
+  }
+  return attachmentSnapshots.get(key);
+}
+
+async function downloadAttachment(attachment) {
   const sourceUrl = String(attachment?.url ?? attachment?.src ?? '').trim();
   if (!sourceUrl || sourceUrl.startsWith('/')) return attachment;
 
@@ -186,11 +198,12 @@ const env = await readEnvironment();
 const apiUrl = String(env.FRESA_CATALOG_API_URL ?? '').trim();
 const apiKey = String(env.FRESA_CATALOG_API_KEY ?? '').trim();
 
-if (!apiUrl || !apiKey) {
+const publicSource = process.argv.includes('--public');
+if (!publicSource && (!apiUrl || !apiKey)) {
   throw new Error('FRESA_CATALOG_API_URL and FRESA_CATALOG_API_KEY are required.');
 }
 
-const sources = readCatalogSources(env, apiUrl);
+const sources = publicSource ? [] : readCatalogSources(env, apiUrl);
 if (sources.some((source) => !source.listId || !source.name)) {
   throw new Error('Every FRESA_CATALOG_SOURCES entry requires listId and name.');
 }
@@ -218,7 +231,10 @@ for (const source of sources) {
   }));
 }
 
-const payload = {
+const payload = publicSource ? await fetchCatalogPages({
+  apiUrl: LIVE_CATALOG_URL,
+  pageLimit: 1000,
+}) : {
   success: true,
   catalog: {
     id: 'esfenix-native-lists',

@@ -35,6 +35,24 @@ export function resolveProductCardImage(product) {
   return firstUsableImage(product.images);
 }
 
+/** Fill newly photographed cards without rebuilding buttons, filters or forms. */
+export function refreshProductCardImages(container, products) {
+  const byId = new Map(products.map(product => [product.id, product]));
+  for (const card of container.querySelectorAll('.cat-card[data-product-id]')) {
+    const media = card.querySelector('.cat-card-img.ph');
+    if (!media) continue;
+    const product = byId.get(card.dataset.productId);
+    const image = product && resolveProductCardImage(product);
+    if (!image) continue;
+    media.replaceWith(productMedia(image, {
+      label: product.name,
+      className: 'cat-card-img',
+      width: 480,
+      height: 360,
+    }));
+  }
+}
+
 /** @param {import('../core/repository').LocationProduct} product */
 function productOptionSummary(product) {
   const varieties = new Set();
@@ -73,7 +91,7 @@ export function productCard(options) {
 
   // Catalog results are useful content, not decorative reveals. Keeping cards
   // visible from their first DOM paint avoids an animation/observer delay.
-  return el('article', { class: 'cat-card' }, [
+  return el('article', { class: 'cat-card', 'data-product-id': product.id }, [
     el('div', { class: 'cat-card-media' }, [
       productMedia(primary, {
         label: product.name,

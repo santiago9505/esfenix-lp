@@ -108,6 +108,16 @@ function optionsFor(variants, key) {
   return key === 'lengthCm' ? list.sort((a, b) => a - b) : list.sort((a, b) => String(a).localeCompare(String(b)));
 }
 
+/** A presentation only requires dimensions that its remaining native rows use. */
+export function resolveVariantChoice(variants, choice) {
+  const matches = narrow(variants, choice);
+  for (const dimension of DIMENSIONS) {
+    if ((choice[dimension.key] === null || choice[dimension.key] === undefined)
+      && optionsFor(matches, dimension.key).length > 0) return null;
+  }
+  return matches[0] ?? null;
+}
+
 /**
  * Builds the picker's form. Returns the element plus a `read()` that resolves
  * the current selection, so both the dialog and the product page can use it.
@@ -171,11 +181,7 @@ export function variantForm(product, options = {}) {
       return matches.find((variant) => variant.id === selectedVariantId) ?? null;
     }
 
-    // Every present dimension must be pinned before a variant is unambiguous.
-    for (const dimension of dimensions) {
-      if (choice[dimension.key] === null || choice[dimension.key] === undefined) return null;
-    }
-    return matches[0] ?? null;
+    return resolveVariantChoice(product.variants, choice);
   }
 
   function measures() {
@@ -268,7 +274,8 @@ export function variantForm(product, options = {}) {
       const prerequisite = dimensions[dimensionIndex - 1];
       const canChoose = dimensions
         .slice(0, dimensionIndex)
-        .every((previous) => choice[previous.key] !== null && choice[previous.key] !== undefined);
+        .every((previous) => (choice[previous.key] !== null && choice[previous.key] !== undefined)
+          || optionsFor(narrow(product.variants, choice, previous.key), previous.key).length === 0);
 
       if (!canChoose) {
         const row = selectRow({
@@ -287,7 +294,10 @@ export function variantForm(product, options = {}) {
 
       const reachable = narrow(product.variants, choice, dimension.key);
       const values = optionsFor(reachable, dimension.key);
-      if (values.length === 0) continue;
+      if (values.length === 0) {
+        choice[dimension.key] = null;
+        continue;
+      }
 
       // A dimension with one possible value is decided, not a question.
       if (values.length === 1 && choice[dimension.key] !== values[0]) {

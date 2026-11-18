@@ -82,6 +82,14 @@ npm test
 npm run build
 ```
 
+También puedes actualizar la copia pública y sus fotos sin una API key con
+`npm run snapshot:catalog -- --public`. Usa la misma integración pública de
+producción que consulta el catálogo, también al desarrollar en localhost.
+`VITE_FRESA_CATALOG_PUBLIC_URL` permite apuntar explícitamente a otra instancia.
+Las presentaciones equivalentes se agrupan en una tarjeta conservando cada ID
+nativo, las fotos y la disponibilidad de cada sede. Los enlaces anteriores y
+las selecciones guardadas siguen resolviendo el producto por su ID de Fresa.
+
 Las credenciales `FRESA_*` nunca entran al bundle. El formulario de cotización
 vive por completo en la landing y envía la solicitud mediante la API existente
 de Fresa. Para prellenar clientes existentes, la landing envía únicamente el email a un Cloudflare

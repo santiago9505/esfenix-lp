@@ -38,6 +38,7 @@ import { renderQuoteFormView } from './ui/quote-form.js';
 import { parseRoute } from './core/url-state.js';
 import { renderCatalogView } from './catalog-page.js';
 import { renderProductView } from './product-page.js';
+import { refreshProductCardImages } from './ui/product-card.js';
 import { resolveLocation } from './data/locations.js';
 import { initReveals } from './ui/site-chrome.js';
 import { getClientTimeZone } from './core/timezone.js';
@@ -494,6 +495,9 @@ export function createApp({ head, body }) {
       // a variant. The fresh data is committed on the next transition that
       // already requires a render (filter, location, quote step or history).
       pendingProducts = result.products;
+      if (parseRoute().view === 'list') {
+        refreshProductCardImages(body, getProductsForLocation(result.products, locationStore.getId()));
+      }
     } catch (error) {
       // A background failure must never replace a working live catalog or its
       // bundled fallback with an error state. The next interval retries.

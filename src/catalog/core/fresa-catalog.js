@@ -11,6 +11,7 @@ import { LOCATIONS } from '../data/locations.js';
 import { catalogOrderForFamily, resolveCatalogFamily } from '../data/catalog-taxonomy.js';
 import { resolveSalesMeasures } from './sales-measures.js';
 import { slugify } from './slug.js';
+import { groupCatalogPresentations } from './catalog-presentations.js';
 import { priceToCents, rememberVariantPrices } from './pricing.js';
 
 export const FRESA_CATALOG_SOURCE_NAME = 'Landing Page';
@@ -457,7 +458,7 @@ export function normalizeCatalog(payload) {
     usedSlugs.add(slug);
   }
 
-  return inheritImagesAcrossStemLengths(groupedProducts);
+  return inheritImagesAcrossStemLengths(groupCatalogPresentations(groupedProducts));
 }
 
 /**

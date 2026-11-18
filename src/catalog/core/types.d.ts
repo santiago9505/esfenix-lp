@@ -78,6 +78,8 @@ export interface ProductLocationData {
 export interface Product {
   id: string;
   slug: string;
+  legacySlugs?: string[];
+  presentationGroup?: boolean;
   name: string;
 
   category: ProductCategory;

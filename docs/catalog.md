@@ -54,6 +54,16 @@ location changes and live catalog updates. Adding a product from an already
 visible card or product page keeps that view mounted and updates only the
 quote summary/count, so loaded catalog photography is not needlessly rebuilt.
 
+Live refresh fills missing card photographs in place. It keeps already-loaded
+images, buttons, focus and quote quantities mounted. Other data changes wait
+for the next user-driven render so an active product form is not reset.
+
+`core/catalog-presentations.js` groups confirmed presentations into one family
+(preserved sizes, Canadian origins, Premium hydrangeas, other-colour mixes and
+leather-leaf bunch sizes). Every native variant and location is retained.
+Previous slugs resolve through `legacySlugs`, and saved quote lines migrate by
+their native Fresa task ID instead of being discarded after a family rename.
+
 **Three separate ideas** that are easy to conflate and are kept apart
 everywhere, including in the payload:
 

@@ -221,20 +221,36 @@ export function createQuoteStore(defaultLocation) {
     reconcile(products) {
       const state = store.getState();
       const byId = new Map(products.map((product) => [product.id, product]));
+      const bySourceId = new Map();
+      for (const product of products) {
+        for (const variant of product.variants) {
+          for (const sourceId of [variant.sourceProductId, ...(variant.sourceProductIds ?? [])].filter(Boolean)) {
+            if (!bySourceId.has(sourceId)) bySourceId.set(sourceId, []);
+            bySourceId.get(sourceId).push({ product, variant });
+          }
+        }
+      }
 
       const kept = [];
       const dropped = [];
       let changed = false;
       for (const item of state.items) {
-        const product = byId.get(item.productId);
+        // A family can be regrouped or renamed while its native orderable row
+        // remains the same. Resolve that row first, without guessing a sibling
+        // from similar display labels or losing the visitor's saved quantity.
+        const native = item.sourceProductId
+          ? bySourceId.get(item.sourceProductId)?.find(({ variant }) =>
+            item.measure === null || (variant.availableMeasures ?? []).includes(item.measure))
+          : null;
+        const product = native?.product ?? byId.get(item.productId);
         const matchingVariant =
-          product?.variants.find(
+          native?.variant ?? (!item.sourceProductId ? product?.variants.find(
             (variant) =>
               (variant.variety ?? null) === item.variety &&
               (variant.color ?? null) === item.color &&
               (variant.lengthCm ?? null) === item.lengthCm &&
               (item.measure === null || (variant.availableMeasures ?? []).includes(item.measure)),
-          );
+          ) : null);
         if (!matchingVariant) {
           dropped.push(item);
           changed = true;
@@ -245,13 +261,19 @@ export function createQuoteStore(defaultLocation) {
         const sourceProductName = matchingVariant.sourceProductName ?? item.sourceProductName ?? null;
         const itemId = normalizeItemId(matchingVariant.itemId ?? item.itemId);
         const sku = matchingVariant.sku ?? item.sku ?? null;
-        if (
-          sourceProductId !== (item.sourceProductId ?? null)
-          || sourceProductName !== (item.sourceProductName ?? null)
-          || itemId !== (item.itemId ?? null)
-          || sku !== (item.sku ?? null)
-        ) {
-          kept.push({ ...item, sourceProductId, sourceProductName, itemId, sku });
+        const updated = {
+          ...item,
+          id: lineId(product.id, matchingVariant.id, item.measure),
+          productId: product.id,
+          productName: product.name,
+          category: product.category,
+          variety: matchingVariant.variety ?? null,
+          color: matchingVariant.color ?? null,
+          lengthCm: matchingVariant.lengthCm ?? null,
+          sourceProductId, sourceProductName, itemId, sku,
+        };
+        if (Object.keys(updated).some(key => updated[key] !== item[key])) {
+          kept.push(updated);
           changed = true;
         } else {
           kept.push(item);

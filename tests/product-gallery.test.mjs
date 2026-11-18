@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveGalleryPrimaryImage, resolveInitialVariety } from '../src/catalog/product-page.js';
+import { resolveGalleryPrimaryImage, resolveInitialVariety, usesVarietyGallery } from '../src/catalog/product-page.js';
 import { resolveProductCardImage } from '../src/catalog/ui/product-card.js';
 
 test('the selected variety image wins over a different family primary image', () => {
@@ -70,4 +70,12 @@ test('other catalog cards keep their family image', () => {
   };
 
   assert.equal(resolveProductCardImage(product), familyImage);
+});
+
+test('grouped Canadian presentations retain every photo while rose galleries keep their variety grid', () => {
+  const standard = { variety: 'Standard', images: [{ src: '/white.webp' }] };
+  const canada = { variety: 'Canada', images: [{ src: '/brown.webp' }, { src: '/yellow.webp' }] };
+  assert.equal(usesVarietyGallery({ presentationGroup: true, variants: [standard, canada] }), false);
+  assert.equal(usesVarietyGallery({ presentationGroup: true, variants: [{ variety: 'Large', images: [{ src: '/large.webp' }] }, { variety: 'Jumbo', images: [{ src: '/jumbo.webp' }] }] }), true);
+  assert.equal(usesVarietyGallery({ variants: [{ variety: 'Be Sweet', images: canada.images }, { variety: 'Atomic', images: standard.images }] }), true);
 });

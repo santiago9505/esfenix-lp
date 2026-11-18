@@ -125,22 +125,25 @@ export function renderProductView(ctx, route) {
   };
 }
 
+/** Keep multi-photo presentations browsable alongside the variety controls. */
+export function usesVarietyGallery(product) {
+  const hasVarieties = distinctValues(product.variants, 'variety').length > 0;
+  const hasPresentationGallery = product.presentationGroup
+    && product.variants.some(variant => new Set((variant.images ?? []).map(image => image.contentKey || image.src)).size > 1);
+  return hasVarieties && !hasPresentationGallery;
+}
+
 /**
  * @param {import('./core/repository').LocationProduct} product
  * @param {{
  *   onVariantSelect?: (variant: import('./core/types').ProductVariant) => void,
  *   onVarietySelect?: (variety: string) => void,
  * }} [options]
- * @returns {{
- *   element: HTMLElement,
- *   setVariant: (variant: import('./core/types').ProductVariant|null) => void,
- *   setVariety: (variety: string|null) => void,
- * }}
  */
 function gallery(product, options = {}) {
   const mainHost = el('div', { class: 'cat-gallery-main' });
   const thumbsHost = el('div', { class: 'cat-gallery-thumbs-host' });
-  const varietyIsTheGallery = distinctValues(product.variants, 'variety').length > 0;
+  const varietyIsTheGallery = usesVarietyGallery(product);
   let activeVariant = null;
   let activeVariety = null;
   let activeImageKey = null;
@@ -170,9 +173,12 @@ function gallery(product, options = {}) {
     const key = thumbnailKey(image);
     if (!key) return null;
 
-    return product.variants.find((variant) =>
+    const candidates = product.variants.filter((variant) =>
       (variant.images ?? []).some((candidate) => thumbnailKey(candidate) === key),
-    ) ?? null;
+    );
+    return candidates.find(variant => variant.id === activeVariant?.id)
+      ?? candidates.find(variant => variant.variety === activeVariety)
+      ?? candidates[0] ?? null;
   }
 
   function imagesForVariety(variety) {
@@ -385,12 +391,12 @@ function gallery(product, options = {}) {
                         : `View ${product.name} photo`,
                       'aria-pressed': key !== null && key === activeImageKey ? 'true' : 'false',
                       onClick() {
-                        activeImageKey = key;
-                        if (imageVariant && options.onVariantSelect) {
-                          options.onVariantSelect(imageVariant);
-                        } else {
-                          render(variant, image);
+                        const selectedVariant = variantForImage(image);
+                        if (selectedVariant && options.onVariantSelect) {
+                          options.onVariantSelect(selectedVariant);
                         }
+                        activeImageKey = key;
+                        render(selectedVariant ?? variant, image);
                       },
                     }, [
                       productMedia(image, {
@@ -418,13 +424,17 @@ function gallery(product, options = {}) {
   return {
     element: el('div', { class: 'cat-gallery' }, [mainHost, thumbsHost]),
     setVariant(variant) {
-      const nextImageKey = thumbnailKey(firstUsableImage(variant?.images ?? []));
+      const selectedPhoto = variant?.id === activeVariant?.id
+        ? variant?.images?.find(image => thumbnailKey(image) === activeImageKey)
+        : null;
+      const nextPhoto = selectedPhoto ?? firstUsableImage(variant?.images ?? []);
+      const nextImageKey = thumbnailKey(nextPhoto);
       const nextMainKey = `${nextImageKey || (variant ? `placeholder:${variant.id}` : 'product-placeholder')}|${labelForVariant(variant)}`;
       activeVariant = variant;
       activeVariety = variant?.variety ?? null;
       activeImageKey = nextImageKey;
       if (renderedMainKey === nextMainKey) return;
-      render(variant);
+      render(variant, nextPhoto);
     },
     setVariety(variety) {
       activeVariant = null;

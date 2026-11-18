@@ -13,6 +13,12 @@ test('Spanish copy covers the catalog, quote flow, dynamic counts, and countries
   assert.equal(translateText('Email address *'), 'Correo electrónico *');
   assert.equal(translateText('Your selection is 80% toward the $150 minimum for Delivery.'), 'Tu selección alcanza el 80% del mínimo de $150 para entrega.');
   assert.equal(translateText('FREEDOM'), 'FREEDOM');
+  assert.equal(translateText('Preserved Roses'), 'Rosas preservadas');
+  assert.equal(translateText('Large'), 'Grande');
+  assert.equal(translateText('Canada'), 'Canadá');
+  assert.equal(translateText('View Canada'), 'Ver Canadá');
+  assert.equal(translateText('Other colors'), 'Otros colores');
+  assert.equal(translateText('10 stems'), '10 tallos');
 });
 
 test('switching language restores source copy and translates newly rendered content', async () => {

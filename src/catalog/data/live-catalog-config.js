@@ -2,7 +2,7 @@ const env = typeof import.meta !== 'undefined' ? import.meta.env ?? {} : {};
 
 export const LIVE_CATALOG_INTEGRATION_ID = 'c4753811-17e2-4dcd-9477-048b1b79060b';
 
-const defaultOrigin = env.DEV ? 'http://localhost:3000' : 'https://fresaai.app';
+const defaultOrigin = 'https://fresaai.app';
 
 /**
  * Public, read-only Fresa integration. Its server-side configuration limits it
