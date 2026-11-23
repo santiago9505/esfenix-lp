@@ -36,8 +36,11 @@ export function renderCatalogView(ctx) {
 
     body: [
       el('div', { class: 'wrap' }, [
-        toolbar(ctx, results.length, activeCount, facets),
+        // The location picker lives inside the layout grid: on wide screens it
+        // heads the filters column and the categories and products start
+        // beside it, instead of under an otherwise empty full-width row.
         el('div', { class: 'cat-layout' }, [
+          toolbar(ctx, results.length, activeCount, facets),
           el('aside', { class: 'cat-sidebar' }, [
             filterPanel({
               facets,
@@ -49,7 +52,7 @@ export function renderCatalogView(ctx) {
             }),
           ]),
           el('div', { class: 'cat-results' }, [
-            categoryChips(ctx),
+            categoryChips(ctx, results.length),
             results.length > 0 ? grid(ctx, results) : emptyPanel(ctx),
             results.length > 0 ? availabilityNote(AVAILABILITY_NOTE) : null,
           ]),
@@ -72,16 +75,12 @@ function toolbar(ctx, resultCount, activeCount, facets) {
         locationId: ctx.locationId,
         label: 'Catalog location',
         required: true,
-        selectionHint: 'Products below are loaded for this location.',
+        selectionHint: 'Products shown are loaded for this location.',
         onRequestChange: (next) => ctx.requestLocationChange(next),
       }),
 
       el('div', { class: 'cat-toolbar-meta' }, [
-        el('p', {
-          class: 'cat-count',
-          role: 'status',
-          text: `${resultCount} product${resultCount === 1 ? '' : 's'}`,
-        }),
+        resultCountText(resultCount, 'cat-count cat-count-toolbar'),
         filterTrigger({
           activeCount,
           onOpen: () => openDrawer(ctx),
@@ -89,6 +88,19 @@ function toolbar(ctx, resultCount, activeCount, facets) {
       ]),
     ]),
   ]);
+}
+
+/**
+ * The live result count. It is drawn twice, in the toolbar for small screens
+ * and at the end of the category chips on wide ones, and CSS hides the copy
+ * that does not apply, so only one is ever announced.
+ */
+function resultCountText(resultCount, className) {
+  return el('p', {
+    class: className,
+    role: 'status',
+    text: `${resultCount} product${resultCount === 1 ? '' : 's'}`,
+  });
 }
 
 /** Opens the mobile filter drawer and keeps it in sync as options are tapped. */
@@ -138,7 +150,7 @@ function openDrawer(ctx) {
  * from the data, so Supplies stays visible and can present itself even though
  * it has no products yet.
  */
-function categoryChips(ctx) {
+function categoryChips(ctx, resultCount) {
   const counts = new Map();
   for (const product of ctx.products) {
     counts.set(product.category, (counts.get(product.category) ?? 0) + 1);
@@ -150,10 +162,8 @@ function categoryChips(ctx) {
       el('h2', { id: 'cat-browse-title', text: 'Start with a category' }),
       el('p', { text: 'You will choose the exact variety and format on the product page.' }),
     ]),
-    el(
-      'div',
-      { class: 'cat-chips', role: 'group', 'aria-label': 'Categories' },
-      [
+    el('div', { class: 'cat-chips-row' }, [
+      el('div', { class: 'cat-chips', role: 'group', 'aria-label': 'Categories' }, [
         el('button', {
           type: 'button',
           class: 'cat-chip',
@@ -164,20 +174,21 @@ function categoryChips(ctx) {
           el('span', { class: 'cat-chip-count', text: String(ctx.products.length) }),
         ]),
         ...CATEGORIES.map((category) => {
-      const selected = ctx.filters.category.includes(category.id);
-      const count = counts.get(category.id) ?? 0;
-      return el('button', {
-        type: 'button',
-        class: 'cat-chip',
-        'aria-pressed': String(selected),
-        onClick: () => ctx.onToggleFilter('category', category.id),
-      }, [
-        el('span', { text: category.label }),
-        count > 0 ? el('span', { class: 'cat-chip-count', text: String(count) }) : null,
-      ]);
+          const selected = ctx.filters.category.includes(category.id);
+          const count = counts.get(category.id) ?? 0;
+          return el('button', {
+            type: 'button',
+            class: 'cat-chip',
+            'aria-pressed': String(selected),
+            onClick: () => ctx.onToggleFilter('category', category.id),
+          }, [
+            el('span', { text: category.label }),
+            count > 0 ? el('span', { class: 'cat-chip-count', text: String(count) }) : null,
+          ]);
         }),
-      ],
-    ),
+      ]),
+      resultCountText(resultCount, 'cat-count cat-count-chips'),
+    ]),
   ]);
 }
 

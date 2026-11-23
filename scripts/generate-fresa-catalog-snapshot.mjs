@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 import { fetchCatalogPages, normalizeCatalog } from '../src/catalog/core/fresa-catalog.js';
+import { applyFresaOrderableMeasures, loadFresaOrderableMeasures } from '../src/catalog/core/fresa-orderable-measures.js';
 import { LIVE_CATALOG_URL } from '../src/catalog/data/live-catalog-config.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -44,12 +45,18 @@ function extensionFor(attachment, contentType) {
 }
 
 const attachmentSnapshots = new Map();
+// Bound downloads and image processing across all products. A larger catalog
+// must not open hundreds of simultaneous Storage requests or Sharp jobs.
+const downloadSlots = Array.from({ length: 6 }, () => Promise.resolve());
 
 function snapshotAttachment(attachment) {
   const key = attachment?.contentKey || attachment?.url || attachment?.src;
   if (!key) return Promise.resolve(attachment);
   if (!attachmentSnapshots.has(key)) {
-    attachmentSnapshots.set(key, downloadAttachment(attachment));
+    const slot = attachmentSnapshots.size % downloadSlots.length;
+    const download = downloadSlots[slot].then(() => downloadAttachment(attachment));
+    downloadSlots[slot] = download.then(() => undefined, () => undefined);
+    attachmentSnapshots.set(key, download);
   }
   return attachmentSnapshots.get(key);
 }
@@ -59,7 +66,10 @@ async function downloadAttachment(attachment) {
   if (!sourceUrl || sourceUrl.startsWith('/')) return attachment;
 
   try {
-    const response = await fetch(sourceUrl, { headers: { Accept: '*/*' } });
+    const response = await fetch(sourceUrl, {
+      headers: { Accept: '*/*' },
+      signal: AbortSignal.timeout(30_000),
+    });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const sourceBytes = Buffer.from(await response.arrayBuffer());
     const contentType = String(response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
@@ -99,7 +109,7 @@ async function downloadAttachment(attachment) {
       ...(attachment?.isImage ? { src: localUrl, contentType: canOptimizeImage ? 'image/webp' : contentType } : {}),
     };
   } catch (error) {
-    console.warn(`Skipped unavailable attachment: ${String(attachment?.name ?? 'unnamed file')}`);
+    console.warn(`Skipped unavailable attachment: ${String(attachment?.name ?? 'unnamed file')} (${error.message})`);
     return null;
   }
 }
@@ -108,7 +118,7 @@ async function pruneCatalogAssets(products) {
   const referenced = new Set();
   const collect = (attachments = []) => {
     for (const attachment of attachments) {
-      const url = String(attachment?.url ?? '').trim();
+      const url = String(attachment?.url ?? attachment?.src ?? '').trim();
       if (!url.startsWith('/data/catalog-assets/')) continue;
       const filename = path.basename(url);
       referenced.add(filename);
@@ -143,6 +153,12 @@ async function snapshotAttachments(attachments = []) {
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
+  }).map((attachment) => {
+    if (!attachment.isImage || !attachment.src) return attachment;
+    // Image rendering uses src; duplicate URLs and the generated MIME type
+    // needlessly inflate every variant in a shared, multi-branch catalog.
+    const { url: _url, contentType: _contentType, ...image } = attachment;
+    return image;
   });
 }
 
@@ -192,6 +208,14 @@ function readCatalogSources(env, apiUrl) {
   const fallbackUrl = new URL(apiUrl);
   const listId = fallbackUrl.searchParams.get('listId') ?? '';
   return listId ? [{ listId, name: 'Products', activeFieldId: '' }] : [];
+}
+
+if (process.argv.includes('--measures-only')) {
+  const snapshot = JSON.parse(await fs.readFile(outputPath, 'utf8'));
+  snapshot.products = applyFresaOrderableMeasures(snapshot.products, await loadFresaOrderableMeasures());
+  await fs.writeFile(outputPath, `${JSON.stringify(snapshot)}\n`, 'utf8');
+  console.log('Updated the bundled sales measures from the public quote form.');
+  process.exit(0);
 }
 
 const env = await readEnvironment();
@@ -244,7 +268,11 @@ const payload = publicSource ? await fetchCatalogPages({
     lists: payloads.flatMap((entry) => entry.catalog.lists ?? []),
   },
 };
-const productsWithInternalData = await Promise.all(normalizeCatalog(payload).map(snapshotProduct));
+const normalized = normalizeCatalog(payload);
+const orderable = publicSource
+  ? applyFresaOrderableMeasures(normalized, await loadFresaOrderableMeasures())
+  : normalized;
+const productsWithInternalData = await Promise.all(orderable.map(snapshotProduct));
 const products = stripPublicPrices(productsWithInternalData);
 await pruneCatalogAssets(products);
 

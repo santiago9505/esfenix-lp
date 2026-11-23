@@ -134,7 +134,7 @@ test('without a legacy session endpoint the response is submitted through the Fr
   assert.equal(result.ok, true);
   assert.equal(result.mode, 'form-api');
   assert.equal(result.taskId, 'created-task');
-  assert.equal(calls[0].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5');
+  assert.equal(new URL(calls[0].url).search, '?catalog=metadata');
   assert.equal(calls[1].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5/submit');
   const body = JSON.parse(calls[1].options.body);
   assert.equal(Object.hasOwn(body, 'total'), false);
@@ -241,7 +241,7 @@ test('uses the price field from the Fresa catalog selected by location', async (
   assert.equal(result.deliveryProgress, 100);
   assert.equal(result.deliveryAllowed, true);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].url, 'https://fresaai.app/api/forms/0578f97716840e34cf5472d5');
+  assert.equal(new URL(calls[0].url).search, '?catalog=metadata');
 });
 
 test('uses hydrated catalog items when Fresa returns them outside the field config', async () => {
@@ -270,15 +270,17 @@ test('uses hydrated catalog items when Fresa returns them outside the field conf
   assert.equal(result.deliveryAllowed, true);
 });
 
-test('keeps the previous metadata and scoped-catalog contract as a fallback', async () => {
+test('loads only the metadata and the selected catalog', async () => {
   const calls = [];
+  const metadata = publicFormResponse();
+  metadata.form.fields.find((field) => field.id === 'products').catalogConfig.items = [];
   const integration = createQuoteIntegration({
     formUrl: FORM_URL,
     sessionEndpoint: null,
     fetchImpl: async (url) => {
       calls.push(url);
       if (String(url).includes('catalog=metadata')) {
-        return { ok: true, status: 200, json: async () => publicFormResponse() };
+        return { ok: true, status: 200, json: async () => metadata };
       }
       if (String(url).includes('catalogFieldId=products')) {
         return { ok: true, status: 200, json: async () => publicFormResponse() };
@@ -294,22 +296,20 @@ test('keeps the previous metadata and scoped-catalog contract as a fallback', as
   assert.equal(result.ok, true);
   assert.equal(result.deliveryAllowed, true);
   assert.deepEqual(calls.map((url) => new URL(url).search), [
-    '',
     '?catalog=metadata',
     '?catalogFieldId=products',
   ]);
 });
 
-test('falls back when the full Fresa form request fails before returning a response', async () => {
+test('falls back to the full form when the server does not support metadata', async () => {
   const calls = [];
   const integration = createQuoteIntegration({
     formUrl: FORM_URL,
     sessionEndpoint: null,
     fetchImpl: async (url) => {
       calls.push(url);
-      if (!String(url).includes('?')) throw new Error('temporary network failure');
       if (String(url).includes('catalog=metadata')) {
-        return { ok: true, status: 200, json: async () => publicFormResponse() };
+        return { ok: false, status: 404, json: async () => ({ success: false }) };
       }
       return { ok: true, status: 200, json: async () => publicFormResponse() };
     },
@@ -322,9 +322,37 @@ test('falls back when the full Fresa form request fails before returning a respo
   assert.equal(result.ok, true);
   assert.equal(result.deliveryAllowed, true);
   assert.deepEqual(calls.map((url) => new URL(url).search), [
-    '',
     '?catalog=metadata',
-    '?catalogFieldId=products',
+    '',
+  ]);
+});
+
+test('preparation, validation and submission share the same scoped catalog request', async () => {
+  const calls = [];
+  const metadata = publicFormResponse();
+  metadata.form.fields.find((field) => field.id === 'products').catalogConfig.items = [];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    sessionEndpoint: null,
+    async fetchImpl(url, options) {
+      const request = new URL(url);
+      calls.push([options.method, request.search]);
+      if (options.method === 'POST') {
+        return { ok: true, status: 200, json: async () => ({ success: true, taskId: 'saved-order' }) };
+      }
+      return { ok: true, status: 200, json: async () => request.searchParams.has('catalog') ? metadata : publicFormResponse() };
+    },
+  });
+  const payload = readyPickupPayload();
+  const preparing = integration.prepareSubmission(payload);
+  const checking = integration.checkDeliveryEligibility(payload);
+  await preparing;
+  assert.equal((await checking).ok, true);
+  assert.equal((await integration.start(payload)).taskId, 'saved-order');
+  assert.deepEqual(calls, [
+    ['GET', '?catalog=metadata'],
+    ['GET', '?catalogFieldId=products'],
+    ['POST', ''],
   ]);
 });
 

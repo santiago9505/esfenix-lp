@@ -34,6 +34,21 @@ test('preserved sizes stay separately selectable, with both photos and working l
   assert.deepEqual(groupCatalogPresentations(grouped), grouped, 'snapshot and live preparation can safely run twice');
 });
 
+test('preserved roses are listed under Roses even when Fresa files them as other flowers', () => {
+  const grouped = groupCatalogPresentations([
+    product('jumbo', 'Preserved rose Jumbo'),
+    product('large', 'Preserved rose Large'),
+    product('carnation', 'Carnation'),
+  ]);
+  const preserved = grouped.find(item => item.slug === 'preserved-roses');
+  assert.equal(preserved.category, 'roses');
+  assert.equal(grouped.find(item => item.slug === 'carnation').category, 'other-flowers');
+  assert.deepEqual(groupCatalogPresentations(grouped), grouped, 'an already grouped snapshot keeps the Roses category');
+  const local = getProductsForLocation(grouped, 'houston');
+  assert.deepEqual(local.filter(item => item.category === 'roses').map(item => item.slug), ['preserved-roses']);
+  assert.equal(findProductBySlug(grouped, 'preserved-rose-jumbo'), preserved, 'old links keep working');
+});
+
 test('origin, Premium, other colors and bunch size remain distinct choices after grouping', () => {
   for (const [names, expected] of [
     [['Lisianthus', 'Lisianthus (Canada)'], ['Standard', 'Canada']],

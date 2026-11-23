@@ -5,6 +5,7 @@ import { dirname, extname, join } from 'node:path';
 import { defineConfig } from 'vite';
 
 import { htmlPartials } from './scripts/vite-plugin-html-partials.mjs';
+import { catalogImagePreloads } from './scripts/vite-plugin-catalog-preloads.mjs';
 
 const page = (name) => fileURLToPath(new URL(`./${name}`, import.meta.url));
 const clientLookupPath = '/api/client-lookup';
@@ -137,7 +138,7 @@ export default defineConfig({
   // Only explicitly public variables may enter browser bundles. FRESA_* values
   // are private server configuration and must never be transformed by Vite.
   envPrefix: ['VITE_'],
-  plugins: [htmlPartials(), cleanRoutes(), optimizeHtmlMarkup(), pruneRedundantBuildAssets()],
+  plugins: [htmlPartials(), cleanRoutes(), optimizeHtmlMarkup(), catalogImagePreloads(), pruneRedundantBuildAssets()],
   server: {
     proxy: clientLookupProxy(),
   },

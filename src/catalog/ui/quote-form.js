@@ -11,7 +11,7 @@
  * disabled; the original block is kept commented below for later use.
  */
 
-import { getDeliverySlots, normalizeDeliveryDate, normalizeDeliveryValue } from '../core/delivery-schedule.js';
+import { formatTimeRange, getDeliverySlots, normalizeDeliveryDate, normalizeDeliveryValue } from '../core/delivery-schedule.js';
 import { buildQuotePayload } from '../core/quote-payload.js';
 import { clearQuoteDraft, readQuoteDraft, writeQuoteDraft } from '../core/quote-draft.js';
 import { getQuotePricing, quotePricingKey } from '../core/pricing.js';
@@ -33,9 +33,12 @@ import { resolveLocation } from '../data/locations.js';
 import { el, firstUsableImage, productMedia, replaceChildren } from './dom.js';
 import { deliverySchedulePicker } from './delivery-schedule.js';
 import { shippingDestinationFields } from './location-select.js';
+
+const OUTSIDE_AREA_NOTICE = 'This is a quote request. We’ll confirm whether we can deliver to your requested address.';
 import { createLoadingOverlay } from './loading-indicator.js';
 import { NO_PAYMENT_NOTE } from './states.js';
 import { openVariantPicker } from './variant-picker.js';
+import { imageForQuoteItem } from './quote-summary.js';
 import { t } from '../../i18n/locale.js';
 
 const STEPS = [
@@ -44,12 +47,14 @@ const STEPS = [
   'Select your products',
   'Type of order',
   'Delivery information',
-  'Other details',
+  'Review request',
 ];
 
 /** The step whose rail label follows the chosen order type. */
 const DELIVERY_STEP_INDEX = 4;
+const REVIEW_STEP_INDEX = STEPS.length - 1;
 const PRODUCTS_REQUIRED_ERROR = 'Select at least one product to continue.';
+const PLURAL_MEASURES = { stem: 'stems', bunch: 'bunches', unit: 'units', pack: 'packs', box: 'boxes' };
 
 /**
  * @param {ReturnType<typeof import('../app.js').createApp>['ctx']} ctx
@@ -58,6 +63,8 @@ const PRODUCTS_REQUIRED_ERROR = 'Select at least one product to continue.';
  *   onOpenProductPicker?: (options?: { onClose?: () => void }) => void,
  *   onLookupClient?: (email: string) => Promise<any>,
  *   onCheckDeliveryEligibility?: (payload: ReturnType<typeof buildQuotePayload>) => Promise<any>,
+ *   onGetDeliveryAvailability?: (dateKey: string, timeZone: string) => Promise<Array<{ start: string, booked?: number }>>,
+ *   onPrepareSubmission?: (payload: ReturnType<typeof buildQuotePayload>) => Promise<void>,
  *   onSubmit: (payload: ReturnType<typeof buildQuotePayload>) => Promise<any>,
  * }} options
  */
@@ -122,14 +129,16 @@ export function renderQuoteFormView(ctx, options) {
     el('ol', { class: 'cat-quote-rail-list' }, railSteps.map((entry) => entry.item)),
   ]);
   const layout = el('div', { class: 'cat-quote-layout' }, [rail, formHost]);
+  const screenNote = el('p', { class: 'cat-quote-screen-note', text: NO_PAYMENT_NOTE });
   let renderedStep = state.step;
+  let preparedReview = false;
 
   replaceChildren(screen, [
     el('div', { class: 'cat-quote-topbar' }, [
       topBack,
     ]),
     layout,
-    el('p', { class: 'cat-quote-screen-note', text: NO_PAYMENT_NOTE }),
+    screenNote,
     lookupLoader.element,
     submitLoader.element,
   ]);
@@ -157,6 +166,14 @@ export function renderQuoteFormView(ctx, options) {
     const moved = state.step !== renderedStep;
     const direction = moved ? (state.step < renderedStep ? 'backward' : 'forward') : null;
     const isCatalogExit = state.result || state.step === 0;
+    const isReview = !state.result && state.step === REVIEW_STEP_INDEX;
+    if (isReview && !preparedReview && options.onPrepareSubmission) {
+      const routing = buildQuotePayload({ locationId: ctx.locationId, vip: state.vip });
+      // This is only a GET. The submit action still owns the POST and handles
+      // any catalog or availability error if preparation did not succeed.
+      void options.onPrepareSubmission(routing).catch(() => {});
+    }
+    preparedReview = isReview;
     if (!state.result) {
       enforceSeasonalOrderType();
       persistDraft();
@@ -164,14 +181,18 @@ export function renderQuoteFormView(ctx, options) {
     topBack.textContent = isCatalogExit ? '← Back to catalog' : '← Back';
     topBack.setAttribute('aria-label', isCatalogExit ? 'Back to catalog' : 'Back to previous question');
 
-    screen.classList.toggle('is-wide', !state.result && state.step === 2);
+    screen.classList.toggle('is-wide', !state.result && (state.step === 2 || isReview));
+    screenNote.hidden = isReview;
     layout.classList.toggle('is-done', Boolean(state.result));
     updateRail();
 
     replaceChildren(formHost, [state.result ? successStep() : currentStep(direction)]);
     renderedStep = state.step;
     if (shouldFocus) {
-      window.setTimeout(() => formHost.querySelector('input, select, textarea, button')?.focus(), 0);
+      window.setTimeout(() => {
+        const focusTarget = isReview ? '#cat-quote-title' : 'input, select, textarea, button';
+        formHost.querySelector(focusTarget)?.focus();
+      }, 0);
     }
   }
 
@@ -287,14 +308,15 @@ export function renderQuoteFormView(ctx, options) {
       state.orderType === 'Delivery'
         ? ['Where should we deliver?', 'Choose a preferred date and confirm the shipping address for this request.']
         : ['When should we have it ready?', 'Choose the day you’ll collect your order and we’ll take it from there.'],
-      ['Anything else we should know?', 'Add the details that will help us prepare the best quote.'],
+      ['Review your request', ''],
     ][state.step];
 
-    return el('div', { class: `cat-quote-step ${state.step === 2 ? 'is-wide' : ''} ${direction ? `is-entering is-${direction}` : ''}` }, [
+    const isReview = state.step === REVIEW_STEP_INDEX;
+    return el('div', { class: `cat-quote-step ${state.step === 2 || isReview ? 'is-wide' : ''} ${isReview ? 'is-review' : ''} ${direction ? `is-entering is-${direction}` : ''}` }, [
       // Temporarily hidden: no portrait or location label should appear here.
       // advisorPortrait(state.step === 0),
       el('div', { class: 'cat-quote-step-heading' }, [
-        el('h2', { id: 'cat-quote-title', text: config[0] }),
+        el('h2', { id: 'cat-quote-title', tabindex: isReview ? '-1' : null, text: config[0] }),
         config[1] ? el('p', { class: 'cat-quote-step-description', text: config[1] }) : null,
       ]),
       state.error ? el('p', { class: 'cat-quote-form-error', role: 'alert', text: state.error }) : null,
@@ -691,9 +713,10 @@ export function renderQuoteFormView(ctx, options) {
         }
         try {
           await refreshQuotePricing({ force: true });
-        } catch {
-          // The order-type step keeps Pickup available when the live check is
-          // unavailable; the final submission validates Delivery again.
+        } catch (error) {
+          state.error = error.message;
+          render(true);
+          return;
         }
         state.step = 3;
         state.error = '';
@@ -758,6 +781,7 @@ export function renderQuoteFormView(ctx, options) {
         el('span', { class: 'cat-quote-location-context-label', text: 'Catalog location' }),
         el('strong', { text: location.label }),
         el('p', { text: 'Products and availability are based on this location.' }),
+        location.requiresShippingDestination ? el('p', { text: OUTSIDE_AREA_NOTICE }) : null,
       ]),
       el('button', {
         type: 'button',
@@ -908,11 +932,21 @@ export function renderQuoteFormView(ctx, options) {
           selectedSeason.type === 'HIGH'
             ? `Unavailable during ${selectedSeason.label}.`
             : deliveryBlocked
-              ? 'Available once the $150 minimum order is met.'
-              : 'We’ll deliver to the address you provide.',
+              ? 'Available for orders over $150.'
+              : ctx.location.requiresShippingDestination
+                ? 'We’ll check delivery to your requested address.'
+                : 'We’ll deliver to the address you provide.',
           deliveryBlocked,
+          ctx.location.requiresShippingDestination ? 'Request delivery' : 'Delivery',
         ),
-        choice('Pickup', 'You’ll collect the flowers from our team.'),
+        choice(
+          'Pickup',
+          ctx.location.requiresShippingDestination
+            ? 'We’ll quote the products and review delivery options with you.'
+            : 'You’ll collect the flowers from our team.',
+          false,
+          ctx.location.requiresShippingDestination ? 'Request a quote' : 'Pickup',
+        ),
       ]),
       stepActions('Continue to delivery information'),
     ]);
@@ -1002,7 +1036,8 @@ export function renderQuoteFormView(ctx, options) {
     try {
       const result = await request;
       if (state.pricingKey !== key || state.pricingPromise !== request || result?.ok !== true) {
-        throw new Error(result?.error || 'Delivery eligibility is unavailable.');
+        throw new Error(result?.code?.startsWith('FRESA_PRODUCT') || result?.code === 'PRODUCT_QUANTITY_INVALID'
+          || result?.code === 'UNMAPPED_PRODUCTS' ? result.error : 'We couldn’t verify the product quantities. Please try again.');
       }
       state.pricing = {
         hasUnknownPricing: result.hasUnknownPricing === true,
@@ -1066,7 +1101,7 @@ export function renderQuoteFormView(ctx, options) {
     ]);
   }
 
-  function choice(value, description, disabled = false) {
+  function choice(value, description, disabled = false, label = value) {
     const id = `cat-order-${value.toLowerCase()}`;
     return el('label', { class: `cat-quote-choice ${state.orderType === value ? 'is-selected' : ''} ${disabled ? 'is-disabled' : ''}` }, [
       el('input', {
@@ -1084,17 +1119,17 @@ export function renderQuoteFormView(ctx, options) {
         id,
       }),
       el('span', { class: 'cat-quote-choice-mark' }),
-      el('span', {}, [el('strong', { text: value }), el('small', { text: description })]),
+      el('span', {}, [el('strong', { text: label }), el('small', { text: description })]),
     ]);
   }
 
   function deliveryStep() {
     const isDelivery = state.orderType === 'Delivery';
-    const clientTimeZone = ctx.clientTimeZone ?? 'UTC';
+    const isOutsideAreaQuote = ctx.location.requiresShippingDestination && !isDelivery;
+    const clientTimeZone = resolveLocation(ctx.locationId).timeZone;
     const isDateAllowed = (dateKey) => !isDelivery || resolveSeason(dateKey).type !== 'HIGH';
-    // Delivery windows are preferences only in the static plan; the team
-    // confirms availability after reviewing the request. High-season dates
-    // remain available to Pickup but are not valid for Delivery.
+    // Fresa owns capacity; the picker shows its latest availability and Fresa
+    // reserves the window atomically when the quote is submitted.
     const scheduleOptions = {
       now: new Date(),
       timeZone: clientTimeZone,
@@ -1160,7 +1195,7 @@ export function renderQuoteFormView(ctx, options) {
     updateSeasonNotice(state.delivery.dateTime);
     const scheduleField = el('div', { class: 'cat-quote-field cat-quote-schedule-field' }, [
       el('div', { class: 'cat-quote-schedule-label' }, [
-        el('label', { text: `${isDelivery ? 'Preferred delivery date and time' : 'Preferred pickup date'} *` }),
+        el('label', { text: `${isDelivery ? 'Preferred delivery date and time' : isOutsideAreaQuote ? 'Preferred date' : 'Preferred pickup date'} *` }),
         el('span', { text: isDelivery ? 'Mon–Sun · 8:00 AM–4:00 PM · Two delivery windows' : 'Mon–Sun · 24-hour notice' }),
       ]),
       deliverySchedulePicker({
@@ -1168,7 +1203,9 @@ export function renderQuoteFormView(ctx, options) {
         timeZone: clientTimeZone,
         mode: isDelivery ? 'window' : 'date',
         isDateAllowed,
-        availabilityProvider: null,
+        availabilityProvider: options.onGetDeliveryAvailability
+          ? (dateKey) => options.onGetDeliveryAvailability(dateKey, clientTimeZone)
+          : null,
         onChange: (selection) => {
           state.delivery.dateTime = selection.dateTime;
           state.delivery.slot = selection.slot;
@@ -1183,7 +1220,9 @@ export function renderQuoteFormView(ctx, options) {
       el('small', {
         text: isDelivery
           ? 'Pick a preferred four-hour window. Our team will confirm the final delivery time.'
-          : 'Pick the day you’d like to collect your order. We’ll agree the exact time with you.',
+          : isOutsideAreaQuote
+            ? 'Pick the date you need the flowers. We’ll review availability with you.'
+            : 'Pick the day you’d like to collect your order. We’ll agree the exact time with you.',
       }),
     ]);
     return el('form', {
@@ -1203,7 +1242,9 @@ export function renderQuoteFormView(ctx, options) {
         if (!validValue) {
           state.error = isDelivery
             ? 'Choose an available delivery date and time window to continue.'
-            : 'Choose an available pickup date at least 24 hours ahead.';
+            : isOutsideAreaQuote
+              ? 'Choose a preferred date at least 24 hours ahead.'
+              : 'Choose an available pickup date at least 24 hours ahead.';
           render(true);
           return;
         }
@@ -1228,11 +1269,11 @@ export function renderQuoteFormView(ctx, options) {
             ]),
             deliveryField('ZIP code', 'zipCode', 'postal-code', true, 'text', 'numeric'),
           ])
-        : el('div', { class: 'cat-quote-info-note' }, [
+        : !isOutsideAreaQuote && el('div', { class: 'cat-quote-info-note' }, [
             el('strong', { text: 'Pickup selected' }),
             el('p', { text: 'We’ll confirm the pickup address with you after reviewing your request.' }),
           ]),
-      stepActions('Continue to other details'),
+      stepActions('Continue to review'),
     ]);
   }
 
@@ -1262,6 +1303,7 @@ export function renderQuoteFormView(ctx, options) {
       class: 'cat-quote-step-form',
       onSubmit: async (event) => {
         event.preventDefault();
+        if (state.submitPending) return;
         state.notes = event.currentTarget.querySelector('textarea[name="notes"]').value.trim();
         persistDraft();
 
@@ -1277,7 +1319,7 @@ export function renderQuoteFormView(ctx, options) {
         const isDateAllowed = (dateKey) => orderType !== 'Delivery' || resolveSeason(dateKey).type !== 'HIGH';
         const currentScheduleOptions = {
           now: new Date(),
-          timeZone: ctx.clientTimeZone ?? 'UTC',
+          timeZone: resolveLocation(ctx.locationId).timeZone,
           mode: orderType === 'Delivery' ? 'delivery' : 'pickup',
           isDateAllowed,
         };
@@ -1316,29 +1358,6 @@ export function renderQuoteFormView(ctx, options) {
 
         state.orderType = orderType;
 
-        // Re-check at the final boundary so a quantity or measure change
-        // cannot submit Delivery below the $150 minimum.
-        if (orderType === 'Delivery') {
-          let finalPricing = currentQuotePricing();
-          try {
-            finalPricing = await refreshQuotePricing({ force: true });
-          } catch {
-            // Keep the safe local result. Delivery is not sent unless the
-            // minimum can be confirmed.
-          }
-          if (!isDeliveryAllowed(finalPricing)) {
-            state.orderType = 'Pickup';
-            state.error = finalPricing.hasUnknownPricing
-              ? 'Delivery eligibility could not be confirmed. Please choose Pickup or try again.'
-              : 'This selection does not meet the $150 Delivery minimum. Please update it or choose Pickup.';
-            state.step = 3;
-            state.submitPending = false;
-            setSubmitBusy(false);
-            render(true);
-            return;
-          }
-        }
-
         try {
           const payload = buildQuotePayload({
             locationId: ctx.locationId,
@@ -1350,7 +1369,7 @@ export function renderQuoteFormView(ctx, options) {
             orderType,
             delivery: {
               ...state.delivery,
-              timeZone: ctx.clientTimeZone ?? 'UTC',
+              timeZone: resolveLocation(ctx.locationId).timeZone,
             },
             shippingDestination: ctx.locationStore.getShippingDestination(),
             notes: state.notes,
@@ -1365,6 +1384,10 @@ export function renderQuoteFormView(ctx, options) {
               state.delivery.dateTime = '';
               state.delivery.slot = undefined;
               state.step = 4;
+            } else if (['DELIVERY_MINIMUM_NOT_MET', 'DELIVERY_ELIGIBILITY_UNAVAILABLE', 'DELIVERY_OPTION_REJECTED'].includes(result?.code)) {
+              state.orderType = 'Pickup';
+              state.delivery.slot = undefined;
+              state.step = 3;
             }
             state.error = result?.error || 'We could not send your quote request. Please try again.';
           }
@@ -1377,25 +1400,84 @@ export function renderQuoteFormView(ctx, options) {
         }
       },
     }, [
+      reviewSummary(),
       el('div', { class: 'cat-quote-notes-field' }, [
         el('label', { for: 'cat-quote-notes', text: 'Notes for the seller (Optional)' }),
-        el('textarea', { id: 'cat-quote-notes', name: 'notes', rows: '6', maxlength: '2000', placeholder: 'Tell us anything important about your request…' }, state.notes),
+        el('textarea', { id: 'cat-quote-notes', name: 'notes', rows: '3', maxlength: '2000', placeholder: 'Tell us anything important about your request…' }, state.notes),
       ]),
-      reviewSummary(),
-      el('div', { class: 'cat-quote-form-actions' }, [
+      el('div', { class: 'cat-quote-form-actions cat-quote-review-actions' }, [
         button,
+        el('p', { text: NO_PAYMENT_NOTE }),
       ]),
     ]);
   }
 
   function reviewSummary() {
     const items = ctx.quoteStore.getItems();
-    const season = resolveSeason(state.delivery.dateTime);
-    return el('div', { class: 'cat-quote-review' }, [
-      el('div', { class: 'cat-quote-section-label' }, [el('span', { text: 'Ready to send' }), el('span', { class: 'cat-quote-section-count', text: `${items.length} product${items.length === 1 ? '' : 's'}` })]),
-      el('p', { text: `${state.email} · ${resolveLocation(ctx.locationId).label} · ${state.orderType}` }),
-      el('p', { text: season.type === 'HIGH' ? `Season type: HIGH — ${season.label}` : 'Season type: LOW' }),
-      el('p', { class: 'cat-note', text: NO_PAYMENT_NOTE }),
+    const { delivery, orderType } = state;
+    const location = resolveLocation(ctx.locationId);
+    const outsideArea = location.requiresShippingDestination;
+    const isDelivery = orderType === 'Delivery';
+    const city = [delivery.city, [delivery.state, delivery.zipCode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    const destination = isDelivery || outsideArea ? [delivery.address, city].filter(Boolean).join(', ') : location.label;
+    const dateKey = delivery.dateTime.slice(0, 10);
+    const date = new Date(`${dateKey}T12:00:00Z`);
+    const hasDate = !Number.isNaN(date.getTime());
+    const slot = isDelivery && hasDate
+      ? getDeliverySlots(dateKey, { timeZone: location.timeZone }).find(({ value }) => value === delivery.dateTime)
+      : null;
+    const dateFormat = (locale) => new Intl.DateTimeFormat(locale, {
+      weekday: 'short', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+    }).format(date);
+
+    return el('section', { class: 'cat-quote-review', 'aria-labelledby': 'cat-quote-review-products' }, [
+      el('div', { class: 'cat-quote-review-head' }, [
+        el('h3', { id: 'cat-quote-review-products', text: 'Products' }),
+        el('span', { text: `${items.length} product${items.length === 1 ? '' : 's'}` }),
+      ]),
+      el('ul', { class: 'cat-quote-review-items', role: 'list' }, items.map((item) => {
+        const image = productMedia(imageForQuoteItem(item, ctx.products), {
+          label: item.productName, className: 'cat-quote-review-thumb', width: 96, height: 96,
+        });
+        image.setAttribute('aria-hidden', 'true');
+        const variant = describeQuoteItem({ ...item, measure: null });
+        const measure = item.quantity === 1 ? item.measure : PLURAL_MEASURES[item.measure] ?? item.measure;
+        return el('li', { class: 'cat-quote-review-item' }, [
+          image,
+          el('div', { class: 'cat-quote-review-item-name' }, [
+            el('strong', { text: item.productName }),
+            variant ? el('span', { text: variant }) : null,
+          ]),
+          el('div', { class: 'cat-quote-review-quantity' }, [
+            el('strong', { text: String(item.quantity) }),
+            measure ? el('span', { text: measure }) : null,
+          ]),
+        ]);
+      })),
+      el('div', { class: 'cat-quote-review-fulfillment' }, [
+        el('dl', { class: 'cat-quote-review-details' }, [
+          el('div', {}, [
+            el('dt', { text: outsideArea ? 'Requested destination' : isDelivery ? 'Requested delivery' : 'Pickup' }),
+            el('dd', {}, [
+              hasDate ? el('time', {
+                datetime: dateKey,
+                text: dateFormat('en-US'),
+                'data-i18n-es': dateFormat('es-US'),
+              }) : null,
+              slot ? el('span', {
+                text: formatTimeRange(slot.start, slot.end, 'en-US'),
+                'data-i18n-es': formatTimeRange(slot.start, slot.end, 'es-US'),
+              }) : null,
+              destination ? el('span', { text: destination }) : null,
+            ]),
+          ]),
+          el('div', {}, [
+            el('dt', { text: 'Quote email' }),
+            el('dd', { text: state.email }),
+          ]),
+        ]),
+        outsideArea ? el('p', { class: 'cat-quote-review-outside-area', text: OUTSIDE_AREA_NOTICE }) : null,
+      ]),
     ]);
   }
 
@@ -1405,6 +1487,7 @@ export function renderQuoteFormView(ctx, options) {
       el('p', { class: 'cat-quote-step-count', text: 'Request received' }),
       el('h2', { id: 'cat-quote-title', text: 'Your quote request is on its way.' }),
       el('p', { text: 'Your request was recorded. You can return to the catalog whenever you’re ready.' }),
+      ctx.location.requiresShippingDestination ? el('p', { text: OUTSIDE_AREA_NOTICE }) : null,
     ]);
   }
 

@@ -203,7 +203,7 @@ test('checks the $150 Delivery minimum with the selected product measure without
 test('uses Fresa\'s configured price-field id when reference values are opaque', () => {
   const selected = payload(false);
   selected.fresa.products[0].measure = 'bunch';
-  selected.fresa.products[0].quantity = 6;
+  selected.fresa.products[0].quantity = 7;
 
   const eligibility = getFresaDeliveryEligibility(selected, {
     minimumProgressPriceFieldId: 'fresa-field-opaque-bunch-price',
@@ -222,7 +222,7 @@ test('uses Fresa\'s configured price-field id when reference values are opaque',
 test('prefers Fresa\'s configured price field over a generic reference value', () => {
   const selected = payload(false);
   selected.fresa.products[0].measure = 'bunch';
-  selected.fresa.products[0].quantity = 6;
+  selected.fresa.products[0].quantity = 7;
 
   const eligibility = getFresaDeliveryEligibility(selected, {
     catalogPriceFieldId: 'fresa-field-bunch-price',
@@ -243,7 +243,7 @@ test('prefers Fresa\'s configured price field over a generic reference value', (
 test('uses Fresa\'s configured price field before a conflicting measure alias', () => {
   const selected = payload(false);
   selected.fresa.products[0].measure = 'bunch';
-  selected.fresa.products[0].quantity = 6;
+  selected.fresa.products[0].quantity = 7;
 
   const eligibility = getFresaDeliveryEligibility(selected, {
     catalogPriceFieldId: 'fresa-field-bunch-price',

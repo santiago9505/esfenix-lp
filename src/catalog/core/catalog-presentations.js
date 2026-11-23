@@ -3,9 +3,11 @@
  * These rules also accept older, already-normalized snapshots. Only confirmed
  * families are grouped; Mini Carnation, Carnation and other distinct flowers
  * keep their own cards. No availability or attachment crosses locations.
+ * A family may also fix its catalog category: Preserved Roses are shown under
+ * Roses even when Fresa lists them with the other flowers.
  */
 const FAMILIES = [
-  { match: /^preserved roses?(?: |$)/, name: 'Preserved Roses', slug: 'preserved-roses' },
+  { match: /^preserved roses?(?: |$)/, name: 'Preserved Roses', slug: 'preserved-roses', category: 'roses' },
   { match: /^lisianthus(?: |$)/, name: 'Lisianthus', slug: 'lisianthus' },
   { match: /^hydrangeas?(?: |$)/, name: 'Hydrangeas', slug: 'hydrangeas' },
   { match: /^peony(?: |$)/, name: 'Peony', slug: 'peony' },
@@ -79,9 +81,11 @@ export function groupCatalogPresentations(products) {
       grouped.set(`product:${product.id}`, product);
       continue;
     }
-    const key = `${product.category}:${family.slug}`;
+    const category = family.category ?? product.category;
+    const key = `${category}:${family.slug}`;
     const next = {
       ...product,
+      category,
       name: family.name,
       slug: family.slug,
       group: family.slug,

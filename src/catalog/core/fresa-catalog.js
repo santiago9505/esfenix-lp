@@ -615,11 +615,15 @@ function normalizeProduct(raw, columns) {
 /**
  * Keeps editorial descriptions while dropping Fresa-generated descriptions
  * that contain monetary or price-labelled content.
+ *
+ * Fresa stores descriptions as rich text, so an untouched field arrives as
+ * `<p></p>`. The markup is reduced to plain text first, and a description
+ * with no words left is treated as no description at all.
  * @param {unknown} value
  * @returns {string|null}
  */
 export function sanitizeCatalogDescription(value) {
-  const description = safeString(value);
+  const description = richTextToPlain(safeString(value));
   if (!description) return null;
 
   const hasPriceReference = /[$€£]\s*\d|\b(?:price|precio|cost|costo)\b|\b(?:stem|bunch|unit|pack|box)\s*(?:price|precio)?\s*[:=]?\s*[$€£]?\s*\d/i.test(description);
@@ -798,22 +802,13 @@ function buildVariants(raw, fields, columns, roleColumns, category) {
     prices[genericMeasure] = readColumnValue(fields, genericPriceColumn);
   }
   const pricedMeasures = Object.entries(prices)
-    .filter(([, value]) => value !== null && value !== undefined && value !== '')
+    .filter(([, value]) => priceToCents(value) !== null)
     .map(([measure]) => measure);
   const hasPriceDescriptor = explicitPriceColumns.length > 0 || Boolean(genericPriceColumn);
-  const detectedMeasures = [...new Set([...values.measure, ...pricedMeasures])]
-    .filter((measure) => {
-      // When Fresa exposes a price column, an empty value means that metric is
-      // not available for this product. Older/sparse fixtures without price
-      // descriptors keep their declared sales unit unchanged.
-      if (!hasPriceDescriptor) return true;
-      return pricedMeasures.includes(measure);
-    });
-  const hasStemPrice = roleColumns.stemPrice
-    ? prices.stem !== null && prices.stem !== undefined && prices.stem !== ''
-    : null;
-  const salesMeasureSignals = [...new Set([...values.measure, ...detectedMeasures])];
-  const availableMeasures = resolveSalesMeasures(category, salesMeasureSignals, { hasStemPrice });
+  // A blank price never adds a presentation. The public catalog has no
+  // price columns, so its declared sales unit is only a fallback until the
+  // quote form supplies the actual orderable measures.
+  const availableMeasures = resolveSalesMeasures(category, hasPriceDescriptor ? pricedMeasures : values.measure);
 
   const customColumns = columns.filter((column) => {
     if (!safeString(column.key)) return false;
@@ -1081,6 +1076,31 @@ function resolveCatalogSource(value) {
 function safeString(value) {
   if (value === null || value === undefined) return '';
   return typeof value === 'string' ? value.trim() : String(value).trim();
+}
+
+const HTML_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
+/**
+ * Rich text to readable plain text: line breaks and block ends become spaces,
+ * every other tag is dropped and common entities are decoded. The result is
+ * still rendered as text, never as markup.
+ * @param {string} value
+ */
+function richTextToPlain(value) {
+  if (!value || !/[<&]/.test(value)) return value;
+  return value
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(?:p|div|li|h[1-6])\s*>/gi, ' ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, entity) => {
+      if (entity[0] === '#') {
+        const code = entity[1].toLowerCase() === 'x' ? parseInt(entity.slice(2), 16) : Number(entity.slice(1));
+        return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+      }
+      return HTML_ENTITIES[entity.toLowerCase()] ?? match;
+    })
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /** @param {unknown} value */

@@ -182,18 +182,20 @@ export function productMedia(image, options) {
   }
 
   const width = options.width ?? 640;
-  const src = thumbnailSource(image.src, width);
+  const src = productImageSource(image.src, width);
 
   return el('div', { class: `${className} cat-media-img` }, [
     el('img', {
+      // Set scheduling hints before src can start a request on a detached img.
+      loading: options.eager ? 'eager' : 'lazy',
+      fetchpriority: options.eager ? 'high' : 'auto',
+      decoding: 'async',
       src,
       alt: image.alt && !/\.(?:jpe?g|png|webp|avif|gif|svg)$/i.test(image.alt)
         ? image.alt
         : options.label,
       width,
       height: options.height ?? 480,
-      loading: options.eager ? 'eager' : 'lazy',
-      decoding: 'async',
       onerror(event) {
         // Fall back to the placeholder rather than a broken image icon.
         const img = event.currentTarget;
@@ -216,7 +218,7 @@ export function productMedia(image, options) {
  * @param {string} src
  * @param {number} width
  */
-function thumbnailSource(src, width) {
+export function productImageSource(src, width) {
   if (width <= 480 && /^\/data\/catalog-assets\/[^?#]+\.webp$/i.test(src)) {
     return src.replace(/\.webp$/i, '-thumb.webp');
   }

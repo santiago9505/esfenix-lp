@@ -223,7 +223,7 @@ function normalizeMeasure(value) {
  *
  * @param {any} item
  */
-function catalogMeasureOptions(item) {
+export function catalogMeasureOptions(item) {
   const configured = (Array.isArray(item?.measureOptions) ? item.measureOptions : [])
     .map((option) => normalizeMeasure(option?.value ?? option?.label ?? option))
     .filter(Boolean);
@@ -373,7 +373,7 @@ export function getFresaDeliveryEligibility(payload, catalogConfig) {
 
   const calculatedProgress = Math.min(100, Math.floor((totalCents / DELIVERY_MINIMUM_CENTS) * 100));
   return {
-    deliveryAllowed: !hasUnknownPricing && totalCents >= DELIVERY_MINIMUM_CENTS,
+    deliveryAllowed: !hasUnknownPricing && totalCents > DELIVERY_MINIMUM_CENTS,
     deliveryProgress: hasUnknownPricing ? Math.min(99, calculatedProgress) : calculatedProgress,
     hasUnknownPricing,
   };
@@ -524,6 +524,11 @@ function buildProductLines(payload, catalogConfig) {
     );
   }
   return lines;
+}
+
+/** Validate the exact lines that would be accepted at final submission. */
+export function validateFresaQuoteProducts(payload, catalogConfig) {
+  buildProductLines(payload, catalogConfig);
 }
 
 /**

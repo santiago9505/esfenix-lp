@@ -82,19 +82,22 @@ export function renderProductView(ctx, route) {
 
     body: [
       el('div', { class: 'wrap' }, [
-        el('div', { class: 'cat-product-toolbar' }, [
-          locationSelect({
-            locationId: ctx.locationId,
-            onRequestChange: (next) => ctx.requestLocationChange(next),
-            compact: true,
-          }),
-          categoryNavTrigger({
-            label: 'Browse categories',
-            onOpen: () => openCategoryDrawer(ctx, product),
-          }),
-        ]),
-
+        // The location picker lives inside the layout grid: on wide screens it
+        // sits at the top of the sidebar column, so the product starts beside it
+        // instead of under an otherwise empty full-width row.
         el('div', { class: 'cat-product-layout' }, [
+          el('div', { class: 'cat-product-toolbar' }, [
+            locationSelect({
+              locationId: ctx.locationId,
+              onRequestChange: (next) => ctx.requestLocationChange(next),
+              compact: true,
+            }),
+            categoryNavTrigger({
+              label: 'Browse categories',
+              onOpen: () => openCategoryDrawer(ctx, product),
+            }),
+          ]),
+
           el('aside', { class: 'cat-product-side' }, [
             categoryNav({
               tree: ctx.categoryTree(),

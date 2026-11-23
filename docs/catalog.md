@@ -58,6 +58,16 @@ Live refresh fills missing card photographs in place. It keeps already-loaded
 images, buttons, focus and quote quantities mounted. Other data changes wait
 for the next user-driven render so an active product form is not reset.
 
+**First-row images.** `scripts/vite-plugin-catalog-preloads.mjs` derives a small,
+content-hashed head script from the bundled snapshot in both development and
+production. It preloads up to three card thumbnails before the app and catalog
+data are ready, using the same location, editorial order and opening-photo
+rules as the cards. URL location/category and saved location are respected.
+Product/quote pages and variant-filtered links skip these speculative hints.
+Visible card and main-gallery images use high fetch priority; other images
+keep native lazy loading. Regenerating the snapshot automatically updates the
+hints on the next page transform or build.
+
 `core/catalog-presentations.js` groups confirmed presentations into one family
 (preserved sizes, Canadian origins, Premium hydrangeas, other-colour mixes and
 leather-leaf bunch sizes). Every native variant and location is retained.
@@ -235,6 +245,33 @@ copy. Products without a usable Fresa image keep the neutral placeholder. When t
 variety and colour are offered at multiple stem lengths, a real Fresa image is
 shared across those lengths; it is not copied to another variety, colour or
 catalog location.
+
+### Share approved Houston photos with other branches
+
+Fresa owns flower photography. Copies belong to each branch's native product
+attachment field; the storefront does not borrow another branch's images at
+render time. Match the exact flower family, variety, color and attributes;
+stem lengths may share the same photo. Existing attachments are preserved.
+
+The maintenance script uses an authorized Fresa checkout's server storage
+credentials without copying those credentials into this repository:
+
+```powershell
+node scripts/sync-fresa-flower-images.mjs --fresa-project "C:\path\to\Fresa\webapp"
+```
+
+This first prints a plan. Add `--apply` to upload and verify the bytes, link the
+attachments in Fresa, and add missing Houston flower options as native DMV
+products. DMV is a franchise: its full catalog is available to request, with
+availability confirmed by the team. Existing branch prices stay intact; new
+DMV rows have no copied accounting IDs, prices or stock. Fresa still validates
+the requested product and measure, and delivery eligibility still requires
+known local pricing.
+
+The backup, resumable journal and results stay under the ignored
+`data/sources/shared-flower-images/` directory. After a migration, refresh the
+first-render cache with `npm run snapshot:catalog -- --public` and validate the
+native form mappings. Routine photo updates continue through Fresa.
 
 ### Modify a location
 

@@ -1,16 +1,21 @@
 /**
  * Image carousels for the "Why Esfenix" feature cards.
  *
- * Every card keeps its current photo as the first slide (loaded lazily by the
- * shared `.ph[data-img]` loader). Extra slides are declared as hidden
- * `[data-carousel-slide]` elements and are only downloaded after a visitor
- * interacts with the card, so the initial page weight stays the same.
+ * The first slide is loaded lazily by the shared `.ph[data-img]` loader.
+ * Extra slides are declared as hidden `[data-carousel-slide]` elements. The
+ * next slide is fetched when the card scrolls into view and the rest as soon
+ * as the visitor points at, focuses or touches the card, so a click never
+ * waits for the network.
+ *
+ * Controls react at once: the dots and the screen-reader status move on the
+ * click itself, and the photo cross-fades in quickly behind them.
  *
  * Slide images are exported already framed for the card (2:3 portrait), so
  * `background-size: cover` never cuts people or products at the edges.
  */
 
 const SWIPE_THRESHOLD = 40;
+const FADE_FALLBACK_MS = 400;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 function loadImage(src) {
@@ -47,6 +52,7 @@ function setupCarousel(carousel) {
   dots.className = 'feature-carousel-dots';
   dots.setAttribute('aria-hidden', 'true');
   for (let index = 0; index < slides.length; index += 1) dots.append(document.createElement('span'));
+
   carousel.append(dots);
 
   const loaded = new Map();
@@ -60,78 +66,106 @@ function setupCarousel(carousel) {
     }
     return loaded.get(src);
   };
+  const preloadAll = () => slides.forEach((_, index) => preload(index).catch(() => {}));
 
-  let currentIndex = 0;
+  // Index the controls point at. It moves on every click, before the photo loads.
+  let targetIndex = 0;
   let pendingRequest = 0;
+  let activeLayer = null;
 
-  const paintDots = () => {
-    [...dots.children].forEach((dot, index) => dot.classList.toggle('is-active', index === currentIndex));
+  const paintIndicators = () => {
+    [...dots.children].forEach((dot, index) => dot.classList.toggle('is-active', index === targetIndex));
+    if (status) {
+      const { description } = slides[targetIndex];
+      status.textContent = `Image ${targetIndex + 1} of ${slides.length}${description ? `: ${description}` : ''}`;
+    }
   };
 
-  const paintStatus = () => {
-    if (!status) return;
-    const { description } = slides[currentIndex];
-    status.textContent = `Image ${currentIndex + 1} of ${slides.length}${description ? `: ${description}` : ''}`;
-  };
+  const setBackground = (src) => carousel.style.setProperty('--bg', `url('${src}')`);
 
-  const commit = (index) => {
-    currentIndex = index;
-    carousel.style.setProperty('--bg', `url('${slides[index].src}')`);
-    paintDots();
-    paintStatus();
+  const settleLayer = () => {
+    if (!activeLayer) return;
+    setBackground(activeLayer.dataset.src);
+    activeLayer.remove();
+    activeLayer = null;
   };
 
   const fadeTo = (index) => {
-    carousel.querySelector('.feature-carousel-layer')?.remove();
+    const { src } = slides[index];
+    // A fade still running is finished at once so quick clicks never stack up.
+    settleLayer();
     if (reduceMotion.matches) {
-      commit(index);
+      setBackground(src);
       return;
     }
     const layer = document.createElement('span');
     layer.className = 'feature-carousel-layer';
     layer.setAttribute('aria-hidden', 'true');
-    layer.style.backgroundImage = `url('${slides[index].src}')`;
+    layer.dataset.src = src;
+    layer.style.backgroundImage = `url('${src}')`;
     carousel.insertBefore(layer, carousel.firstChild);
+    activeLayer = layer;
     // Flush styles so the opacity transition runs from 0.
     void layer.offsetWidth;
     layer.classList.add('is-visible');
-    let done = false;
     const finish = () => {
-      if (done) return;
-      done = true;
-      commit(index);
-      layer.remove();
+      if (activeLayer === layer) settleLayer();
     };
     layer.addEventListener('transitionend', finish, { once: true });
-    window.setTimeout(finish, 700);
+    window.setTimeout(finish, FADE_FALLBACK_MS);
   };
 
   const showSlide = (step) => {
-    const nextIndex = (currentIndex + step + slides.length) % slides.length;
+    targetIndex = (targetIndex + step + slides.length) % slides.length;
+    paintIndicators();
+    const index = targetIndex;
     const request = ++pendingRequest;
-    preload(nextIndex).then(() => {
+    preload(index).then(() => {
       if (request !== pendingRequest) return;
-      fadeTo(nextIndex);
-      // Warm the following slide so the next click feels instant.
-      preload((nextIndex + step + slides.length) % slides.length).catch(() => {});
+      fadeTo(index);
     }, () => {
-      // Keep the current photo if a slide fails to load.
+      // Keep the photo on screen if a slide fails to load.
     });
+    preload((index + step + slides.length) % slides.length).catch(() => {});
   };
 
-  previous?.addEventListener('click', () => showSlide(-1));
-  next?.addEventListener('click', () => showSlide(1));
+  // The buttons cover the left and right halves of the photo, so a swipe ends
+  // on one of them; its trailing click must not move twice.
+  let swiped = false;
+  const onControl = (step) => () => {
+    if (swiped) { swiped = false; return; }
+    showSlide(step);
+  };
+  previous?.addEventListener('click', onControl(-1));
+  next?.addEventListener('click', onControl(1));
+
 
   carousel.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowLeft') { event.preventDefault(); showSlide(-1); }
     if (event.key === 'ArrowRight') { event.preventDefault(); showSlide(1); }
   });
 
+  // Fetch the rest of the photos as soon as the visitor shows intent.
+  for (const type of ['pointerenter', 'focusin', 'touchstart']) {
+    carousel.addEventListener(type, preloadAll, { once: true, passive: true });
+  }
+
+  // Fetch the second photo once the card is close to the screen.
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      observer.disconnect();
+      preload(1).catch(() => {});
+    }, { rootMargin: '200px 0px' });
+    observer.observe(carousel);
+  }
+
   // Swipe on touch screens. Vertical scrolling keeps working (touch-action: pan-y).
   let startX = null;
   let startY = null;
   carousel.addEventListener('pointerdown', (event) => {
-    if (event.pointerType === 'mouse' || event.target.closest('button')) return;
+    if (event.pointerType === 'mouse') return;
+    swiped = false;
     startX = event.clientX;
     startY = event.clientY;
   });
@@ -140,12 +174,15 @@ function setupCarousel(carousel) {
     const dx = event.clientX - startX;
     const dy = event.clientY - startY;
     startX = null;
-    if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) showSlide(dx < 0 ? 1 : -1);
+    if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+      swiped = true;
+      window.setTimeout(() => { swiped = false; }, 400);
+      showSlide(dx < 0 ? 1 : -1);
+    }
   });
   carousel.addEventListener('pointercancel', () => { startX = null; });
 
-  paintDots();
-  paintStatus();
+  paintIndicators();
 }
 
 for (const carousel of document.querySelectorAll('[data-feature-carousel]')) setupCarousel(carousel);

@@ -31,6 +31,11 @@ function normalizeItemId(value) {
   return String(value ?? '').trim() || null;
 }
 
+function supportsMeasure(variant, measure) {
+  const measures = variant.availableMeasures ?? [];
+  return measure === null ? measures.length === 0 : measures.includes(measure);
+}
+
 /**
  * @typedef {{ location: string, items: QuoteItem[] }} QuoteState
  */
@@ -239,8 +244,7 @@ export function createQuoteStore(defaultLocation) {
         // remains the same. Resolve that row first, without guessing a sibling
         // from similar display labels or losing the visitor's saved quantity.
         const native = item.sourceProductId
-          ? bySourceId.get(item.sourceProductId)?.find(({ variant }) =>
-            item.measure === null || (variant.availableMeasures ?? []).includes(item.measure))
+          ? bySourceId.get(item.sourceProductId)?.find(({ variant }) => supportsMeasure(variant, item.measure))
           : null;
         const product = native?.product ?? byId.get(item.productId);
         const matchingVariant =
@@ -249,7 +253,7 @@ export function createQuoteStore(defaultLocation) {
               (variant.variety ?? null) === item.variety &&
               (variant.color ?? null) === item.color &&
               (variant.lengthCm ?? null) === item.lengthCm &&
-              (item.measure === null || (variant.availableMeasures ?? []).includes(item.measure)),
+              supportsMeasure(variant, item.measure),
           ) : null);
         if (!matchingVariant) {
           dropped.push(item);
@@ -322,11 +326,10 @@ export function validateSelection(product, selection) {
 
   if (variant) {
     const measures = variant.availableMeasures ?? [];
-    if (measures.length > 0) {
-      if (!selection.measure) errors.push('Choose how you want this product measured.');
-      else if (!measures.includes(selection.measure)) {
-        errors.push('That measure is not available for this option.');
-      }
+    if (measures.length > 0 && !selection?.measure) {
+      errors.push('Choose how you want this product measured.');
+    } else if (selection?.measure && !measures.includes(selection.measure)) {
+      errors.push('That measure is not available for this option.');
     }
   }
 

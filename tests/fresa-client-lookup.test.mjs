@@ -162,7 +162,7 @@ test('worker accepts the landing origin and returns only an exact active match',
   assert.equal(response.headers.get('Cache-Control'), 'private, no-store, max-age=0');
   assert.equal(data.success, true);
   assert.equal(data.found, true);
-  assert.equal(data.profile['First Name'], 'Cesar');
+  assert.deepEqual(data.profile, {});
   assert.equal(Object.hasOwn(data, 'email'), false);
   assert.equal(Object.hasOwn(data, 'tasks'), false);
   assert.equal(Object.hasOwn(data, 'taskId'), false);

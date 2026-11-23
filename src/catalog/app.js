@@ -14,6 +14,7 @@
 
 import { announce, replaceChildren } from './ui/dom.js';
 import { createQuoteIntegration } from './core/quote-integration.js';
+import { loadFresaOrderableMeasures } from './core/fresa-orderable-measures.js';
 import {
   buildCategoryTree,
   findProductBySlug,
@@ -402,6 +403,8 @@ export function createApp({ head, body }) {
             onOpenProductPicker: openProductPicker,
             onLookupClient: lookupClient,
             onCheckDeliveryEligibility: checkDeliveryEligibility,
+            onGetDeliveryAvailability: (dateKey, timeZone) => integration.getDeliveryAvailability(dateKey, timeZone),
+            onPrepareSubmission: (payload) => integration.prepareSubmission(payload),
             onSubmit: submitQuoteForm,
           })
           : route.view === 'product'
@@ -414,10 +417,8 @@ export function createApp({ head, body }) {
   }
 
   /**
-   * Commits a catalog update only when the app is already going to render for
-   * a user-driven transition. Background polling must not replace an active
-   * product form: doing so discards its local selection and forces every
-   * gallery image to load again.
+   * Commits a catalog update during rendering. Background polling keeps an
+   * active product form mounted so its selection and gallery stay in place.
    */
   function applyPendingProducts() {
     if (!pendingProducts) return;
@@ -439,7 +440,7 @@ export function createApp({ head, body }) {
     replaceChildren(body, [loadingSkeleton()]);
 
     try {
-      allProducts = await loadProducts();
+      allProducts = await loadProducts({ loadOrderableMeasures: loadFresaOrderableMeasures });
     } catch (error) {
       loadError = error;
       render();
@@ -486,17 +487,23 @@ export function createApp({ head, body }) {
   async function refreshCatalog(forceCheck = false) {
     if (document.hidden || refreshPromise || (!forceCheck && !productsNeedRefresh())) return;
 
-    refreshPromise = refreshProductsIfChanged({ forceCheck });
+    refreshPromise = refreshProductsIfChanged({ forceCheck, loadOrderableMeasures: loadFresaOrderableMeasures });
     try {
       const result = await refreshPromise;
       if (!result.changed) return;
 
-      // Keep the mounted catalog stable while someone is browsing or choosing
-      // a variant. The fresh data is committed on the next transition that
-      // already requires a render (filter, location, quote step or history).
+      // Keep the mounted catalog stable while someone browses or chooses a variant.
       pendingProducts = result.products;
       if (parseRoute().view === 'list') {
-        refreshProductCardImages(body, getProductsForLocation(result.products, locationStore.getId()));
+        const refreshedLocationProducts = getProductsForLocation(result.products, locationStore.getId());
+        const showingEmptySupplies = filters.category.length === 1
+          && filters.category[0] === 'supplies'
+          && !locationProducts.some((product) => product.category === 'supplies');
+        if (showingEmptySupplies && refreshedLocationProducts.some((product) => product.category === 'supplies')) {
+          render();
+        } else {
+          refreshProductCardImages(body, refreshedLocationProducts);
+        }
       }
     } catch (error) {
       // A background failure must never replace a working live catalog or its

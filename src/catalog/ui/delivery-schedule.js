@@ -283,7 +283,7 @@ export function deliverySchedulePicker({ value = '', timeZone, mode = 'window', 
       ]),
       picksWindow
         ? el('p', { class: 'cat-quote-timezone', role: 'note' }, [
-            el('small', { text: `Your time · ${timeZone} (${formatTimeZoneOffset(timeZone)})` }),
+            el('small', { text: `Location time · ${timeZone} (${formatTimeZoneOffset(timeZone)})` }),
           ])
         : null,
     ]);

@@ -1,0 +1,63 @@
+OpenAI ImageGen
+
+Use case: product-mockup. Create one standalone near-square product photograph for an Esfenix floral supplies catalog. Match a simple wholesale catalog reference: object centered on a seamless warm ivory studio surface against matching ivory backdrop, realistic commercial photography, mild natural shadows, neutral soft daylight, slightly elevated front three-quarter view, useful detail, products inside the central 82% with comfortable margins, no people except if the product explicitly calls for a hand demonstration, no branding, no printed words, no UI, no panels, no borders.
+
+floral-foam.jpg
+Six dark moss-green florist wet foam bricks with fine porous matte texture and crisp rectangular proportions. Stack them two per tier in an informal compact three-tier stack, like the reference. No flowers.
+
+floral-tape.jpg
+A pair of dark olive-green narrow floral stem tape rolls resting upright together, their kraft-paper hollow cores plainly visible, with two loose green ends curving calmly onto the surface to the right. Close-up of the double rolls, faithful to the reference.
+
+rose-thorn-stripper.jpg
+A single practical handheld green plastic rose thorn and leaf stripper. Show the long bright-green hinged tool vertically, open enough to see the central slot and the practical small ridges that remove leaves. Beside it show a single pale blush rose on a long natural stem, with a clear believable stem and a few leaves, to indicate the job. Product and rose fill the frame vertically.
+
+scissors.jpg
+One pair of small florist bypass pruning shears with curved silver stainless blades, a realistic pivot and pale beige handles. Set the shears upright against a muted sage-green unprinted hanging retail backing card with small horizontal hang slot, like the reference. Simple clear-front display, all shears visible.
+
+card-holder.jpg
+A delicate assortment of slim greeting-card pick stems for floral arrangements. Three taller red and light blush wire stems with simple open heart-shaped tops grouped on the left, with three translucent white thin stems tipped with tiny upright 3-pronged card grips on the right. Real slim wire and plastic texture, even light, entire stems shown.
+
+clear-tape.jpg
+One compact red square/cuboid plastic desktop clear tape dispenser, with translucent transparent tape roll visible in the rounded open curved top-left cutout, small real serrated cutting edge and unlabeled rich red sides. Angle showing red front and right side; minimal like the original.
+
+cards.jpg
+A small shallow black open box of florist enclosure cards lying diagonally in the upper left, plus a small fan of blank creamy-white miniature florist greeting cards with colorful hand-painted border sprigs and tiny coral, orange, blue and green flowers. Plain center of each card, no lettering. Straightforward product shot.
+
+flower-boxes.jpg
+A group of floral gift boxes in two designs seen in the reference: on the left a rich red cylindrical hatbox with a practical lower semicircular drawer cracked open showing a few colorful wrapped chocolates, topped by a compact arrangement of creamy white roses with baby's breath and foliage; on the right a nearby set of purse-shaped florist gift boxes with slim gold chain straps in blush, ivory and black. These are actual packaging boxes with crisp matte paper surfaces, as a coherent product arrangement on one surface.
+
+crowns.jpg
+One ornate warm polished gold decorative floral arrangement crown centered on the ivory surface. Low open circular band with fine ornamental metal scrolls, rows of tiny clear rhinestone accents, red teardrop cabochons and one oval emerald-green jewel at the top front center. Show full oval opening and band from slightly above, realistic costume craft accessory.
+
+wrapping-paper.jpg
+Floral bouquet wrapping papers only. Closely packed upright fan of folded matte waterproof bouquet wrapping sheets, in warm kraft beige, ivory, blush, peach, terracotta, sage, charcoal, and dark navy. Include one cream floral wrap sheet with a small scattered red strawberry print and a few folded pastel wraps behind it. Beautiful clean curved folded edges similar to the reference. No ribbons, tubes, stems, or flowers.
+
+ribbons.jpg
+A smooth bundle of florist satin ribbons fanned across a beige surface with distinct soft curls. Color sequence pale turquoise blue, sky blue, pale blush pink, bright fuchsia; narrow to medium widths with a cool satin sheen. Framing close enough to see fabric weave and finished edges. Only ribbons; no flowers.
+
+stuffed-animals.jpg
+Three small plush gifts for florists set upright together: a warm brown classic teddy bear with a petite olive ribbon bow, a light ivory classic teddy bear with a red bow, and a cuddly black-and-white baby dairy cow toy with beige hooves, tan snout, little horns and floppy ears. Like inexpensive but charming gift store plush, no brand marks. Full bodies, realistic fur.
+
+floral-mesh.jpg
+One bunch of soft peach-coral decorative floral mesh gathered at the base and flared out like an airy flower, with multiple rippling ruffled loops edged with a fine white thread border. Tangible open weave and subtle translucent overlaps. Gathered lower narrow neck visible with simple silver wrap. Ivory background like the reference. No flowers or fabric petals, only the actual mesh material.
+
+needle.jpg
+A transparent low rectangular case of florist pearl-headed corsage pins lying flat and filled with many small cream pearls on thin silver straight pins. A tidy row of eight individual matching pins laid fully in parallel below it, round ivory pearl heads up. Fine metal, no needles for sewing machines, no brand or text.
+
+pearl-bow.jpg
+One delicate decorative pearl bow made from a single strand of small round cream ivory faux pearls, arranged in two full loops and two short curling tails, neatly knotted center. Lying flat on an ivory background, front overhead product view, match the reference closely. No ribbon fabric.
+
+stem-tubes.jpg
+A small set of clear plastic florist water tubes, slim straight cylindrical transparent reservoirs for cut stems, with pale frosted clear removable caps. Show two upright, one resting diagonally on its side, and two separate caps. True transparent plastic against warm white with gentle shadows; no stems or empty test-tube rack.
+
+round-box-with-drawer.jpg
+One red cylindrical flower gift hatbox with a partially open round lower drawer and a tiny gold pull knob. Top it with a tight bouquet of white roses, baby's breath and restrained greens. A small handful of colorful metallic wrapped chocolates is visible inside the open drawer. Keep the whole red box and rose arrangement in frame. This is the only product on the stage.
+
+gold-chain-purse-box.jpg
+A trio of florist gift packaging boxes shaped like small handbags. Distinct solid ivory, blush pink, and black boxes with structured lightly quilted matte paper surfaces, straight rectangular flaps, and a separate gold chain handle each. Stack ivory behind on top, blush on the left and black on the right. Each box and all its visible hardware should feel like a real shop product.
+
+cow-plush.jpg
+One cheerful small black-and-white cow plush toy, seated front-facing. White coat with big irregular black spots, beige snout with stitched smile and nostrils, tan small rounded horns, floppy black and pink ears, beige hooves, round black eyes. Show full toy in the frame, close to the wholesale reference, with realistic soft plush texture.
+
+teddy-bears.jpg
+Two small seated gift-shop teddy bear plush toys leaning slightly against each other. A medium warm brown teddy with an olive green bow on its neck, and a creamy ivory teddy with a tidy deep red bow. Classic realistic plush, gently rounded paws and snouts, no additional animals, no branding, centered in frame.

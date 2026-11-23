@@ -116,7 +116,7 @@ export function getQuotePricing(items = [], products = []) {
     // Keep the progress percentage separate from the total so the UI can show
     // proximity to the threshold without exposing any amount to the visitor.
     deliveryProgress,
-    deliveryAllowed: unknownItems.length === 0 && totalCents >= DELIVERY_MINIMUM_CENTS,
+    deliveryAllowed: unknownItems.length === 0 && totalCents > DELIVERY_MINIMUM_CENTS,
   };
 }
 

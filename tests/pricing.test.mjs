@@ -35,11 +35,11 @@ function productWithPrices() {
   })[0];
 }
 
-test('a stem-priced flower is offered by stem and bunch without exposing empty prices', () => {
+test('a flower with only a stem price is offered only by stem', () => {
   const product = productWithPrices();
   const variant = product.locations[0].variants[0];
 
-  assert.deepEqual(variant.availableMeasures, ['stem', 'bunch']);
+  assert.deepEqual(variant.availableMeasures, ['stem']);
   assert.deepEqual(variant.prices, { stem: 84 });
   assert.equal(JSON.stringify(product).includes('bunch_price'), false);
 });
@@ -104,7 +104,7 @@ test('flowers without a stem price use bunch, while non-floral products use unit
   assert.deepEqual(measuresFor('Floral Tape'), ['unit']);
 });
 
-test('delivery is enabled only when the priced total reaches $150', () => {
+test('delivery is enabled only when the priced total exceeds $150', () => {
   const product = productWithPrices();
   const item = {
     productId: product.id,

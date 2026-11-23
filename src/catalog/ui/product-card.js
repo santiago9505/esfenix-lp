@@ -6,9 +6,9 @@
  * rather than a div with a click handler. "Add to quote" sits above that layer
  * and stops propagation, so choosing a product never navigates by accident.
  *
- * The card stays deliberately quiet: photograph, category, name. The full
- * breakdown of varieties, colours, lengths and presentations lives on the
- * product page, where there is room to read it.
+ * The card stays deliberately quiet: photograph, category, name and one short
+ * spec strip. The full breakdown of varieties, colours, lengths and
+ * presentations lives on the product page, where there is room to read it.
  */
 
 import { getCategoryLabel } from '../data/categories.js';
@@ -53,26 +53,41 @@ export function refreshProductCardImages(container, products) {
   }
 }
 
-/** @param {import('../core/repository').LocationProduct} product */
-function productOptionSummary(product) {
-  const varieties = new Set();
-  const colors = new Set();
-  const lengths = new Set();
+const uniqueValues = (values) => [...new Set(values.filter((value) => value !== null && value !== undefined && value !== ''))];
 
-  for (const variant of product.variants ?? []) {
-    if (variant.variety) varieties.add(variant.variety);
-    if (variant.color) colors.add(variant.color);
-    if (variant.lengthCm !== null && variant.lengthCm !== undefined) lengths.add(variant.lengthCm);
+/**
+ * The short spec list under the product name, one compact row per fact:
+ * varieties (or options), stem length range and how it is sold. Only facts the
+ * data actually has are shown, so a card never carries an empty row. Colours
+ * are left to the product page, because Fresa does not list them for every
+ * family.
+ *
+ * @param {import('../core/repository').LocationProduct} product
+ * @returns {Array<[string, string]>}
+ */
+export function productCardSpecs(product) {
+  const variants = product.variants ?? [];
+  const varieties = uniqueValues(variants.map((variant) => variant.variety));
+  const lengths = uniqueValues(variants.map((variant) => variant.lengthCm)).sort((a, b) => a - b);
+  const measures = uniqueValues(variants.flatMap((variant) => variant.availableMeasures ?? []));
+  const specs = [];
+
+  if (varieties.length > 0) {
+    const fewShortNames = varieties.length <= 2 && varieties.join(' · ').length <= 16;
+    specs.push(['Varieties', fewShortNames ? varieties.join(' · ') : String(varieties.length)]);
+  } else if (variants.length > 1) {
+    specs.push(['Options', String(variants.length)]);
   }
 
-  const parts = [];
-  if (varieties.size > 0) parts.push(`${varieties.size} ${varieties.size === 1 ? 'variety' : 'varieties'}`);
-  if (colors.size > 0) parts.push(`${colors.size} ${colors.size === 1 ? 'color' : 'colors'}`);
-  if (lengths.size > 0) parts.push(`${lengths.size} stem ${lengths.size === 1 ? 'length' : 'lengths'}`);
+  if (lengths.length > 1) specs.push(['Length', `${lengths[0]}–${lengths[lengths.length - 1]} cm`]);
+  else if (lengths.length === 1) specs.push(['Length', `${lengths[0]} cm`]);
 
-  if (parts.length > 0) return parts.join(' · ');
-  if ((product.variants ?? []).length > 1) return `${product.variants.length} available options`;
-  return 'See available formats';
+  const sold = ['stem', 'bunch'].filter((measure) => measures.includes(measure))
+    .map((measure) => (measure === 'stem' ? 'Stem' : 'Bunch'));
+  if (sold.length > 0) specs.push(['Sold by', sold.join(' · ')]);
+  else if (measures.includes('unit')) specs.push(['Sold by', 'Unit']);
+
+  return specs;
 }
 
 /**
@@ -91,7 +106,11 @@ export function productCard(options) {
 
   // Catalog results are useful content, not decorative reveals. Keeping cards
   // visible from their first DOM paint avoids an animation/observer delay.
-  return el('article', { class: 'cat-card', 'data-product-id': product.id }, [
+  return el('article', {
+    class: 'cat-card',
+    'data-product-id': product.id,
+    'data-category': product.category,
+  }, [
     el('div', { class: 'cat-card-media' }, [
       productMedia(primary, {
         label: product.name,
@@ -110,7 +129,15 @@ export function productCard(options) {
         el('a', { class: 'cat-card-link', href: options.href, text: product.name }),
       ]),
 
-      el('p', { class: 'cat-card-variety', text: productOptionSummary(product) }),
+      (() => {
+        const specs = productCardSpecs(product);
+        return specs.length > 0
+          ? el('dl', { class: 'cat-card-specs' }, specs.map(([label, value]) => el('div', {}, [
+            el('dt', { text: label }),
+            el('dd', { text: value }),
+          ])))
+          : null;
+      })(),
 
       el('div', { class: 'cat-card-actions' }, [
         el('button', {

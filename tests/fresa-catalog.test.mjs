@@ -357,7 +357,7 @@ test('the bundled catalog has one card per confirmed family and accepts older li
     }
     assert.equal(findProductBySlug(products, oldSlug)?.id, product.id);
     assert.equal(productExistsAnywhere(products, oldSlug), true);
-    assert.deepEqual(getCatalogSourcesForProduct(products, oldSlug), ['seattle', 'houston']);
+    assert.deepEqual(new Set(getCatalogSourcesForProduct(products, oldSlug)), new Set(['seattle', 'houston', 'dmv']));
   }
 });
 

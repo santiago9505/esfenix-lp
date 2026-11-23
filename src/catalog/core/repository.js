@@ -15,11 +15,7 @@ import {
   normalizeCatalog,
   sanitizeCatalogDescription,
 } from './fresa-catalog.js';
-import {
-  applyLocalProductImageFallbacks,
-  LOCAL_PRODUCT_IMAGE_FALLBACK_PRODUCT_IDS,
-  LOCAL_VARIANT_IMAGE_FALLBACK_PRODUCT_IDS,
-} from './local-image-fallback.js';
+import { applyLocalProductImageFallbacks } from './local-image-fallback.js';
 import {
   LIVE_CATALOG_POLL_INTERVAL_MS,
   LIVE_CATALOG_SIGNED_URL_REFRESH_MS,
@@ -27,6 +23,7 @@ import {
 } from '../data/live-catalog-config.js';
 import { resolveSalesMeasures } from './sales-measures.js';
 import { groupCatalogPresentations } from './catalog-presentations.js';
+import { applyFresaOrderableMeasures } from './fresa-orderable-measures.js';
 
 /**
  * @typedef {import('./types').Product} Product
@@ -140,7 +137,7 @@ async function loadLiveProducts(options) {
   const fetchImpl = options.liveFetchImpl ?? globalThis.fetch;
   if (typeof fetchImpl !== 'function') throw new Error('Live catalog fetch is unavailable.');
 
-  const [payload, revision] = await Promise.all([
+  const [payload, revision, orderableMeasures] = await Promise.all([
     fetchCatalogPages({
       apiUrl: options.liveUrl,
       fetchImpl,
@@ -152,8 +149,10 @@ async function loadLiveProducts(options) {
     options.knownRevision
       ? Promise.resolve(options.knownRevision)
       : fetchLiveRevision(options.liveUrl, fetchImpl),
+    options.loadOrderableMeasures?.(),
   ]);
-  const products = prepareProducts(normalizeCatalog(filterActiveProducts(payload)));
+  const prepared = prepareProducts(normalizeCatalog(filterActiveProducts(payload)));
+  const products = orderableMeasures ? applyFresaOrderableMeasures(prepared, orderableMeasures) : prepared;
   if (!isProductList(products)) throw new Error('Live Fresa catalog is invalid.');
 
   productsCache = products;
@@ -257,8 +256,10 @@ function prepareProducts(products) {
     ),
     {
       enabled: true,
-      productIds: LOCAL_PRODUCT_IMAGE_FALLBACK_PRODUCT_IDS,
-      variantProductIds: LOCAL_VARIANT_IMAGE_FALLBACK_PRODUCT_IDS,
+      // Approved flower photos are uploaded to Fresa. Removing or changing
+      // one there must be authoritative even when a local copy still exists.
+      productIds: [],
+      variantProductIds: [],
     },
   );
 }

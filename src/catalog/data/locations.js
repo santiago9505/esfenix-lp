@@ -21,6 +21,7 @@ export const LOCATIONS = [
   {
     id: 'houston',
     label: 'Houston, TX',
+    timeZone: 'America/Chicago',
     serviceCenter: 'HOUSTON',
     catalogSource: 'houston',
     requiresShippingDestination: false,
@@ -29,6 +30,7 @@ export const LOCATIONS = [
   {
     id: 'the-woodlands',
     label: 'The Woodlands, TX',
+    timeZone: 'America/Chicago',
     serviceCenter: 'THE_WOODLANDS',
     catalogSource: 'houston',
     requiresShippingDestination: false,
@@ -41,6 +43,7 @@ export const LOCATIONS = [
   {
     id: 'seattle',
     label: 'Seattle, WA',
+    timeZone: 'America/Los_Angeles',
     serviceCenter: 'SEATTLE',
     catalogSource: 'seattle',
     requiresShippingDestination: false,
@@ -49,6 +52,7 @@ export const LOCATIONS = [
   {
     id: 'dmv',
     label: 'DMV Area',
+    timeZone: 'America/New_York',
     serviceCenter: 'DMV',
     catalogSource: 'dmv',
     requiresShippingDestination: false,
@@ -57,6 +61,7 @@ export const LOCATIONS = [
   {
     id: 'other',
     label: 'Other U.S. location',
+    timeZone: 'America/Chicago',
     serviceCenter: 'HOUSTON',
     catalogSource: 'houston',
     requiresShippingDestination: true,

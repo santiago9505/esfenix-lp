@@ -63,6 +63,24 @@ function jsonResponse(payload, status = 200) {
   };
 }
 
+test('Fresa flower images stay authoritative when an approved local photo exists', async () => {
+  resetProductCache();
+  const flower = {
+    ...normalizedProduct('ec-roses'), name: 'EC ROSES', slug: 'ec-roses', category: 'roses', images: [],
+    locations: [{ location: 'houston', catalogAvailable: true, variants: [{
+      id: 'freedom-60', sourceProductId: 'native-freedom', variety: 'Freedom', color: 'Red',
+      lengthCm: 60, availableMeasures: ['bunch'], images: [],
+    }] }],
+  };
+  try {
+    const [product] = await loadProducts({ liveUrl: '', snapshotFetchImpl: async () => jsonResponse({ products: [flower] }) });
+    assert.deepEqual(product.images, []);
+    assert.deepEqual(product.locations[0].variants[0].images, [], 'a local copy cannot restore a flower photo removed in Fresa');
+  } finally {
+    resetProductCache();
+  }
+});
+
 test('loads the checked-in snapshot when the live source is disabled', async () => {
   resetProductCache();
   const snapshotProduct = normalizedProduct('snapshot');

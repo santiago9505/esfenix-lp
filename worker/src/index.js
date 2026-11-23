@@ -84,7 +84,8 @@ export async function handleRequest(request, env, options = {}) {
       success: true,
       found: result.found,
       vip: result.vip,
-      profile: result.profile,
+      // Knowing an email address does not authorize access to the profile.
+      profile: {},
     }, corsOrigin);
   } catch (error) {
     if (!(error instanceof FresaClientLookupError) || error.status >= 500) {

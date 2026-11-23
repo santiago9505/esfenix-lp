@@ -62,10 +62,12 @@ test('EC Roses fills an exact missing variety photo without replacing Fresa phot
   const originalImages = ecRoses.images.map((image) => image.src);
   const houston = ecRoses.locations.find((location) => location.location === 'houston');
   const amnesia = houston.variants.filter((variant) => variant.variety === 'Amnesia');
+  // Exercise a legacy import with missing photography. The maintained Fresa
+  // catalog now owns these photos, so absence must be an explicit fixture.
+  assert.ok(amnesia.length > 0);
+  for (const variant of amnesia) variant.images = [];
   const photographed = houston.variants.find((variant) => (variant.images ?? []).length > 0);
   const photographedBefore = photographed.images.map((image) => image.src);
-
-  assert.ok(amnesia.every((variant) => variant.images.length === 0));
 
   applyLocalProductImageFallbacks([ecRoses], {
     enabled: true,

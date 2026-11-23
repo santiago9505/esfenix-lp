@@ -11,6 +11,7 @@
  */
 
 import { capitalize } from '../core/format.js';
+import { offersColorsOnRequest } from '../data/colors-on-request.js';
 import { el, firstUsableImage, productMedia, replaceChildren } from './dom.js';
 import { openModal } from './modal.js';
 import { validateSelection } from '../core/quote-store.js';
@@ -155,6 +156,7 @@ export function variantForm(product, options = {}) {
   let selectedVariantId = null;
 
   const hasVariety = dimensions.some((dimension) => dimension.key === 'variety');
+  const colorsOnRequest = offersColorsOnRequest(product);
   const varietyContainer = el('div', { class: 'cat-variant-section cat-variant-section-variety' });
   const configurationContainer = el('div', { class: 'cat-variant-section cat-variant-section-configuration' });
   const container = el('div', { class: 'cat-variant-form' }, [
@@ -359,12 +361,17 @@ export function variantForm(product, options = {}) {
       (dimension.key === 'variety' ? varietyRows : configurationRows).push(row);
     }
 
+    if (colorsOnRequest) {
+      if (hasVariety) varietyRows.push(colorRequestNote());
+      else configurationRows.unshift(colorRequestNote());
+    }
+
     const variant = currentVariant();
     const allMeasureValues = [...new Set(product.variants.flatMap((candidate) => candidate.availableMeasures ?? []))];
     const measureValues = variant ? measures() : allMeasureValues;
-    if (measureValues.length > 0) {
-      if (variant && measureValues.length === 1) choice.measure = measureValues[0];
-      else if (variant && choice.measure && !measureValues.includes(choice.measure)) choice.measure = null;
+    if (variant) {
+      if (measureValues.length === 1) choice.measure = measureValues[0];
+      else if (!measureValues.includes(choice.measure)) choice.measure = null;
     }
 
     const finalSteps = [quantityRow(choice, notifySelection, step++, !variant)];
@@ -659,6 +666,21 @@ function searchableVarietyRow(config) {
       : null,
     list,
     empty,
+  ]);
+}
+
+/**
+ * Shown for families that come in several colours Fresa does not list. A soft
+ * spectrum says "many colours" without inventing a palette, and the copy tells
+ * the buyer where to ask for the one they need.
+ */
+function colorRequestNote() {
+  return el('div', { class: 'cat-color-request' }, [
+    el('span', { class: 'cat-color-spectrum', 'aria-hidden': 'true' }),
+    el('p', { class: 'cat-color-request-copy' }, [
+      el('strong', { text: 'Available in several colors' }),
+      el('span', { text: 'Ask us for the color you need in the quote notes.' }),
+    ]),
   ]);
 }
 

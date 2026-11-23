@@ -1,0 +1,70 @@
+AUDITORÍA DE IMÁGENES DEL CATÁLOGO ESFENIX
+Revisión: 17 de noviembre de 2026, zona America/Bogota
+
+ALCANCE Y RESULTADO
+- Carpeta pública: https://drive.google.com/drive/folders/1fkExcETPURBB3zojUFWSsVgjRIQqi2bq
+- 18 subcarpetas, 41 archivos JPEG. Se revisó cada subcarpeta.
+- Catálogo público de Fresa configurado por esta web: 1.364 registros activos, 58 familias, listas Texas, Seattle y DMV.
+- Las 41 fotos de Drive tienen adjuntos correspondientes en Fresa/Texas (serie FALTANTES-001 a FALTANTES-041). Coinciden los productos/opciones y cantidades por carpeta. No se compararon los bytes: Drive contiene JPEG y Fresa publica PNG.
+- Los 325 enlaces únicos de imágenes publicados por Fresa respondieron HTTP 200 con tipo image/* durante la revisión.
+- Se aplicó la misma normalización y los mismos respaldos locales que usa la página. No se usaron fotos de otra variedad como sustituto.
+
+POR QUÉ PUEDEN NO VERSE
+1. La copia de datos local y la publicada en https://esfenix-landing-page.web.app/catalog tienen fecha 2026-08-28T19:06:59.143Z. No incluyen las 41 fotos nuevas. Hay 15 familias que estaban completamente sin foto en esa copia y ahora sí tienen imagen en Fresa. Alstroemeria y Ranunculus ya tenían otras fotos, pero les faltaba Mix.
+2. La página intenta actualizar desde Fresa. En desarrollo, la configuración predeterminada apunta a http://localhost:3000; ese servicio no respondió durante esta revisión. No se inició ningún servidor. Si se usa esa configuración, la página conserva la copia antigua. No se inspeccionó una sesión de navegador del usuario.
+3. En producción está incluida la integración pública y su revisión respondió correctamente con CORS para el dominio publicado. No se observó un problema general del servicio de imágenes.
+4. Preserved rose Jumbo y Large figuran en Fresa como Other Flowers, no como Roses, y solo tienen registro activo en Texas/Houston. Aparecen al elegir Houston, The Woodlands u Other U.S. location y la categoría Other Flowers; no están ofertadas en las listas actuales de Seattle/DMV. No inventar disponibilidad en otras sedes.
+5. Las fotos son por lista/sede: el código usa solo los adjuntos de las variantes de la sede seleccionada. Las 41 fotos nuevas están únicamente en Texas. Para los productos equivalentes que sí se venden en Seattle/DMV, hay que asociar allí las fotos existentes.
+6. Las filas genéricas sin variedad/color tienen adjuntos separados de las filas específicas. Algunas no tienen archivo propio aunque la familia ya cuenta con fotografía. Es un trabajo de asociación/editorial antes de solicitar nuevas fotos.
+
+CRUCE DRIVE / FRESA
+- Alstroemerias Mix: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Alstroemeria. Sedes ofertadas: seattle, houston.
+- Dusty Miller: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Dusty Miller. Sedes ofertadas: houston.
+- Gypsophilia Xcelence (Baby’s breath): 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Gypsophilia Xcelence (Baby’s breath). Sedes ofertadas: dmv, seattle, houston.
+- Hydrangeas purple / lavender: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Hydrangeas purple / lavender. Sedes ofertadas: seattle, houston.
+- Leather leaf (10 stems): 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Leather leaf (10 stems). Sedes ofertadas: seattle, houston.
+- Leather leaf (20 stems) (Costa Rica): 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Leather leaf (20 stems) (Costa Rica). Sedes ofertadas: houston.
+- Lisianthus: 7 foto(s) en Drive / 7 adjunto(s) correspondiente(s) en Texas. Catálogo: Lisianthus. Sedes ofertadas: seattle, houston.
+- Lisianthus Canada: 12 foto(s) en Drive / 12 adjunto(s) correspondiente(s) en Texas. Catálogo: Lisianthus (Canada). Sedes ofertadas: houston.
+- Lisianthus Mix: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Lisianthus. Sedes ofertadas: seattle, houston.
+- Peony - other colors Mix: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Peony - other colors. Sedes ofertadas: houston.
+- Preserved rose Jumbo: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Preserved rose Jumbo. Sedes ofertadas: houston.
+- Preserved rose Large: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Preserved rose Large. Sedes ofertadas: houston.
+- Ranunculus Mix: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Ranunculus. Sedes ofertadas: seattle, houston.
+- Robellini: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Robellini (Costa Rica). Sedes ofertadas: houston.
+- Ruscus: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Ruscus. Sedes ofertadas: seattle, houston.
+- Shinny Pitt: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Shinny Pitt. Sedes ofertadas: seattle, houston.
+- Spray Roses: 7 foto(s) en Drive / 7 adjunto(s) correspondiente(s) en Texas. Catálogo: Spray Roses. Sedes ofertadas: dmv, seattle, houston.
+- Tulip - other colors Mix: 1 foto(s) en Drive / 1 adjunto(s) correspondiente(s) en Texas. Catálogo: Tulip - other colors. Sedes ofertadas: houston.
+
+FALTANTES REALES DE FOTOGRAFÍA ESPECÍFICA
+1. EC ROSES — Kahala (Orange). Sedes: dmv, houston, seattle.
+2. GARDEN ROSES — Stylist. Sedes: seattle, houston.
+3. DYED ROSES — Purple. Sedes: seattle, houston.
+4. Carnation — Mix. Sedes: dmv, seattle, houston.
+5. Mini Carnation — Mix. Sedes: houston.
+6. Stock — White. Sedes: dmv, seattle, houston.
+7. Stock — Mix. Sedes: dmv, seattle, houston.
+8. Chrysanthemum - Cushion — Purple. Sedes: seattle, houston.
+9. Chrysanthemum - Spider — Yellow. Sedes: seattle, houston.
+10. Snapdragon — White. Sedes: seattle, houston.
+11. Snapdragon (Canada) — Presentación del producto. Sedes: houston.
+
+CASOS CON FOTOGRAFÍA YA DISPONIBLE QUE REQUIEREN REVISIÓN
+- Chrysanthemum - Cremom/cremon: las fotos por color existen en Texas dentro de Chrysanthemum; Seattle usa otra familia/variedad y no tiene adjuntos. Revisar nombres y asociación antes de pedir fotos.
+- Hydrangeas White regular: existe foto para White en Hydrangeas Premium. Confirmar con Esfenix si puede usarse para ambas presentaciones antes de pedir una foto adicional.
+- Hay adjuntos cuyos nombres no coinciden con la variedad asignada: Button Brown/Peach usa nombres Cremom y varias Spider usan nombres Daysi. El nombre es una señal para revisar; no prueba por sí solo que la foto sea incorrecta.
+- Las filas genéricas de EC ROSES, Garden Roses, Carnation, Spray Roses, Stock, Dyed Roses, Alstroemeria, Campanula, Chrysanthemum, Delphinium, Dianthus, Lily Asiatic, Gerbera Large, Lily Oriental, Gerpoms, Mini Carnation, Mini Gerbera, Scabiosa, Statice y Snapdragon tienen faltantes propios; sus familias ya cuentan con fotos específicas. No se incluyeron como nuevas sesiones fotográficas en la lista para Esfenix.
+
+COBERTURA POR SEDE
+Los números siguientes cuentan combinaciones vendibles (incluidas longitudes y filas genéricas), no productos distintos ni fotografías nuevas por solicitar.
+- houston: 57 familias / 607 variantes; 47 variantes sin imagen después de los respaldos locales. Familias completamente sin foto: Snapdragon (Canada).
+- seattle: 30 familias / 527 variantes; 332 variantes sin imagen después de los respaldos locales. Familias completamente sin foto: Carnation; GARDEN ROSES; Gypsophilia Xcelence (Baby’s breath); Solidago golden glory; Spray Roses; Stock; Sunflowers; DYED ROSES; Alstroemeria; Campanula; Chrysanthemum; Chrysanthemum - Cremom; Chrysanthemum - Daysi; Delphinium; Delphinium light; Hydrangeas; Hydrangeas Premium; Hydrangeas Premium - purple / lavender; Hydrangeas purple / lavender; Lily Asiatic; Lily Oriental; Lisianthus; Ranunculus; Snapdragon; Eucalyptus Baby Blue; Eucalyptus Silver Dollar; Leather leaf (10 stems); Ruscus; Shinny Pitt.
+- dmv: 7 familias / 230 variantes; 39 variantes sin imagen después de los respaldos locales. Familias completamente sin foto: Carnation; Gypsophilia Xcelence (Baby’s breath); Solidago golden glory; Spray Roses; Stock; Sunflowers.
+
+VALIDACIÓN E IMPACTO
+- 30 pruebas existentes de catálogo, snapshot, caché, galería y respaldos locales: correctas.
+- Sin cambios al código de la página, disponibilidad, formularios, cotizaciones, datos de Fresa ni Drive. Sin despliegue.
+- El plugin de Fresa está conectado al workspace Fresa AI, que no expone las listas de Esfenix; se consultó la integración pública exacta configurada por este proyecto. La conexión de Google Drive estaba inactiva; se consultó el enlace público compartido y sus subcarpetas.
+- Los resultados describen los datos activos que publica esta integración; no aseguran que no existan fotos sin publicar o en otras carpetas no compartidas.
+- Para reparar la visualización con impacto acotado: actualizar la copia estática desde la misma fuente de producción y asociar fotos existentes a las listas equivalentes; conservar IDs de productos, disponibilidad por sede y flujos de cotización. La taxonomía de preservadas debe acordarse antes de reclasificarlas. No se aplicaron esas modificaciones en esta auditoría.

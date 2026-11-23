@@ -20,6 +20,7 @@
 
 import { QUOTE_FORM_URL, QUOTE_SESSION_ENDPOINT } from '../data/quote-config.js';
 import { assertNoPricing, buildQuoteSummaryText } from './quote-payload.js';
+import { formatZonedDateTime, getDeliverySlots } from './delivery-schedule.js';
 import {
   buildFresaFormSubmission,
   FresaFormConfigurationError,
@@ -27,6 +28,7 @@ import {
   getFresaDeliveryEligibility,
   resolveFresaFormApi,
   resolveFresaProductFieldId,
+  validateFresaQuoteProducts,
 } from './fresa-form-submission.js';
 
 /**
@@ -39,6 +41,7 @@ import {
 // more than ten seconds, so keep the user-facing request alive long enough for
 // Fresa to return the created task id.
 const REQUEST_TIMEOUT_MS = 45000;
+const FORM_CATALOG_TTL_MS = 90_000;
 const FALLBACK_EMAIL_FIELD_ID = 'email';
 
 /**
@@ -62,6 +65,29 @@ export function createQuoteIntegration(options = {}) {
   const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
   const openUrl =
     options.openImpl ?? ((url) => window.open(url, '_blank', 'noopener,noreferrer'));
+  const formCatalogs = new Map();
+
+  function getFormCatalog(payload) {
+    // The form's product field depends on location and VIP routing. Quantities
+    // and selected units are validated anew against those rows on every call.
+    const key = JSON.stringify([payload?.fresa?.location, payload?.vip === true]);
+    const cached = formCatalogs.get(key);
+    if (cached && Date.now() < cached.expiresAt) return cached.request;
+
+    const { formApiUrl } = resolveFresaFormApi(formUrl);
+    const entry = { expiresAt: Infinity, request: null };
+    entry.request = loadFresaFormData({ formApiUrl, payload, doFetch, timeoutMs })
+      .then((data) => {
+        entry.expiresAt = Date.now() + FORM_CATALOG_TTL_MS;
+        return data;
+      })
+      .catch((error) => {
+        if (formCatalogs.get(key) === entry) formCatalogs.delete(key);
+        throw error;
+      });
+    formCatalogs.set(key, entry);
+    return entry.request;
+  }
 
   /**
    * Only a URL on the form's own origin is ever opened, so a compromised or
@@ -79,9 +105,39 @@ export function createQuoteIntegration(options = {}) {
   }
 
   return {
+    /** Warm the form for a resumed or slow-to-complete quote draft. */
+    async prepareSubmission(payload) {
+      if (!sessionEndpoint) await getFormCatalog(payload);
+    },
+
     /** Which adapter a call to `start` would use. */
     mode() {
       return sessionEndpoint ? 'session' : 'form-api';
+    },
+
+    async getDeliveryAvailability(dateKey, timeZone) {
+      const { formApiUrl } = resolveFresaFormApi(formUrl);
+      const url = new URL(formApiUrl);
+      url.searchParams.set('catalog', 'metadata');
+      const response = await fetchWithTimeout(doFetch, url.toString(), {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      }, timeoutMs);
+      const { form } = await readJson(response) || {};
+      const field = form?.fields?.find((entry) => entry.type === 'date' && entry.label === 'Delivery');
+      const fieldId = field?.mapTo?.customFieldId;
+      const column = form?.customColumns?.find((entry) => entry.field_id === fieldId);
+      if (!response.ok || !form?.slotBookingUnavailableStarts
+          || column?.field_type !== 'slot_booking' || Number(column.field_config?.slotCapacity) !== 2) {
+        throw new Error('Delivery availability is unavailable.');
+      }
+      const unavailable = new Set((form.slotBookingUnavailableStarts[fieldId] ?? []).map(Date.parse));
+      return getDeliverySlots(dateKey, { timeZone }).flatMap(({ start, end, capacity }) => {
+        // The existing Fresa field records the window end as its timestamp.
+        const endTime = Date.parse(formatZonedDateTime(dateKey, end, timeZone));
+        return unavailable.has(endTime) ? [{ start, booked: capacity }] : [];
+      });
     },
 
     /** Looks up one email without exposing the private client directory. */
@@ -104,18 +160,8 @@ export function createQuoteIntegration(options = {}) {
      * @returns {Promise<{ ok: boolean, deliveryAllowed?: boolean, deliveryProgress?: number, hasUnknownPricing?: boolean, error?: string, code?: string }>}
      */
     async checkDeliveryEligibility(payload) {
-      if (payload?.vip === true) {
-        return { ok: true, deliveryAllowed: true, deliveryProgress: 100, hasUnknownPricing: false };
-      }
-
       try {
-        const { formApiUrl } = resolveFresaFormApi(formUrl);
-        const formData = await loadFresaFormData({
-          formApiUrl,
-          payload,
-          doFetch,
-          timeoutMs,
-        });
+        const formData = await getFormCatalog(payload);
 
         // Fresa's public form response carries the location-specific catalog
         // configuration, including its price reference fields. Keep the
@@ -124,11 +170,12 @@ export function createQuoteIntegration(options = {}) {
         const productFieldId = resolveFresaProductFieldId(payload, formData);
         const fields = Array.isArray(formData?.form?.fields) ? formData.form.fields : [];
         const productField = fields.find((field) => field?.id === productFieldId);
-        const eligibility = getFresaDeliveryEligibility(
-          payload,
-          getFresaCatalogConfig(formData, productFieldId, productField),
-        );
-        return { ok: true, ...eligibility };
+        const catalogConfig = getFresaCatalogConfig(formData, productFieldId, productField);
+        validateFresaQuoteProducts(payload, catalogConfig);
+        if (payload?.vip === true) {
+          return { ok: true, deliveryAllowed: true, deliveryProgress: 100, hasUnknownPricing: false };
+        }
+        return { ok: true, ...getFresaDeliveryEligibility(payload, catalogConfig) };
       } catch (error) {
         return {
           ok: false,
@@ -174,6 +221,7 @@ export function createQuoteIntegration(options = {}) {
           doFetch,
           timeoutMs,
           reserveSlot: reserveDeliverySlotImpl,
+          getFormCatalog,
           summary,
         });
       }
@@ -512,18 +560,12 @@ async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
   }
 }
 
-async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserveSlot, summary }) {
+async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserveSlot, getFormCatalog, summary }) {
   try {
-    const { formApiUrl, submitUrl } = resolveFresaFormApi(formUrl);
-    const formData = await loadFresaFormData({
-      formApiUrl,
-      payload,
-      doFetch,
-      timeoutMs,
-    });
-
-    const productFieldId = resolveFresaProductFieldId(payload, formData);
+    const { submitUrl } = resolveFresaFormApi(formUrl);
+    const formData = await getFormCatalog(payload);
     const submission = buildFresaFormSubmission(payload, formData);
+    const { productFieldId } = submission;
 
     if (payload.orderType === 'Delivery' && payload.vip !== true) {
       const fields = Array.isArray(formData?.form?.fields) ? formData.form.fields : [];
@@ -577,10 +619,12 @@ async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserve
       const deliveryOptionRejected = payload.orderType === 'Delivery'
         && /["“]?Type of Order["”]?\s+(?:has an invalid option|tiene una opción no válida)/i
           .test(String(data?.error ?? ''));
+      const slotFull = payload.orderType === 'Delivery' && response.status === 409
+        && /time slot is no longer available|horario ya no tiene cupos/i.test(String(data?.error ?? ''));
       return {
         ok: false,
         mode: 'form-api',
-        ...(deliveryOptionRejected ? { code: 'DELIVERY_OPTION_REJECTED' } : {}),
+        ...(slotFull ? { code: 'SLOT_FULL' } : deliveryOptionRejected ? { code: 'DELIVERY_OPTION_REJECTED' } : {}),
         error: deliveryOptionRejected
           ? 'Fresa could not accept Delivery for this selection. Please try another selection or choose Pickup.'
           : data?.error || `Fresa could not record the quote request (${response.status}).`,
@@ -631,60 +675,40 @@ async function readJson(response) {
 }
 
 /**
- * Reads the live form schema. Fresa currently returns the catalog in the full
- * form response, while older deployments expose it through the metadata plus
- * `catalogFieldId` requests. Supporting both keeps existing forms working
- * while still using the current API shape when available.
+ * Loads the schema and only the catalog selected by location and VIP status.
+ * Older form servers may still require the full response.
  *
  * @param {{ formApiUrl: string, payload: any, doFetch: typeof fetch, timeoutMs: number }} options
  */
 async function loadFresaFormData({ formApiUrl, payload, doFetch, timeoutMs }) {
-  let formData = null;
-  try {
-    const formResponse = await fetchWithTimeout(doFetch, formApiUrl, {
+  async function readForm(url) {
+    const response = await fetchWithTimeout(doFetch, url.toString(), {
       method: 'GET',
       headers: { Accept: 'application/json' },
     }, timeoutMs);
-    formData = await readJson(formResponse);
-    if (
-      formResponse.ok
-      && formData?.success === true
-      && hasUsableFresaCatalog(formData, payload)
-    ) return formData;
-  } catch {
-    // Continue with the metadata/scoped-catalog contract below. This keeps
-    // older Fresa deployments usable when the newer full response is offline.
+    const formData = await readJson(response);
+    if (!response.ok || formData?.success !== true) {
+      throw new FresaFormConfigurationError(
+        formData?.error || `Fresa could not load the quote form (${response.status}).`,
+      );
+    }
+    return formData;
   }
 
   const metadataUrl = new URL(formApiUrl);
   metadataUrl.searchParams.set('catalog', 'metadata');
-  const metadataResponse = await fetchWithTimeout(doFetch, metadataUrl.toString(), {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-  }, timeoutMs);
-  const metadata = await readJson(metadataResponse);
-  if (!metadataResponse.ok || metadata?.success !== true) {
-    throw new FresaFormConfigurationError(
-      metadata?.error
-        || formData?.error
-        || `Fresa could not load the quote form (${metadataResponse.status}).`,
-    );
+  const metadata = await readForm(metadataUrl).catch((error) => {
+    if (error?.name === 'AbortError') throw error;
+    return null;
+  });
+  if (metadata) {
+    if (hasUsableFresaCatalog(metadata, payload)) return metadata;
+    const productFieldId = resolveFresaProductFieldId(payload, metadata);
+    const scopedFormUrl = new URL(formApiUrl);
+    scopedFormUrl.searchParams.set('catalogFieldId', productFieldId);
+    return readForm(scopedFormUrl);
   }
-
-  const productFieldId = resolveFresaProductFieldId(payload, metadata);
-  const scopedFormUrl = new URL(formApiUrl);
-  scopedFormUrl.searchParams.set('catalogFieldId', productFieldId);
-  const scopedResponse = await fetchWithTimeout(doFetch, scopedFormUrl.toString(), {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-  }, timeoutMs);
-  const scopedFormData = await readJson(scopedResponse);
-  if (!scopedResponse.ok || scopedFormData?.success !== true) {
-    throw new FresaFormConfigurationError(
-      scopedFormData?.error || `Fresa could not load the selected catalog (${scopedResponse.status}).`,
-    );
-  }
-  return scopedFormData;
+  return readForm(formApiUrl);
 }
 
 /**

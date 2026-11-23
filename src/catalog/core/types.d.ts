@@ -148,6 +148,8 @@ export interface LocationConfig {
   label: string;
   serviceCenter: ServiceCenter;
   catalogSource: CatalogSource;
+  /** Local time of the team fulfilling the request. */
+  timeZone: string;
   /** "Other U.S. location" asks for state, city and ZIP code. */
   requiresShippingDestination: boolean;
   note?: string | null;

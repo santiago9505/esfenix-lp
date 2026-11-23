@@ -1,0 +1,4759 @@
+{
+  "reviewedDate": "2026-11-17",
+  "timezone": "America/Bogota",
+  "source": "Fresa public integration c4753811-17e2-4dcd-9477-048b1b79060b",
+  "sourceRows": 1364,
+  "families": 58,
+  "snapshotGeneratedAt": "2026-08-28T19:06:59.143Z",
+  "driveComparison": [
+    {
+      "folder": "Alstroemerias Mix",
+      "driveUrl": "https://drive.google.com/drive/folders/1b_m8XCAiS_-uKPFe_YC9r-p7PXd_8XmO",
+      "imagesInDrive": 1,
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "seattle",
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-001"
+      ],
+      "missingFromSnapshot": false
+    },
+    {
+      "folder": "Dusty Miller",
+      "driveUrl": "https://drive.google.com/drive/folders/1mCkve-mD6UYw11KLhLZk1E6TTizaeD51",
+      "imagesInDrive": 1,
+      "product": "Dusty Miller",
+      "slug": "dusty-miller",
+      "category": "foliage",
+      "catalogLocations": [
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-002"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Gypsophilia Xcelence (Baby’s breath)",
+      "driveUrl": "https://drive.google.com/drive/folders/19at_YeIfjwzcYnHLDKqLO9bhIdjdD3wO",
+      "imagesInDrive": 1,
+      "product": "Gypsophilia Xcelence (Baby’s breath)",
+      "slug": "gypsophilia-xcelence-babys-breath",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "dmv",
+        "seattle",
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-003"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Hydrangeas purple / lavender",
+      "driveUrl": "https://drive.google.com/drive/folders/1ZwtsPd1M_vNmyTh1eMcBwrahJ_lvSkRs",
+      "imagesInDrive": 1,
+      "product": "Hydrangeas purple / lavender",
+      "slug": "hydrangeas-purple-lavender",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "seattle",
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-004"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Leather leaf (10 stems)",
+      "driveUrl": "https://drive.google.com/drive/folders/1asY2uKIw1s-qvqyaXUDFojjEB1DyI7-0",
+      "imagesInDrive": 1,
+      "product": "Leather leaf (10 stems)",
+      "slug": "leather-leaf-10-stems",
+      "category": "foliage",
+      "catalogLocations": [
+        "seattle",
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-005"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Leather leaf (20 stems) (Costa Rica)",
+      "driveUrl": "https://drive.google.com/drive/folders/1vpZj_TNODHmfwiFTURuhUjVZwpSz9uh_",
+      "imagesInDrive": 1,
+      "product": "Leather leaf (20 stems) (Costa Rica)",
+      "slug": "leather-leaf-20-stems-costa-rica",
+      "category": "foliage",
+      "catalogLocations": [
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-006"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Lisianthus",
+      "driveUrl": "https://drive.google.com/drive/folders/1REQPwV6xPy6ooCgL_GQ7Nu8Q72iURpb3",
+      "imagesInDrive": 7,
+      "product": "Lisianthus",
+      "slug": "lisianthus",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "seattle",
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 7,
+      "attachmentIds": [
+        "faltantes-2026-11-12-007",
+        "faltantes-2026-11-12-010",
+        "faltantes-2026-11-12-008",
+        "faltantes-2026-11-12-009",
+        "faltantes-2026-11-12-011",
+        "faltantes-2026-11-12-012",
+        "faltantes-2026-11-12-013"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Lisianthus Canada",
+      "driveUrl": "https://drive.google.com/drive/folders/14pF7vlDbzR3szFsP6cmjr052bPNDpwkX",
+      "imagesInDrive": 12,
+      "product": "Lisianthus (Canada)",
+      "slug": "lisianthus-canada",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 12,
+      "attachmentIds": [
+        "faltantes-2026-11-12-014",
+        "faltantes-2026-11-12-015",
+        "faltantes-2026-11-12-016",
+        "faltantes-2026-11-12-017",
+        "faltantes-2026-11-12-018",
+        "faltantes-2026-11-12-019",
+        "faltantes-2026-11-12-020",
+        "faltantes-2026-11-12-021",
+        "faltantes-2026-11-12-022",
+        "faltantes-2026-11-12-023",
+        "faltantes-2026-11-12-024",
+        "faltantes-2026-11-12-025"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Lisianthus Mix",
+      "driveUrl": "https://drive.google.com/drive/folders/1Sq36fQvfhUOz60h7bq_viXkaTie7UPSf",
+      "imagesInDrive": 1,
+      "product": "Lisianthus",
+      "slug": "lisianthus",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "seattle",
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-026"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Peony - other colors Mix",
+      "driveUrl": "https://drive.google.com/drive/folders/1rkXBwoo0eU0N9GZvDmraS2UT02MOlgi_",
+      "imagesInDrive": 1,
+      "product": "Peony - other colors",
+      "slug": "peony-other-colors",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-027"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Preserved rose Jumbo",
+      "driveUrl": "https://drive.google.com/drive/folders/1L1TOV95zSzPeFD8tmDf8zitapJQF828z",
+      "imagesInDrive": 1,
+      "product": "Preserved rose Jumbo",
+      "slug": "preserved-rose-jumbo",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-028"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Preserved rose Large",
+      "driveUrl": "https://drive.google.com/drive/folders/16KTjmWl90d9Mjj0c_qEKhv8H6_r0Fx9q",
+      "imagesInDrive": 1,
+      "product": "Preserved rose Large",
+      "slug": "preserved-rose-large",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-029"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Ranunculus Mix",
+      "driveUrl": "https://drive.google.com/drive/folders/1cg0sG9n9fsdta_ouTiDHBWy0gbycI3T_",
+      "imagesInDrive": 1,
+      "product": "Ranunculus",
+      "slug": "ranunculus",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "seattle",
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-030"
+      ],
+      "missingFromSnapshot": false
+    },
+    {
+      "folder": "Robellini",
+      "driveUrl": "https://drive.google.com/drive/folders/1VNFvcH2rkFnibg9czmNxZqMUL76MQoVT",
+      "imagesInDrive": 1,
+      "product": "Robellini (Costa Rica)",
+      "slug": "robellini-costa-rica",
+      "category": "foliage",
+      "catalogLocations": [
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-031"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Ruscus",
+      "driveUrl": "https://drive.google.com/drive/folders/1oFBJLWgv9gVqwB7m_ZLB1r3n2gjz9rau",
+      "imagesInDrive": 1,
+      "product": "Ruscus",
+      "slug": "ruscus",
+      "category": "foliage",
+      "catalogLocations": [
+        "seattle",
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-032"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Shinny Pitt",
+      "driveUrl": "https://drive.google.com/drive/folders/1sL_mSEYh0At5LLFg1mmKk_iJ4izt4KX-",
+      "imagesInDrive": 1,
+      "product": "Shinny Pitt",
+      "slug": "shinny-pitt",
+      "category": "foliage",
+      "catalogLocations": [
+        "seattle",
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-033"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Spray Roses",
+      "driveUrl": "https://drive.google.com/drive/folders/14RyiCGJP1sEL_VMlhECF9lkXQeya5orB",
+      "imagesInDrive": 7,
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "dmv",
+        "seattle",
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 7,
+      "attachmentIds": [
+        "faltantes-2026-11-12-034",
+        "faltantes-2026-11-12-035",
+        "faltantes-2026-11-12-036",
+        "faltantes-2026-11-12-037",
+        "faltantes-2026-11-12-038",
+        "faltantes-2026-11-12-039",
+        "faltantes-2026-11-12-040"
+      ],
+      "missingFromSnapshot": true
+    },
+    {
+      "folder": "Tulip - other colors Mix",
+      "driveUrl": "https://drive.google.com/drive/folders/16yeSb-laWcRS_5yS-Lci7aDVxn0PhcxA",
+      "imagesInDrive": 1,
+      "product": "Tulip - other colors",
+      "slug": "tulip-other-colors",
+      "category": "other-flowers",
+      "catalogLocations": [
+        "houston"
+      ],
+      "uploadedPhotosInTexas": 1,
+      "attachmentIds": [
+        "faltantes-2026-11-12-041"
+      ],
+      "missingFromSnapshot": true
+    }
+  ],
+  "requests": [
+    {
+      "product": "EC ROSES",
+      "option": "Kahala (Orange)",
+      "slug": "ec-roses",
+      "variety": "Kahala",
+      "color": "Orange",
+      "locations": [
+        "dmv",
+        "houston",
+        "seattle"
+      ],
+      "sourceTaskIds": [
+        "74eae86a-a0c4-4cc8-bbdc-38cada4fab3e",
+        "fd12f52f-a20b-47ec-9dfc-d42d16194fda",
+        "c35119b6-3379-4c4b-b66f-788babf9d966",
+        "f1513931-1bcc-43b1-aa28-9b384e09c0a7",
+        "5b4f6ea4-f16d-4788-8b5f-3f3ecc75a329",
+        "468a32b6-5d22-4809-bed0-2b1a0cc86c86",
+        "8c9392fe-567e-4f3f-8e65-e259df42103a",
+        "90556a69-5892-4eb1-8f30-26ffa5614666",
+        "0b828f72-bfbd-4711-b07d-634be0b0d70b"
+      ]
+    },
+    {
+      "product": "GARDEN ROSES",
+      "option": "Stylist",
+      "slug": "garden-roses",
+      "variety": "Stylist",
+      "locations": [
+        "seattle",
+        "houston"
+      ],
+      "sourceTaskIds": [
+        "9578a042-a20d-47e4-9c04-7d180f410b8c",
+        "b9d38d9b-32df-47b7-a592-383b81d48c77",
+        "5f09b2da-f3a2-4e2d-9eb0-05f0e694a6a7",
+        "f137d122-e2c4-45c3-9fd7-ab8b3d23cc2d",
+        "e8060a4f-fc2a-4c75-acc3-e5471c0ffc6b",
+        "f148fad1-b39a-43ab-8af6-206830a7a1a3"
+      ]
+    },
+    {
+      "product": "DYED ROSES",
+      "option": "Purple",
+      "slug": "dyed-roses",
+      "variety": "Purple",
+      "color": "Purple",
+      "locations": [
+        "seattle",
+        "houston"
+      ],
+      "sourceTaskIds": [
+        "6dcb2e0f-8d8b-45c1-855c-70ae19357481",
+        "d7e91326-7d0e-4610-9c12-d56fae10439f"
+      ]
+    },
+    {
+      "product": "Carnation",
+      "option": "Mix",
+      "slug": "carnation",
+      "color": "Mix",
+      "locations": [
+        "dmv",
+        "seattle",
+        "houston"
+      ],
+      "sourceTaskIds": [
+        "d98150c6-7cd4-4952-a0a3-054d9496e19c",
+        "5182bb99-2174-424e-813a-10ac075468f3",
+        "4ff25849-16be-461b-96f2-200c18d1ec41"
+      ]
+    },
+    {
+      "product": "Mini Carnation",
+      "option": "Mix",
+      "slug": "mini-carnation",
+      "color": "Mix",
+      "locations": [
+        "houston"
+      ],
+      "sourceTaskIds": [
+        "e6497638-885c-48ca-aefd-19e061cde014"
+      ]
+    },
+    {
+      "product": "Stock",
+      "option": "White",
+      "slug": "stock",
+      "color": "White",
+      "locations": [
+        "dmv",
+        "seattle",
+        "houston"
+      ],
+      "sourceTaskIds": [
+        "bcfc3480-c637-4414-b7ba-3422dc8b1820",
+        "358d8000-e6b4-48f0-8408-123b55912fe0",
+        "3ba7fd79-6eff-46d1-92fe-cef1b992d35b"
+      ]
+    },
+    {
+      "product": "Stock",
+      "option": "Mix",
+      "slug": "stock",
+      "color": "Mix",
+      "locations": [
+        "dmv",
+        "seattle",
+        "houston"
+      ],
+      "sourceTaskIds": [
+        "755c77e2-ce1f-44b0-9b74-feb2035177fb",
+        "00cf0950-fc54-41c6-bb47-695676cb4c56",
+        "741dc5e7-97b6-4f70-998a-2cdd2b1211ac"
+      ]
+    },
+    {
+      "product": "Chrysanthemum - Cushion",
+      "option": "Purple",
+      "slug": "chrysanthemum",
+      "variety": "cushion",
+      "color": "Purple",
+      "locations": [
+        "seattle",
+        "houston"
+      ],
+      "sourceTaskIds": [
+        "1350b21f-b3b6-4236-a7b8-3fd249f21995",
+        "fda47665-7af6-4c66-85e2-bb802e9576be"
+      ]
+    },
+    {
+      "product": "Chrysanthemum - Spider",
+      "option": "Yellow",
+      "slug": "chrysanthemum",
+      "variety": "spider",
+      "color": "Yellow",
+      "locations": [
+        "seattle",
+        "houston"
+      ],
+      "sourceTaskIds": [
+        "eb297c88-06de-4a53-88c0-fdaee9baab00",
+        "c2a7bdf5-fce2-4b73-81e4-ad9ed9f61eae"
+      ]
+    },
+    {
+      "product": "Snapdragon",
+      "option": "White",
+      "slug": "snapdragon",
+      "color": "White",
+      "locations": [
+        "seattle",
+        "houston"
+      ],
+      "sourceTaskIds": [
+        "a84e2a46-8271-4009-a10e-ba0f464c17d8",
+        "f2bd3c5e-47da-4fa6-80ca-fc0b17d2bb8f"
+      ]
+    },
+    {
+      "product": "Snapdragon (Canada)",
+      "option": "Presentación del producto",
+      "slug": "snapdragon-canada",
+      "locations": [
+        "houston"
+      ],
+      "sourceTaskIds": [
+        "789c7ce8-449e-4e89-bf35-b3617764679a"
+      ]
+    }
+  ],
+  "byLocation": [
+    {
+      "location": "houston",
+      "families": 57,
+      "variants": 607,
+      "variantsWithoutImageAfterLocalFallbacks": 47,
+      "familiesWithoutAnyImage": [
+        "Snapdragon (Canada)"
+      ]
+    },
+    {
+      "location": "seattle",
+      "families": 30,
+      "variants": 527,
+      "variantsWithoutImageAfterLocalFallbacks": 332,
+      "familiesWithoutAnyImage": [
+        "Carnation",
+        "GARDEN ROSES",
+        "Gypsophilia Xcelence (Baby’s breath)",
+        "Solidago golden glory",
+        "Spray Roses",
+        "Stock",
+        "Sunflowers",
+        "DYED ROSES",
+        "Alstroemeria",
+        "Campanula",
+        "Chrysanthemum",
+        "Chrysanthemum - Cremom",
+        "Chrysanthemum - Daysi",
+        "Delphinium",
+        "Delphinium light",
+        "Hydrangeas",
+        "Hydrangeas Premium",
+        "Hydrangeas Premium - purple / lavender",
+        "Hydrangeas purple / lavender",
+        "Lily Asiatic",
+        "Lily Oriental",
+        "Lisianthus",
+        "Ranunculus",
+        "Snapdragon",
+        "Eucalyptus Baby Blue",
+        "Eucalyptus Silver Dollar",
+        "Leather leaf (10 stems)",
+        "Ruscus",
+        "Shinny Pitt"
+      ]
+    },
+    {
+      "location": "dmv",
+      "families": 7,
+      "variants": 230,
+      "variantsWithoutImageAfterLocalFallbacks": 39,
+      "familiesWithoutAnyImage": [
+        "Carnation",
+        "Gypsophilia Xcelence (Baby’s breath)",
+        "Solidago golden glory",
+        "Spray Roses",
+        "Stock",
+        "Sunflowers"
+      ]
+    }
+  ],
+  "missingRows": [
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "dmv",
+      "sourceName": "EC ROSES 50",
+      "variety": null,
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "070101ef-ef7e-459a-86fc-124a5538dadd"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "dmv",
+      "sourceName": "EC ROSES 60",
+      "variety": null,
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "739ee424-2e94-4a99-86e5-dd0a8b9d6d30"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "dmv",
+      "sourceName": "EC ROSES 70",
+      "variety": null,
+      "color": null,
+      "lengthCm": 70,
+      "sourceTaskId": "fbb46cab-39bf-4dab-9f05-d399a70c06f6"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "dmv",
+      "sourceName": "EC ROSES 80",
+      "variety": null,
+      "color": null,
+      "lengthCm": 80,
+      "sourceTaskId": "05e9b7cc-f837-4993-8606-4c658511d271"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "dmv",
+      "sourceName": "EC ROSES 50",
+      "variety": "Kahala",
+      "color": "Orange",
+      "lengthCm": 50,
+      "sourceTaskId": "74eae86a-a0c4-4cc8-bbdc-38cada4fab3e"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "dmv",
+      "sourceName": "EC ROSES 60",
+      "variety": "Kahala",
+      "color": "Orange",
+      "lengthCm": 60,
+      "sourceTaskId": "fd12f52f-a20b-47ec-9dfc-d42d16194fda"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "dmv",
+      "sourceName": "EC ROSES 70",
+      "variety": "Kahala",
+      "color": "Orange",
+      "lengthCm": 70,
+      "sourceTaskId": "c35119b6-3379-4c4b-b66f-788babf9d966"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "dmv",
+      "sourceName": "EC ROSES 50",
+      "variety": "Mandala",
+      "color": "Pink",
+      "lengthCm": 50,
+      "sourceTaskId": "57869466-16b0-4632-8b57-ea32b52cbd9b"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "dmv",
+      "sourceName": "EC ROSES 60",
+      "variety": "Mandala",
+      "color": "Pink",
+      "lengthCm": 60,
+      "sourceTaskId": "a45ec3cb-37e9-4215-8f21-0aab0c041959"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "dmv",
+      "sourceName": "EC ROSES 70",
+      "variety": "Mandala",
+      "color": "Pink",
+      "lengthCm": 70,
+      "sourceTaskId": "0f5bc5b9-8052-4e87-bfc0-e207feb740d9"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "houston",
+      "sourceName": "EC ROSES 50",
+      "variety": "generic",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "42ab727d-402d-4071-bddb-96ab133d4fe1"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "houston",
+      "sourceName": "EC ROSES 60",
+      "variety": null,
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "7e01c064-f52b-4af3-9dc9-5b9438c0c890"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "houston",
+      "sourceName": "EC ROSES 70",
+      "variety": null,
+      "color": null,
+      "lengthCm": 70,
+      "sourceTaskId": "d6caa2e5-7912-477e-9baf-926d7dffb49b"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "houston",
+      "sourceName": "EC ROSES 80",
+      "variety": null,
+      "color": null,
+      "lengthCm": 80,
+      "sourceTaskId": "922de635-a757-49e3-bc9c-9fe18501e1ba"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "houston",
+      "sourceName": "EC ROSES 90",
+      "variety": null,
+      "color": null,
+      "lengthCm": 90,
+      "sourceTaskId": "ce263602-f8b2-48fc-a33a-456132a73aee"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "houston",
+      "sourceName": "EC ROSES 100",
+      "variety": null,
+      "color": null,
+      "lengthCm": 100,
+      "sourceTaskId": "80c7da12-fdd0-4905-a29a-f69c43899627"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "houston",
+      "sourceName": "EC ROSES 50",
+      "variety": "Kahala",
+      "color": "Orange",
+      "lengthCm": 50,
+      "sourceTaskId": "f1513931-1bcc-43b1-aa28-9b384e09c0a7"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "houston",
+      "sourceName": "EC ROSES 60",
+      "variety": "Kahala",
+      "color": "Orange",
+      "lengthCm": 60,
+      "sourceTaskId": "5b4f6ea4-f16d-4788-8b5f-3f3ecc75a329"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "houston",
+      "sourceName": "EC ROSES 70",
+      "variety": "Kahala",
+      "color": "Orange",
+      "lengthCm": 70,
+      "sourceTaskId": "468a32b6-5d22-4809-bed0-2b1a0cc86c86"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "seattle",
+      "sourceName": "EC ROSES 50",
+      "variety": null,
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "a103a788-bca4-4e6b-8ddb-07abc9ad9e98"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "seattle",
+      "sourceName": "EC ROSES 60",
+      "variety": null,
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "7ea722f3-895c-47eb-9405-0bf4791681af"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "seattle",
+      "sourceName": "EC ROSES 70",
+      "variety": null,
+      "color": null,
+      "lengthCm": 70,
+      "sourceTaskId": "c3bf8141-6a04-49fd-8536-04880c75325d"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "seattle",
+      "sourceName": "EC ROSES 80",
+      "variety": null,
+      "color": null,
+      "lengthCm": 80,
+      "sourceTaskId": "f8b74959-de63-4511-b2fe-16974aeb032a"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "seattle",
+      "sourceName": "EC ROSES 90",
+      "variety": null,
+      "color": null,
+      "lengthCm": 90,
+      "sourceTaskId": "01d6f39c-4c8f-44dd-abba-880b1ffb5f9d"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "seattle",
+      "sourceName": "EC ROSES 50",
+      "variety": "Kahala",
+      "color": "Orange",
+      "lengthCm": 50,
+      "sourceTaskId": "8c9392fe-567e-4f3f-8e65-e259df42103a"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "seattle",
+      "sourceName": "EC ROSES 60",
+      "variety": "Kahala",
+      "color": "Orange",
+      "lengthCm": 60,
+      "sourceTaskId": "90556a69-5892-4eb1-8f30-26ffa5614666"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "seattle",
+      "sourceName": "EC ROSES 70",
+      "variety": "Kahala",
+      "color": "Orange",
+      "lengthCm": 70,
+      "sourceTaskId": "0b828f72-bfbd-4711-b07d-634be0b0d70b"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "seattle",
+      "sourceName": "EC ROSES 50",
+      "variety": "Mandala",
+      "color": "Pink",
+      "lengthCm": 50,
+      "sourceTaskId": "0e8c2e22-b310-477b-bf92-6919712d368e"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "seattle",
+      "sourceName": "EC ROSES 60",
+      "variety": "Mandala",
+      "color": "Pink",
+      "lengthCm": 60,
+      "sourceTaskId": "0fd72b42-9e6f-4277-ae89-5dd112ff6b02"
+    },
+    {
+      "product": "EC ROSES",
+      "slug": "ec-roses",
+      "location": "seattle",
+      "sourceName": "EC ROSES 70",
+      "variety": "Mandala",
+      "color": "Pink",
+      "lengthCm": 70,
+      "sourceTaskId": "6f9c993a-98d5-4be2-864b-c1aff5ad493f"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "dmv",
+      "sourceName": "Carnation",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "eeef6c4f-47b3-4bd8-9a04-692fd1c6eb67"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "dmv",
+      "sourceName": "Carnation Lavender",
+      "variety": null,
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "2337fba4-e561-41cb-9af8-bae4eb59ff36"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "dmv",
+      "sourceName": "Carnation Mix",
+      "variety": null,
+      "color": "Mix",
+      "lengthCm": null,
+      "sourceTaskId": "d98150c6-7cd4-4952-a0a3-054d9496e19c"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "dmv",
+      "sourceName": "Carnation Orange",
+      "variety": null,
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "16107764-ae38-4ff6-a0e0-c6c37d1c47cb"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "dmv",
+      "sourceName": "Carnation Peach",
+      "variety": null,
+      "color": "Peach",
+      "lengthCm": null,
+      "sourceTaskId": "a2b4a07b-40f3-48c7-a164-fe3bf39d6f15"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "dmv",
+      "sourceName": "Carnation Pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "6274b475-b8ac-4cac-b24b-946e9ccae989"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "dmv",
+      "sourceName": "Carnation Red",
+      "variety": null,
+      "color": "Red",
+      "lengthCm": null,
+      "sourceTaskId": "ce00d480-6c05-46cc-9f43-0a792a9c3ecf"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "dmv",
+      "sourceName": "Carnation White",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "bf1fe6c2-5e25-49c8-946d-50da34af7c3d"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "dmv",
+      "sourceName": "Carnation Yellow",
+      "variety": null,
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "3b1ed033-5caa-44af-836c-d9a816eb144d"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "seattle",
+      "sourceName": "Carnation",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "354a16dd-341e-4bdd-a71d-aa7dace722c6"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "seattle",
+      "sourceName": "Carnation Lavender",
+      "variety": null,
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "d5f16aa5-349a-4daf-be9a-558804d94534"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "seattle",
+      "sourceName": "Carnation Mix",
+      "variety": null,
+      "color": "Mix",
+      "lengthCm": null,
+      "sourceTaskId": "5182bb99-2174-424e-813a-10ac075468f3"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "seattle",
+      "sourceName": "Carnation Orange",
+      "variety": null,
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "2e9b5995-7177-4c73-9cde-703a1422a6bb"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "seattle",
+      "sourceName": "Carnation Peach",
+      "variety": null,
+      "color": "Peach",
+      "lengthCm": null,
+      "sourceTaskId": "839eeb50-daf3-4d88-b820-8c0326ec57aa"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "seattle",
+      "sourceName": "Carnation Pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "f31b9775-a803-4137-af90-c29c0eed85c9"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "seattle",
+      "sourceName": "Carnation Red",
+      "variety": null,
+      "color": "Red",
+      "lengthCm": null,
+      "sourceTaskId": "545cc568-3871-4616-962a-3492ad192746"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "seattle",
+      "sourceName": "Carnation White",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "1d4f9595-0806-4144-9c8d-3afb14b96212"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "seattle",
+      "sourceName": "Carnation Yellow",
+      "variety": null,
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "9934283e-4a56-473c-b900-2cdcf7a96677"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "houston",
+      "sourceName": "Carnation",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "8953e672-d44f-420e-8421-b07579f048b0"
+    },
+    {
+      "product": "Carnation",
+      "slug": "carnation",
+      "location": "houston",
+      "sourceName": "Carnation Mix",
+      "variety": null,
+      "color": "Mix",
+      "lengthCm": null,
+      "sourceTaskId": "4ff25849-16be-461b-96f2-200c18d1ec41"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Adventure",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "68ab62cc-7c9f-4f21-a619-d495051daa81"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Aly",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "fcfab38d-500d-4e5a-8950-9c73d49b1991"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Apple Jack",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "c0a25199-5910-4263-859a-69dfbdddd8e9"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Art Nouvo",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "f5810811-33e0-4bd9-8db9-ed86e6e4765a"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Bloomsbury",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "f67667cf-23c6-4cbe-814e-4be88d929534"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Bourbon",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "bacaddce-fbc7-4ef9-80b3-ee526e618ba3"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Caramel Macchiato",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "ed3287c6-a014-4d0c-a243-c1e6e075d913"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Carnivore",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "c3bf7c27-4b4d-4771-bc27-93cedf0b6764"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Cavana",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "9b6535db-e63e-4391-b5df-bfc4d6a0537d"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Charming Corneille",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "5bfce0e8-b011-4003-af38-78e4aa359ec0"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Copperfield",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "39dbb9a4-fc53-40de-9826-05e7e4bdf6c9"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Coqueta",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "4ad34595-e3f6-46c7-9b2d-e0d3f0616a9c"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Cotton X-pression",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "0cbc4605-277f-4979-b729-3549c350ec81"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Country Garden",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "67ff5aa7-99f5-4269-ae5f-829b34ccf2ad"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Dark X-pression",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "cf54110f-31e3-4d61-b04f-d80225b86110"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Darlington",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "173fe1e0-c707-4f30-93c8-984c0c8c861f"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Dolceto",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "63b2ad85-2630-47dd-a0b2-4f1179504098"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Dory",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "44c6f4a0-e1bc-4a91-8a43-dcb5285cecdf"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Emma Woodhouse",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "569a3217-6817-4db9-9f98-e9a961b546a3"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Fascination",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "13798221-d686-4b27-a799-73b109e44569"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": null,
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "52fda8ae-ec43-497f-b9fb-1a75e525a932"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Georgia Peach",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "3c357dbe-ea93-463d-980e-5a56f387bfa9"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Green X-pression",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "c5bf9590-e0f7-4bcb-a7fe-cbbf9285d42f"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Heller",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "b2777e4e-5636-4a41-ae0e-0a80691652d6"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Hot X-pression",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "c9af5e4a-5131-4bd4-ac0e-ef410385a2e0"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Houdini",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "e43b611b-a027-4c99-812e-d62bda39f742"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Khela",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "59f622c4-925b-451a-a360-c1c26fe79e34"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Lorena",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "ed1bbaac-bf34-49c9-bede-88cb44e45921"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Lovely Hearts",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "67b28292-c883-4304-9bc4-f9f5fca11a33"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Marvel",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "badae8a6-747c-4712-bb9b-13b0f492992b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Mastiek Park",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "b380211c-fb88-4bda-8c37-8ab61f7b0522"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Mayra's Bridal",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "d0be83ad-12a2-4051-881e-5dcf60cfe92a"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Mayra's Peach",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "c7db17bc-d9a4-4783-9e06-bc9582a9c277"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Mayra's Pink",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "f7186889-bbad-484f-b006-7c4eb45542ae"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Mayra's red",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "18aa33e8-af8c-426b-bc40-89574824281a"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Mayra's Vert",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "13d84134-6842-44d5-ab71-13f4b17bf068"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Mayra's White",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "3ada25a0-3167-4cff-a382-b08f98bbe9e1"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Navy",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "fc93fd3a-d985-4473-84c0-dd5400c6bf1b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Notting Hill",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "42a21c8d-8301-40c4-8ecd-a45341dac725"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Orange Reeva",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "469f1ea0-ec98-4b9a-9ddc-5e2163f9fbd0"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Orange Wonder",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "6a19dbe2-4caf-4376-94b3-a7ddd2e91769"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Patchouli",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "077bdbb9-bb1e-4fcf-8e9b-9ecb9febb34d"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Phoenix",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "0c34e83e-5311-4953-afbf-bce291c86fdd"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Pink O'hara",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "927134ac-36f9-49dd-87d8-329be3b612a0"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Pink Xpression",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "08bfa382-675f-485b-a19f-99bbc2a08bda"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Pride of Jane",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "7ff4318f-7c18-4cc0-a845-1f6c3ffcf29a"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Princess Crown",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "560d61db-1849-4f4f-9a2b-e909e7df072c"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Queens Crown",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "13ca50f0-f281-497e-8a42-daa1c626907f"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Stylist",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "9578a042-a20d-47e4-9c04-7d180f410b8c"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Victoria Park",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "3ed0e574-6eee-41a8-b05b-95b7dbdb75cd"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Victorian Red",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "a54c20bf-1bd1-4217-bc32-4b2d55746476"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Vuvuzela Sensation",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "f7da94ae-0683-464f-8503-32128ab77845"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Wakanda",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "8b68bbf3-abec-4e93-a753-ba905df9034a"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Wedding Spirit",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "e0a1fa10-57f7-43ff-b69a-03c06fb85cb2"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "White O'hara",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "b740fd65-d7be-4153-86f5-b2eb5cce12eb"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Wild Esperance",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "bbd93a65-fa9c-4d0d-9ce2-d80e480a67aa"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Wild Moments",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "ebad059b-28f2-49cd-a0c1-3b7e10f7224a"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Adventure",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "6747cc4c-3213-47d1-b3eb-32ed03b4fa68"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Aly",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "bebe0aa7-b833-45bf-a15e-173aa02fd5a1"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Apple Jack",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "2085fdfa-1a53-4cca-9a1f-56584e727dfd"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Art Nouvo",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "7135f82f-06c4-4295-839d-5a273a1d6f32"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Bloomsbury",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "6b8458cb-8793-4346-a62f-281eaa1b05e3"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Bourbon",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "7c547a82-0418-4efd-8e39-8c2a6f5d2779"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Caramel Macchiato",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "3c0a159f-4413-4540-9db2-a402163154c5"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Carnivore",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "c8901621-dea9-4fbc-8bc7-eadfad257599"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Cavana",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "1720c5e8-0acb-4193-8e9c-f0fed6a4b34b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Charming Corneille",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "fba5691a-31af-4e7c-b986-a0132a2af90f"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Copperfield",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "e5a816fe-6f57-42fa-9920-2da06d2577bd"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Coqueta",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "05486df8-e8e4-4cf8-98b1-765c8195fe36"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Cotton X-pression",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "93cdffc9-26ff-4413-8e0d-9b904c003ed7"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Country Garden",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "3db038a2-254a-4671-9805-a02e0a7a9bdf"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Dark X-pression",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "e4ae0a84-d605-4796-98ed-8eec162c60ab"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Darlington",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "8d32448c-e3b6-4b4a-91c7-9c2eaefce6c6"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Dolceto",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "7f029223-5785-4c53-bd05-4e1e1e557d6b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Dory",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "a179c267-9e05-48c5-9bda-1b6479876e5c"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Emma Woodhouse",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "db324a72-a60d-4b09-8725-ea9c32d07ed6"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Fascination",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "d20f2969-18a3-4ab8-a122-1de4b821e666"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": null,
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "2571f43f-02d0-4c12-9c88-f0975d3bdd72"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Georgia Peach",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "4ef5ae52-f401-4916-a307-585aa77f58c1"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Green X-pression",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "b64740b3-9094-4642-8544-dfdb0224a917"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Heller",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "e4ba632d-028f-44be-9b13-2544434cd487"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Hot X-pression",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "97a282c8-93b2-4f98-8c16-59d78a31f4f3"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Houdini",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "be617693-baa8-4a80-af68-c55ec5bfddad"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Khela",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "f4f59368-0b43-4e5b-9db8-b61e5c73b668"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Lorena",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "cadcba76-8874-4226-a994-f8122e9873be"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Lovely Hearts",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "64b7f709-f119-43c2-85f8-7dd101398b1b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Marvel",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "ee202184-4736-41a9-be1f-a42c9eec0cf8"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Mastiek Park",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "38574690-7e68-4e12-b24e-57803916c1a4"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Mayra's Bridal",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "5ac53e05-aa77-4ba5-a532-868e9cfc9576"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Mayra's Peach",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "897d88b9-b89f-43f6-bf8f-061e50cc2e94"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Mayra's Pink",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "8b324759-4518-4c60-8f04-c86138a962c0"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Mayra's red",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "7942dcdc-0360-4e8b-9130-309cb5276bac"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Mayra's Vert",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "f233fa4e-d20b-4c3e-a01b-1f6fdeebcea6"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Mayra's White",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "e6adc49e-5c77-461c-93c6-763dc952f9ee"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Navy",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "82e2301a-9ef8-4f2d-a56d-115f179de461"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Notting Hill",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "d0c460ae-3951-4949-9d7c-d7a4169c8f52"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Orange Reeva",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "e8c51bca-1a15-4d6f-887f-1314532ecfcb"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Orange Wonder",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "a9e395cf-02a2-4f3a-8bd9-ffd96c95abe1"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Patchouli",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "0037a36e-e237-4579-93bd-cdeb16584a7b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Phoenix",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "448ad8eb-82bf-4cca-a546-074c9a5307e1"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Pink O'hara",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "c255e63b-9ce7-47b8-9234-bf1a1a4bc24f"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Pink Xpression",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "648d28a8-0757-405b-bb97-8ee311d2c2e5"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Pride of Jane",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "ca8077d4-7203-42ba-887f-a5a7a6a7632e"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Princess Crown",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "d8092fda-d106-42ba-833c-06dd8cf404f2"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Queens Crown",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "f03ac0ba-1d01-4ed1-b931-9c9af06204b3"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Stylist",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "b9d38d9b-32df-47b7-a592-383b81d48c77"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Victoria Park",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "935e2add-0739-486f-a755-5168cf75b39d"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Victorian Red",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "3e56665f-75fc-413f-bdf2-ffb8402f3b6c"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Vuvuzela Sensation",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "a14722c0-3bd7-46b6-96f4-fb245e11a561"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Wakanda",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "fe08f69f-8c70-471a-86ca-41bb55aea947"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Wedding Spirit",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "95508094-862e-43ba-9648-92a112cd6586"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "White O'hara",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "895b187a-9687-4f62-9007-8cb8ecaf1b94"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Wild Esperance",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "bf7fee91-6496-43e9-8f66-b895f2376cf5"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Wild Moments",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "80e51ed5-d96f-4961-9e9a-b39a8262ffe7"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Adventure",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "b1dbf9c2-95a4-442a-be72-34c6942ef90b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Aly",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "29d82b5e-b9ec-4038-b245-ed2101bb9ea5"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Apple Jack",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "a48ac208-f335-4830-93a1-3fbee3c8d06b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Art Nouvo",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "1157ebbe-b19c-4d23-ba46-c759b037d1bf"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Bloomsbury",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "f0a52427-5ed1-4d0b-b187-fb6f262229ab"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Bourbon",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "c7f12660-2354-40f6-8dda-3de36d69269a"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Caramel Macchiato",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "e8c2f70a-fc1d-4dac-8696-c53e20abe137"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Carnivore",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "80023d4a-8aad-4443-961d-c29633a852c4"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Cavana",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "bb1a1f1b-8c91-4c79-84b4-4cb79b11830d"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Charming Corneille",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "c967930f-c983-4f69-b661-5a9980cf322f"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Copperfield",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "559fc7c2-1031-4fc9-9470-0b8bdf9e617f"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Coqueta",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "ec2fae8a-1be2-4217-8c2b-2063399a2f4b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Cotton X-pression",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "28c976f6-b952-4f64-816b-3dc09ca736ec"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Country Garden",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "2c3d5731-7b45-4d69-aac3-c59874c2179b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Dark X-pression",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "c737fa2b-e532-49ee-9c4c-0c2df95bbe0a"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Darlington",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "574489e5-9522-4774-9177-ef712ce36800"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Dolceto",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "8eed83e4-4348-4be2-96f9-2d2b6e18ffaa"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Dory",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "81cc2e96-a9e6-4103-89d6-ee66f8d01934"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Emma Woodhouse",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "f60daba2-2954-4c08-8543-e94e880b6db1"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Fascination",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "d3aa8d21-a400-4128-865b-98d6bf12f43a"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": null,
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "a65a6c24-d6dd-4708-8194-24e82974962a"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Georgia Peach",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "be7abbec-6614-4c54-b2ac-af057bdb9c75"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Green X-pression",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "caee7d9c-a93e-48ad-9ba6-445c5e1fc55b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Heller",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "64f8c41f-1e74-4774-8ab3-69b55180b357"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Hot X-pression",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "920ad278-8558-4785-b90e-2f72723c6707"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Houdini",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "1441068a-7853-4d4b-bdb7-263c85af5df3"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Khela",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "c21835b7-06ff-47f4-a0ef-a1cbeaa78746"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Lorena",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "9233aae1-82bc-4b71-93ec-52cfba4323b6"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Lovely Hearts",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "20af142a-8e95-4870-b5cf-d4683126b7fc"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Marvel",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "ca15d3c6-3e06-4c15-9f82-a254cdebb2dd"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Mastiek Park",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "9a766a60-2be3-4add-89d0-74c45868e126"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Mayra's Bridal",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "d889009e-6031-469d-812c-a03a61b2a917"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Mayra's Peach",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "00230612-74bf-4d33-a605-5afa8cd5f9f2"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Mayra's Pink",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "82025eb2-06d5-460a-94b5-840f6bf2e346"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Mayra's red",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "36ca2b32-bd49-4379-89d2-d9409ed2f072"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Mayra's Vert",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "b4ff0fd1-f2b7-4ddf-a01e-08569fdef31d"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Mayra's White",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "ea147352-b634-4180-882e-0043c85c6dc6"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Navy",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "a148d6e5-9af6-4cb0-8feb-e69655a0a4d1"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Notting Hill",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "a6e6e757-3e7e-4d07-8ba9-3d58585cc693"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Orange Reeva",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "2dfa2ff7-1c25-47ae-b54b-9be288eb61ec"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Orange Wonder",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "4c221739-c4f0-4d53-bcbe-e4b146a4a238"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Patchouli",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "63eecb26-3d7c-40d6-9837-755bb3dabb65"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Phoenix",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "b3438f30-ef29-4881-918c-66ba96d9d1db"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Pink O'hara",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "83286d7b-2dee-4c21-ba06-66b023a1c1d1"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Pink Xpression",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "cb49dc00-f46e-42e9-8d0e-4586c589f0cd"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Pride of Jane",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "f77d4bb5-74bd-49e5-ad49-b0c73fe099f1"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Princess Crown",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "64a86c46-e12a-4a94-b5a8-a22698417c68"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Queens Crown",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "46c8c68c-28f3-43d8-bf87-a64073d76aac"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Stylist",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "5f09b2da-f3a2-4e2d-9eb0-05f0e694a6a7"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Victoria Park",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "f3fc774d-f5a2-4af7-944c-7eb440d46fc5"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Victorian Red",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "f08767a6-7c89-4d63-bcef-08cceffb5aa3"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Vuvuzela Sensation",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "c6d72e92-9a62-4fa1-993a-72d36e9ac629"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Wakanda",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "a8cb0be9-ab43-4dfb-87c5-c7a6aa10ef8c"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Wedding Spirit",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "205eec0c-ecd6-484b-a231-2e82295c5367"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "White O'hara",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "bdf7c196-eac3-42c0-b727-03723cc674a4"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Wild Esperance",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "35942f1a-3787-42dc-afa5-15769c429ed0"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "seattle",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Wild Moments",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "01cb85da-90bb-49ba-a510-28494acbb1dc"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "houston",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": null,
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "25533d46-2295-4582-bec1-3ea7b2e191f3"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "houston",
+      "sourceName": "GARDEN ROSES 40",
+      "variety": "Stylist",
+      "color": null,
+      "lengthCm": 40,
+      "sourceTaskId": "f137d122-e2c4-45c3-9fd7-ab8b3d23cc2d"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "houston",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": null,
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "4ae334c4-8811-448e-b8fd-56a20db73bc3"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "houston",
+      "sourceName": "GARDEN ROSES 50",
+      "variety": "Stylist",
+      "color": null,
+      "lengthCm": 50,
+      "sourceTaskId": "e8060a4f-fc2a-4c75-acc3-e5471c0ffc6b"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "houston",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": null,
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "653327d5-912a-4e02-b83c-fe6289868d32"
+    },
+    {
+      "product": "GARDEN ROSES",
+      "slug": "garden-roses",
+      "location": "houston",
+      "sourceName": "GARDEN ROSES 60",
+      "variety": "Stylist",
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "f148fad1-b39a-43ab-8af6-206830a7a1a3"
+    },
+    {
+      "product": "Gypsophilia Xcelence (Baby’s breath)",
+      "slug": "gypsophilia-xcelence-babys-breath",
+      "location": "dmv",
+      "sourceName": "Gypsophilia Xcelence (Baby’s breath)",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "80f76532-9698-44c9-9ad7-8884160f2e05"
+    },
+    {
+      "product": "Gypsophilia Xcelence (Baby’s breath)",
+      "slug": "gypsophilia-xcelence-babys-breath",
+      "location": "seattle",
+      "sourceName": "Gypsophilia Xcelence (Baby’s breath)",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "e55571c7-ea64-4627-ae31-36297b79db38"
+    },
+    {
+      "product": "Solidago golden glory",
+      "slug": "solidago-golden-glory",
+      "location": "dmv",
+      "sourceName": "Solidago golden glory",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "58fd8d70-922a-42a5-ba9f-bd503d9cdbd3"
+    },
+    {
+      "product": "Solidago golden glory",
+      "slug": "solidago-golden-glory",
+      "location": "seattle",
+      "sourceName": "Solidago golden glory",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "820e458e-3a9a-4997-8fce-1d8e9ceaf231"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "dmv",
+      "sourceName": "Spray Roses",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "dab6cc3e-e55a-4dd3-9ed5-fdfb87d097a8"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "dmv",
+      "sourceName": "Spray Roses Lavender",
+      "variety": null,
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "4a4d1420-0117-4c24-9971-73c8ad828693"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "dmv",
+      "sourceName": "Spray Roses Orange",
+      "variety": null,
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "ccab6773-84ab-4da8-bc5d-aa8b49b07851"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "dmv",
+      "sourceName": "Spray Roses Peach",
+      "variety": null,
+      "color": "Peach",
+      "lengthCm": null,
+      "sourceTaskId": "d87cc9eb-b953-466b-843b-dd68a33b5309"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "dmv",
+      "sourceName": "Spray Roses Pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "4f871da6-5c67-4290-a821-b41c18c0e138"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "dmv",
+      "sourceName": "Spray Roses Red",
+      "variety": null,
+      "color": "Red",
+      "lengthCm": null,
+      "sourceTaskId": "4192278b-e0a3-4e19-8991-8358efc57382"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "dmv",
+      "sourceName": "Spray Roses White",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "4aa6ba04-f458-49bf-bb24-b8722062af65"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "dmv",
+      "sourceName": "Spray Roses Yellow",
+      "variety": null,
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "1f194000-5dc9-4da1-9190-5e0c75b7c046"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "seattle",
+      "sourceName": "Spray Roses",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "4d25bf25-bfea-4f24-bead-2c7a687bc3f4"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "seattle",
+      "sourceName": "Spray Roses Lavender",
+      "variety": null,
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "450227d9-756e-4acc-961c-dcc3fc633072"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "seattle",
+      "sourceName": "Spray Roses Orange",
+      "variety": null,
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "9a423c42-1a92-477d-817c-65ba68a3d6ff"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "seattle",
+      "sourceName": "Spray Roses Peach",
+      "variety": null,
+      "color": "Peach",
+      "lengthCm": null,
+      "sourceTaskId": "97a45898-612c-45f7-a5c2-6a5df8904e88"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "seattle",
+      "sourceName": "Spray Roses Pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "cb924afe-b749-41e1-8418-59d8a690b0d8"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "seattle",
+      "sourceName": "Spray Roses Red",
+      "variety": null,
+      "color": "Red",
+      "lengthCm": null,
+      "sourceTaskId": "df52d525-8c7a-4f42-a31c-8c8951289ee5"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "seattle",
+      "sourceName": "Spray Roses White",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "407c0ffa-b2b7-4dcc-b17a-d283f4b8fee1"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "seattle",
+      "sourceName": "Spray Roses Yellow",
+      "variety": null,
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "ee9426f0-dcd9-4e61-ab42-2fcb52a0fc92"
+    },
+    {
+      "product": "Spray Roses",
+      "slug": "spray-roses",
+      "location": "houston",
+      "sourceName": "Spray Roses",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "b31d9aff-6243-4f51-93cf-681a27ea75fb"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "dmv",
+      "sourceName": "Stock",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "559229be-2903-4743-8d79-8936f46f3f6b"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "dmv",
+      "sourceName": "Stock hot pink",
+      "variety": null,
+      "color": "Hot Pink",
+      "lengthCm": null,
+      "sourceTaskId": "881c4602-d2e4-4c57-8148-37659d3438c6"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "dmv",
+      "sourceName": "Stock lavender",
+      "variety": null,
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "a7c68cda-80f6-4eaa-b7c2-11680b08a71b"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "dmv",
+      "sourceName": "Stock light pink",
+      "variety": null,
+      "color": "Light Pink",
+      "lengthCm": null,
+      "sourceTaskId": "3168fe7b-cb4a-4520-9bc5-b9546474786c"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "dmv",
+      "sourceName": "Stock mix",
+      "variety": null,
+      "color": "Mix",
+      "lengthCm": null,
+      "sourceTaskId": "755c77e2-ce1f-44b0-9b74-feb2035177fb"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "dmv",
+      "sourceName": "Stock peach",
+      "variety": null,
+      "color": "Peach",
+      "lengthCm": null,
+      "sourceTaskId": "305955ad-2c67-49a6-acf7-2660c3b93cf8"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "dmv",
+      "sourceName": "Stock pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "82b013f6-b3ee-4555-8933-ff7bfb8e444f"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "dmv",
+      "sourceName": "Stock purple",
+      "variety": null,
+      "color": "Purple",
+      "lengthCm": null,
+      "sourceTaskId": "bd31fe56-4da0-40e4-82cf-db3ca2261416"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "dmv",
+      "sourceName": "Stock white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "bcfc3480-c637-4414-b7ba-3422dc8b1820"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "seattle",
+      "sourceName": "Stock",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "03fcc214-8418-4898-b3d4-263c43ca8990"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "seattle",
+      "sourceName": "Stock hot pink",
+      "variety": null,
+      "color": "Hot Pink",
+      "lengthCm": null,
+      "sourceTaskId": "9f16a8dc-3c74-4c6b-9437-e04e22f16107"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "seattle",
+      "sourceName": "Stock lavender",
+      "variety": null,
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "e9b4c30e-1e10-4018-8bbc-8da536fae910"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "seattle",
+      "sourceName": "Stock light pink",
+      "variety": null,
+      "color": "Light Pink",
+      "lengthCm": null,
+      "sourceTaskId": "baa0a682-8610-40d1-8142-b996e545e118"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "seattle",
+      "sourceName": "Stock mix",
+      "variety": null,
+      "color": "Mix",
+      "lengthCm": null,
+      "sourceTaskId": "00cf0950-fc54-41c6-bb47-695676cb4c56"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "seattle",
+      "sourceName": "Stock peach",
+      "variety": null,
+      "color": "Peach",
+      "lengthCm": null,
+      "sourceTaskId": "1d84fa6e-ea34-431c-bdb9-e515acc97db3"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "seattle",
+      "sourceName": "Stock pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "a4933456-a52d-4768-bd82-b40b33af274a"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "seattle",
+      "sourceName": "Stock purple",
+      "variety": null,
+      "color": "Purple",
+      "lengthCm": null,
+      "sourceTaskId": "dda4d40f-59cf-428c-ae33-877a9370115f"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "seattle",
+      "sourceName": "Stock white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "358d8000-e6b4-48f0-8408-123b55912fe0"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "houston",
+      "sourceName": "Stock",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "3d23ed58-bdee-4964-9007-6e587847ef24"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "houston",
+      "sourceName": "Stock mix",
+      "variety": null,
+      "color": "Mix",
+      "lengthCm": null,
+      "sourceTaskId": "741dc5e7-97b6-4f70-998a-2cdd2b1211ac"
+    },
+    {
+      "product": "Stock",
+      "slug": "stock",
+      "location": "houston",
+      "sourceName": "Stock white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "3ba7fd79-6eff-46d1-92fe-cef1b992d35b"
+    },
+    {
+      "product": "Sunflowers",
+      "slug": "sunflowers",
+      "location": "dmv",
+      "sourceName": "Sunflowers",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "0ef502c5-c65a-4f96-96c3-66f76db73196"
+    },
+    {
+      "product": "Sunflowers",
+      "slug": "sunflowers",
+      "location": "seattle",
+      "sourceName": "Sunflowers",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "df357e4c-8a44-4b87-9c79-9773d4d8f6c8"
+    },
+    {
+      "product": "DYED ROSES",
+      "slug": "dyed-roses",
+      "location": "seattle",
+      "sourceName": "DYED ROSES 60",
+      "variety": null,
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "6e0aa1b3-92f7-43e3-843b-a37175c58483"
+    },
+    {
+      "product": "DYED ROSES",
+      "slug": "dyed-roses",
+      "location": "seattle",
+      "sourceName": "DYED ROSES 60",
+      "variety": "Black",
+      "color": "Black",
+      "lengthCm": 60,
+      "sourceTaskId": "8cf3a18c-6abd-4020-b8d4-1fd721d08bdc"
+    },
+    {
+      "product": "DYED ROSES",
+      "slug": "dyed-roses",
+      "location": "seattle",
+      "sourceName": "DYED ROSES 60",
+      "variety": "Blue",
+      "color": "Blue",
+      "lengthCm": 60,
+      "sourceTaskId": "9ff6a179-30a1-42b5-a724-fc95b722b288"
+    },
+    {
+      "product": "DYED ROSES",
+      "slug": "dyed-roses",
+      "location": "seattle",
+      "sourceName": "DYED ROSES 60",
+      "variety": "Purple",
+      "color": "Purple",
+      "lengthCm": 60,
+      "sourceTaskId": "6dcb2e0f-8d8b-45c1-855c-70ae19357481"
+    },
+    {
+      "product": "DYED ROSES",
+      "slug": "dyed-roses",
+      "location": "seattle",
+      "sourceName": "DYED ROSES 60",
+      "variety": "Rainbow",
+      "color": "Rainbow",
+      "lengthCm": 60,
+      "sourceTaskId": "c8167b5a-5f61-496a-864a-aa63029c3c40"
+    },
+    {
+      "product": "DYED ROSES",
+      "slug": "dyed-roses",
+      "location": "houston",
+      "sourceName": "DYED ROSES 60",
+      "variety": null,
+      "color": null,
+      "lengthCm": 60,
+      "sourceTaskId": "74a12f33-00e0-475d-bfc7-e01f6ce0e1d6"
+    },
+    {
+      "product": "DYED ROSES",
+      "slug": "dyed-roses",
+      "location": "houston",
+      "sourceName": "DYED ROSES 60",
+      "variety": "Purple",
+      "color": "Purple",
+      "lengthCm": 60,
+      "sourceTaskId": "d7e91326-7d0e-4610-9c12-d56fae10439f"
+    },
+    {
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "location": "seattle",
+      "sourceName": "Alstroemeria Green",
+      "variety": null,
+      "color": "Green",
+      "lengthCm": null,
+      "sourceTaskId": "7fcd7748-7636-44dc-8399-b05fd3a7ab68"
+    },
+    {
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "location": "seattle",
+      "sourceName": "Alstroemeria Lavender",
+      "variety": null,
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "605c939a-731a-4d24-a185-b1b5f2e1a10f"
+    },
+    {
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "location": "seattle",
+      "sourceName": "Alstroemeria Mix",
+      "variety": null,
+      "color": "Mix",
+      "lengthCm": null,
+      "sourceTaskId": "63408e13-6a7a-4a91-b1c3-f3cc2efcc293"
+    },
+    {
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "location": "seattle",
+      "sourceName": "Alstroemeria Orange",
+      "variety": null,
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "39c1a01d-9cfe-4aa6-a927-aaa76d4073ca"
+    },
+    {
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "location": "seattle",
+      "sourceName": "Alstroemeria Pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "cfac4cb2-b282-4bcd-ae7e-563ea4edee43"
+    },
+    {
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "location": "seattle",
+      "sourceName": "Alstroemeria Purple",
+      "variety": null,
+      "color": "Purple",
+      "lengthCm": null,
+      "sourceTaskId": "f07cefa5-a546-40a8-a9d7-31eb2fa47e89"
+    },
+    {
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "location": "seattle",
+      "sourceName": "Alstroemeria Red",
+      "variety": null,
+      "color": "Red",
+      "lengthCm": null,
+      "sourceTaskId": "81f11fc6-dfd0-4740-89c7-2ed8334bf64a"
+    },
+    {
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "location": "seattle",
+      "sourceName": "Alstroemeria White",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "0050b338-fe01-4397-8c89-5db6e1284aec"
+    },
+    {
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "location": "seattle",
+      "sourceName": "Alstroemeria Yellow",
+      "variety": null,
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "3792e3f0-93d1-4fc6-9e6f-3505190978fc"
+    },
+    {
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "location": "seattle",
+      "sourceName": "Alstroemerias",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "d98b881a-cdd0-40d8-9f22-7dc50c05622d"
+    },
+    {
+      "product": "Alstroemeria",
+      "slug": "alstroemeria",
+      "location": "houston",
+      "sourceName": "Alstroemerias",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "671a68ea-ca98-4fa7-881c-6178233a85d9"
+    },
+    {
+      "product": "Campanula",
+      "slug": "campanula",
+      "location": "seattle",
+      "sourceName": "Campanula",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "8e5f5990-bf43-4492-bb49-7dae76cf2905"
+    },
+    {
+      "product": "Campanula",
+      "slug": "campanula",
+      "location": "seattle",
+      "sourceName": "Campanula pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "c641f6ac-9206-480e-87a1-724f152cf340"
+    },
+    {
+      "product": "Campanula",
+      "slug": "campanula",
+      "location": "seattle",
+      "sourceName": "Campanula purple",
+      "variety": null,
+      "color": "Purple",
+      "lengthCm": null,
+      "sourceTaskId": "4b79823d-77d3-4316-86a1-540e9cb12478"
+    },
+    {
+      "product": "Campanula",
+      "slug": "campanula",
+      "location": "seattle",
+      "sourceName": "Campanula white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "705c1f68-c9e8-4ad4-93f6-d9aef4bf67b1"
+    },
+    {
+      "product": "Campanula",
+      "slug": "campanula",
+      "location": "houston",
+      "sourceName": "Campanula",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "42e7bc89-37b2-4d5e-8221-79a38cd13936"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Button",
+      "variety": "button",
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "9f1b60f5-5346-448f-9db3-88146dc7d3a7"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Button beige",
+      "variety": "button",
+      "color": "Beige",
+      "lengthCm": null,
+      "sourceTaskId": "be69a6b3-b3a3-458c-bac3-8493fd514549"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Button brown",
+      "variety": "button",
+      "color": "Brown",
+      "lengthCm": null,
+      "sourceTaskId": "5e7f731e-fb0b-4f4e-a7b2-3a2c56cbcd57"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Button burgundy",
+      "variety": "button",
+      "color": "Burgundy",
+      "lengthCm": null,
+      "sourceTaskId": "a4a591e7-06de-4e6c-b063-e6ea2a9e175f"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Button green",
+      "variety": "button",
+      "color": "Green",
+      "lengthCm": null,
+      "sourceTaskId": "fba9ccd4-7f48-4274-800f-8819651a2196"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Button orange",
+      "variety": "button",
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "e7cc9dc5-0176-41cc-a274-18631163d00f"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Button peach",
+      "variety": "button",
+      "color": "Peach",
+      "lengthCm": null,
+      "sourceTaskId": "32dc5b67-18ab-4913-a058-757822552238"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Button pink",
+      "variety": "button",
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "c4ca9751-793e-4053-bd33-f9570434ec29"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Button red",
+      "variety": "button",
+      "color": "Red",
+      "lengthCm": null,
+      "sourceTaskId": "8e8666c1-a2fe-44aa-bfd5-1c8dc914baf4"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cushion",
+      "variety": "cushion",
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "4fb6c6cb-812f-4d03-8775-e30ecac16d50"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cushion beige",
+      "variety": "cushion",
+      "color": "Beige",
+      "lengthCm": null,
+      "sourceTaskId": "bbbfcf18-9552-42e3-ab5b-cfd2f7e71f16"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cushion brown",
+      "variety": "cushion",
+      "color": "Brown",
+      "lengthCm": null,
+      "sourceTaskId": "9ada4c88-d2a0-470a-836d-4821f7c4cedb"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cushion burgundy",
+      "variety": "cushion",
+      "color": "Burgundy",
+      "lengthCm": null,
+      "sourceTaskId": "ed817fc5-9a4b-4ab8-bce1-ecc2685cc5ee"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cushion lavender",
+      "variety": "cushion",
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "bd7f61fc-3d2d-4c78-b7fd-73f2f8d47ddc"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cushion orange",
+      "variety": "cushion",
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "e5a8a6ea-b964-4cc1-b286-87e9256f83d0"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cushion peach",
+      "variety": "cushion",
+      "color": "Peach",
+      "lengthCm": null,
+      "sourceTaskId": "589c86b1-1a9f-457d-84f3-a63665043753"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cushion pink",
+      "variety": "cushion",
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "6a304831-c0ca-43ed-a69f-e6fca835386f"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cushion purple",
+      "variety": "cushion",
+      "color": "Purple",
+      "lengthCm": null,
+      "sourceTaskId": "1350b21f-b3b6-4236-a7b8-3fd249f21995"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cushion white",
+      "variety": "cushion",
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "a34f8ae9-74d5-4598-b978-bc0d7f6b7a67"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cushion yellow",
+      "variety": "cushion",
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "6da52f59-e0db-41c6-9fb9-76256be38908"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Spider",
+      "variety": "spider",
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "4c2fd137-1cbb-4dc0-99cc-123ceab1f1f9"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Spider beige",
+      "variety": "spider",
+      "color": "Beige",
+      "lengthCm": null,
+      "sourceTaskId": "a2bb266f-25ea-4683-a38a-8cfaff66560b"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Spider burgundy",
+      "variety": "spider",
+      "color": "Burgundy",
+      "lengthCm": null,
+      "sourceTaskId": "06922714-5810-4ab3-b4fa-4746f9aec3cf"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Spider lavender",
+      "variety": "spider",
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "1588dab1-dc9e-4eda-a468-b7399fb69a6f"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Spider orange",
+      "variety": "spider",
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "ded33c17-3ef8-4bb6-8af1-f875e6e6f0de"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Spider peach",
+      "variety": "spider",
+      "color": "Peach",
+      "lengthCm": null,
+      "sourceTaskId": "d7a0022d-b849-4149-bc6b-91c2728490f9"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Spider pink",
+      "variety": "spider",
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "e0349a73-8273-4b6c-876a-0cf6c7406589"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Spider purple",
+      "variety": "spider",
+      "color": "Purple",
+      "lengthCm": null,
+      "sourceTaskId": "9438297f-eca0-402c-bc29-1b2e2e31acc2"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Spider white",
+      "variety": "spider",
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "8a733204-0992-44a0-b59e-acec8a005b77"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Spider yellow",
+      "variety": "spider",
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "eb297c88-06de-4a53-88c0-fdaee9baab00"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "houston",
+      "sourceName": "Chrysanthemum - Button",
+      "variety": "button",
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "455a73f4-d6a2-4740-88ae-35058b13deab"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "houston",
+      "sourceName": "Chrysanthemum - Cremom",
+      "variety": "cremom",
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "e22a3c8c-ef43-4e8e-b355-3826f3ca0ec9"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "houston",
+      "sourceName": "Chrysanthemum - Cushion",
+      "variety": "cushion",
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "1e78deb3-c17e-4465-832c-11494f897136"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "houston",
+      "sourceName": "Chrysanthemum - Cushion purple",
+      "variety": "cushion",
+      "color": "Purple",
+      "lengthCm": null,
+      "sourceTaskId": "fda47665-7af6-4c66-85e2-bb802e9576be"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "houston",
+      "sourceName": "Chrysanthemum - Spider",
+      "variety": "spider",
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "f17ea53e-dd75-459a-9b00-8c14e858b242"
+    },
+    {
+      "product": "Chrysanthemum",
+      "slug": "chrysanthemum",
+      "location": "houston",
+      "sourceName": "Chrysanthemum - Spider yellow",
+      "variety": "spider",
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "c2a7bdf5-fce2-4b73-81e4-ad9ed9f61eae"
+    },
+    {
+      "product": "Chrysanthemum - Cremom",
+      "slug": "chrysanthemum-cremom",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cremom",
+      "variety": "cremon",
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "8f91ba35-2c83-4b51-9921-48768758144a"
+    },
+    {
+      "product": "Chrysanthemum - Cremom",
+      "slug": "chrysanthemum-cremom",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cremom beige",
+      "variety": "cremon",
+      "color": "Beige",
+      "lengthCm": null,
+      "sourceTaskId": "89f9195c-6753-4f73-87f4-3c6a49f669b0"
+    },
+    {
+      "product": "Chrysanthemum - Cremom",
+      "slug": "chrysanthemum-cremom",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cremom brown",
+      "variety": "cremon",
+      "color": "Brown",
+      "lengthCm": null,
+      "sourceTaskId": "2a093531-8b22-422f-9fee-d8bd051a89ae"
+    },
+    {
+      "product": "Chrysanthemum - Cremom",
+      "slug": "chrysanthemum-cremom",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cremom burgundy",
+      "variety": "cremon",
+      "color": "Burgundy",
+      "lengthCm": null,
+      "sourceTaskId": "b0acabe5-68f9-4156-b904-2a6648e8c9ac"
+    },
+    {
+      "product": "Chrysanthemum - Cremom",
+      "slug": "chrysanthemum-cremom",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cremom lavender",
+      "variety": "cremon",
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "3192a661-d2aa-4001-b08b-08f54b4d0339"
+    },
+    {
+      "product": "Chrysanthemum - Cremom",
+      "slug": "chrysanthemum-cremom",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cremom orange",
+      "variety": "cremon",
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "abcb2ce5-76ae-4cde-ae25-3441e7e1e803"
+    },
+    {
+      "product": "Chrysanthemum - Cremom",
+      "slug": "chrysanthemum-cremom",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cremom pink",
+      "variety": "cremon",
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "9be6f506-39e3-46e9-a0f9-750c10545457"
+    },
+    {
+      "product": "Chrysanthemum - Cremom",
+      "slug": "chrysanthemum-cremom",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cremom purple",
+      "variety": "cremon",
+      "color": "Purple",
+      "lengthCm": null,
+      "sourceTaskId": "0ec4d8e8-f9be-423d-9518-b0636f306574"
+    },
+    {
+      "product": "Chrysanthemum - Cremom",
+      "slug": "chrysanthemum-cremom",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cremom white",
+      "variety": "cremon",
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "803fdc65-a988-4621-b14c-88483bd599c9"
+    },
+    {
+      "product": "Chrysanthemum - Cremom",
+      "slug": "chrysanthemum-cremom",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Cremom yellow",
+      "variety": "cremon",
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "97e321ea-57de-41ae-938a-ce1d4594aff4"
+    },
+    {
+      "product": "Chrysanthemum - Daysi",
+      "slug": "chrysanthemum-daysi",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Daysi",
+      "variety": "daisy",
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "367d3bdf-a46c-4549-9dde-344ce4890597"
+    },
+    {
+      "product": "Chrysanthemum - Daysi",
+      "slug": "chrysanthemum-daysi",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Daysi beige",
+      "variety": "daisy",
+      "color": "Beige",
+      "lengthCm": null,
+      "sourceTaskId": "6f013b09-740b-4dc1-a397-c455b0c748cb"
+    },
+    {
+      "product": "Chrysanthemum - Daysi",
+      "slug": "chrysanthemum-daysi",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Daysi brown",
+      "variety": "daisy",
+      "color": "Brown",
+      "lengthCm": null,
+      "sourceTaskId": "b4be1389-e931-43cc-9695-ad97f18ea52b"
+    },
+    {
+      "product": "Chrysanthemum - Daysi",
+      "slug": "chrysanthemum-daysi",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Daysi burgundy",
+      "variety": "daisy",
+      "color": "Burgundy",
+      "lengthCm": null,
+      "sourceTaskId": "aad54eb1-fc1c-4a9e-9366-31d5276669a9"
+    },
+    {
+      "product": "Chrysanthemum - Daysi",
+      "slug": "chrysanthemum-daysi",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Daysi lavender",
+      "variety": "daisy",
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "7d105883-d800-4b4f-85b9-b7fed6d82e64"
+    },
+    {
+      "product": "Chrysanthemum - Daysi",
+      "slug": "chrysanthemum-daysi",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Daysi pink",
+      "variety": "daisy",
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "0573fc69-dc7e-4f74-8607-e8f30b0962b8"
+    },
+    {
+      "product": "Chrysanthemum - Daysi",
+      "slug": "chrysanthemum-daysi",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Daysi purple",
+      "variety": "daisy",
+      "color": "Purple",
+      "lengthCm": null,
+      "sourceTaskId": "b66827a6-2246-476d-aa0b-f83e7d7371fa"
+    },
+    {
+      "product": "Chrysanthemum - Daysi",
+      "slug": "chrysanthemum-daysi",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Daysi white",
+      "variety": "daisy",
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "52c3441d-cc8c-4e13-893b-a74d6b62000e"
+    },
+    {
+      "product": "Chrysanthemum - Daysi",
+      "slug": "chrysanthemum-daysi",
+      "location": "seattle",
+      "sourceName": "Chrysanthemum - Daysi yellow",
+      "variety": "daisy",
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "549e2a4c-e0ed-4419-969e-1f7b55f87be4"
+    },
+    {
+      "product": "Chrysanthemum - Daysi",
+      "slug": "chrysanthemum-daysi",
+      "location": "houston",
+      "sourceName": "Chrysanthemum - Daysi",
+      "variety": "daisy",
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "926fd8d7-ad39-4df0-8ca4-b17ab9d37521"
+    },
+    {
+      "product": "Delphinium",
+      "slug": "delphinium",
+      "location": "seattle",
+      "sourceName": "Delphinium",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "5b5b2109-e4c0-4834-b01e-12d3c1f16068"
+    },
+    {
+      "product": "Delphinium",
+      "slug": "delphinium",
+      "location": "seattle",
+      "sourceName": "Delphinium dark blue",
+      "variety": null,
+      "color": "Dark Blue",
+      "lengthCm": null,
+      "sourceTaskId": "5bfa5ef1-4313-4e8d-991f-ffa815211c41"
+    },
+    {
+      "product": "Delphinium",
+      "slug": "delphinium",
+      "location": "seattle",
+      "sourceName": "Delphinium lavender",
+      "variety": null,
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "58a7897c-e483-49ce-8780-98cfa75d7770"
+    },
+    {
+      "product": "Delphinium",
+      "slug": "delphinium",
+      "location": "seattle",
+      "sourceName": "Delphinium pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "2855a0d6-8282-4cfa-bc91-53c2b966d26b"
+    },
+    {
+      "product": "Delphinium",
+      "slug": "delphinium",
+      "location": "seattle",
+      "sourceName": "Delphinium white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "903038fb-4c49-4f55-a3ae-68b591a855f5"
+    },
+    {
+      "product": "Delphinium",
+      "slug": "delphinium",
+      "location": "houston",
+      "sourceName": "Delphinium",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "acf5ee2a-d465-4191-b11b-18990e7ce13e"
+    },
+    {
+      "product": "Delphinium light",
+      "slug": "delphinium-light",
+      "location": "seattle",
+      "sourceName": "Delphinium light blue",
+      "variety": null,
+      "color": "Blue",
+      "lengthCm": null,
+      "sourceTaskId": "5d43f1e3-380e-4aa8-aef7-29f29ddd2994"
+    },
+    {
+      "product": "Hydrangeas",
+      "slug": "hydrangeas",
+      "location": "seattle",
+      "sourceName": "Hydrangeas  blue",
+      "variety": null,
+      "color": "Blue",
+      "lengthCm": null,
+      "sourceTaskId": "fd2fe3fb-e8ae-42ce-b3e4-5d65da41b329"
+    },
+    {
+      "product": "Hydrangeas",
+      "slug": "hydrangeas",
+      "location": "seattle",
+      "sourceName": "Hydrangeas green",
+      "variety": null,
+      "color": "Green",
+      "lengthCm": null,
+      "sourceTaskId": "c65185f4-ebe8-4aba-b37b-5bcd3d59520f"
+    },
+    {
+      "product": "Hydrangeas",
+      "slug": "hydrangeas",
+      "location": "seattle",
+      "sourceName": "Hydrangeas pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "b6177a0e-3fd1-44a3-963d-cb19f20e87ca"
+    },
+    {
+      "product": "Hydrangeas",
+      "slug": "hydrangeas",
+      "location": "seattle",
+      "sourceName": "Hydrangeas white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "03ca79eb-402e-41b2-b940-10775925e2db"
+    },
+    {
+      "product": "Hydrangeas",
+      "slug": "hydrangeas",
+      "location": "houston",
+      "sourceName": "Hydrangeas white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "92f60dd1-50e5-492b-94e8-187facc093ef"
+    },
+    {
+      "product": "Hydrangeas Premium",
+      "slug": "hydrangeas-premium",
+      "location": "seattle",
+      "sourceName": "Hydrangeas Premium - blue",
+      "variety": null,
+      "color": "Blue",
+      "lengthCm": null,
+      "sourceTaskId": "35632870-e3c0-43e4-840f-1a353b387b28"
+    },
+    {
+      "product": "Hydrangeas Premium",
+      "slug": "hydrangeas-premium",
+      "location": "seattle",
+      "sourceName": "Hydrangeas Premium - green",
+      "variety": null,
+      "color": "Green",
+      "lengthCm": null,
+      "sourceTaskId": "15ce71ac-c50a-4827-aee2-eb8efe3a2ec3"
+    },
+    {
+      "product": "Hydrangeas Premium",
+      "slug": "hydrangeas-premium",
+      "location": "seattle",
+      "sourceName": "Hydrangeas Premium - pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "19f174a2-661f-4c81-9d26-13acf6790377"
+    },
+    {
+      "product": "Hydrangeas Premium",
+      "slug": "hydrangeas-premium",
+      "location": "seattle",
+      "sourceName": "Hydrangeas Premium - white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "6da6181c-5d4f-43fc-a590-733815498059"
+    },
+    {
+      "product": "Dianthus",
+      "slug": "dianthus",
+      "location": "houston",
+      "sourceName": "Dianthus",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "30ede42f-ecfb-42d3-80fb-43f9cd32a63e"
+    },
+    {
+      "product": "Hydrangeas Premium - purple / lavender",
+      "slug": "hydrangeas-premium-purple-lavender",
+      "location": "seattle",
+      "sourceName": "Hydrangeas Premium - purple / lavender",
+      "variety": null,
+      "color": "Purple Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "a57eafdc-9cd6-495a-ad2b-0025a073a92c"
+    },
+    {
+      "product": "Hydrangeas purple / lavender",
+      "slug": "hydrangeas-purple-lavender",
+      "location": "seattle",
+      "sourceName": "Hydrangeas purple / lavender",
+      "variety": null,
+      "color": "Purple Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "27b1e4b6-f261-4ebc-a46c-a783fce5cc6e"
+    },
+    {
+      "product": "Lily Asiatic",
+      "slug": "lily-asiatic",
+      "location": "seattle",
+      "sourceName": "Lily Asiatic",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "60f617a8-7478-434b-bef8-b7cc0e0edd61"
+    },
+    {
+      "product": "Lily Asiatic",
+      "slug": "lily-asiatic",
+      "location": "seattle",
+      "sourceName": "Lily Asiatic orange",
+      "variety": null,
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "883bb46c-cbde-4cea-9de7-7f67e6ec7d19"
+    },
+    {
+      "product": "Lily Asiatic",
+      "slug": "lily-asiatic",
+      "location": "seattle",
+      "sourceName": "Lily Asiatic pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "46a8815a-4f01-45d4-8231-17537fdbed77"
+    },
+    {
+      "product": "Lily Asiatic",
+      "slug": "lily-asiatic",
+      "location": "seattle",
+      "sourceName": "Lily Asiatic white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "8f15b390-4b8f-4d39-9c88-7bb5b835be60"
+    },
+    {
+      "product": "Lily Asiatic",
+      "slug": "lily-asiatic",
+      "location": "seattle",
+      "sourceName": "Lily Asiatic yellow",
+      "variety": null,
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "6d643e42-d9c9-4ab5-a31c-5fd375881db6"
+    },
+    {
+      "product": "Lily Asiatic",
+      "slug": "lily-asiatic",
+      "location": "houston",
+      "sourceName": "Lily Asiatic",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "ccc19186-110a-42bb-83d6-257bcc99e2da"
+    },
+    {
+      "product": "Gerbera Large",
+      "slug": "gerbera-large",
+      "location": "houston",
+      "sourceName": "Gerbera Large",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "2529bcb2-254f-4a95-af0a-05468eefe4ec"
+    },
+    {
+      "product": "Lily Oriental",
+      "slug": "lily-oriental",
+      "location": "seattle",
+      "sourceName": "Lily Oriental",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "35f26fc3-bec2-4c24-b830-9b6fe338b4a1"
+    },
+    {
+      "product": "Lily Oriental",
+      "slug": "lily-oriental",
+      "location": "seattle",
+      "sourceName": "Lily Oriental orange",
+      "variety": null,
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "62598a6d-c6a2-43f5-9bf5-bd4c31df981a"
+    },
+    {
+      "product": "Lily Oriental",
+      "slug": "lily-oriental",
+      "location": "seattle",
+      "sourceName": "Lily Oriental pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "f50d9b58-f0a1-4339-84a0-822bacde8e2b"
+    },
+    {
+      "product": "Lily Oriental",
+      "slug": "lily-oriental",
+      "location": "seattle",
+      "sourceName": "Lily Oriental white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "c02a76c3-9788-4320-9d35-9ff9e0fc433a"
+    },
+    {
+      "product": "Lily Oriental",
+      "slug": "lily-oriental",
+      "location": "seattle",
+      "sourceName": "Lily Oriental yellow",
+      "variety": null,
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "0ce5037d-643c-4ea6-aec6-f2eebd04c25e"
+    },
+    {
+      "product": "Lily Oriental",
+      "slug": "lily-oriental",
+      "location": "houston",
+      "sourceName": "Lily Oriental",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "0397e04d-87d7-4cab-9cd7-07614805a2c1"
+    },
+    {
+      "product": "Gerpoms",
+      "slug": "gerpoms",
+      "location": "houston",
+      "sourceName": "Gerpoms",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "609607aa-3c73-4d69-9515-3c0efbf427c2"
+    },
+    {
+      "product": "Lisianthus",
+      "slug": "lisianthus",
+      "location": "seattle",
+      "sourceName": "Lisianthus",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "24e4f469-ff63-4b87-a1c6-41b22517bd12"
+    },
+    {
+      "product": "Lisianthus",
+      "slug": "lisianthus",
+      "location": "seattle",
+      "sourceName": "Lisianthus green",
+      "variety": null,
+      "color": "Green",
+      "lengthCm": null,
+      "sourceTaskId": "14679082-bd3c-450a-af2d-52d1a004879d"
+    },
+    {
+      "product": "Lisianthus",
+      "slug": "lisianthus",
+      "location": "seattle",
+      "sourceName": "Lisianthus hot pink",
+      "variety": null,
+      "color": "Hot Pink",
+      "lengthCm": null,
+      "sourceTaskId": "900c2a05-6e39-4a18-9369-9469a7d5f03f"
+    },
+    {
+      "product": "Lisianthus",
+      "slug": "lisianthus",
+      "location": "seattle",
+      "sourceName": "Lisianthus lavender",
+      "variety": null,
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "58dcffce-edd8-426a-b028-0fa4e4be6fcf"
+    },
+    {
+      "product": "Lisianthus",
+      "slug": "lisianthus",
+      "location": "seattle",
+      "sourceName": "Lisianthus pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "67c4dc80-bc5a-4d91-9489-11650234e4d7"
+    },
+    {
+      "product": "Lisianthus",
+      "slug": "lisianthus",
+      "location": "seattle",
+      "sourceName": "Lisianthus purple",
+      "variety": null,
+      "color": "Purple",
+      "lengthCm": null,
+      "sourceTaskId": "f4c69999-e6fc-4f9e-b2f6-882ea0b0cb6b"
+    },
+    {
+      "product": "Lisianthus",
+      "slug": "lisianthus",
+      "location": "seattle",
+      "sourceName": "Lisianthus white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "f8b693c2-d316-45c9-abfc-c7ccbb7690ae"
+    },
+    {
+      "product": "Lisianthus",
+      "slug": "lisianthus",
+      "location": "seattle",
+      "sourceName": "Lisianthus yellow",
+      "variety": null,
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "99023bfb-b25d-446a-8e37-89cd3ef00aa5"
+    },
+    {
+      "product": "Ranunculus",
+      "slug": "ranunculus",
+      "location": "seattle",
+      "sourceName": "Ranunculos lavender",
+      "variety": null,
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "d15a8f93-bc65-4d9e-befa-6a6f4f5a51f0"
+    },
+    {
+      "product": "Ranunculus",
+      "slug": "ranunculus",
+      "location": "seattle",
+      "sourceName": "Ranunculos orange",
+      "variety": null,
+      "color": "Orange",
+      "lengthCm": null,
+      "sourceTaskId": "b961e9c5-070a-4c23-b2ee-d0ba593b79b1"
+    },
+    {
+      "product": "Ranunculus",
+      "slug": "ranunculus",
+      "location": "seattle",
+      "sourceName": "Ranunculos peach",
+      "variety": null,
+      "color": "Peach",
+      "lengthCm": null,
+      "sourceTaskId": "5c08ac40-454e-4c78-8a36-5606cda6c90c"
+    },
+    {
+      "product": "Ranunculus",
+      "slug": "ranunculus",
+      "location": "seattle",
+      "sourceName": "Ranunculos pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "bf66ceaf-37e5-4b19-a36b-43b82322b6b7"
+    },
+    {
+      "product": "Ranunculus",
+      "slug": "ranunculus",
+      "location": "seattle",
+      "sourceName": "Ranunculos red",
+      "variety": null,
+      "color": "Red",
+      "lengthCm": null,
+      "sourceTaskId": "7bbac320-415b-461d-af1d-87c4375201fe"
+    },
+    {
+      "product": "Ranunculus",
+      "slug": "ranunculus",
+      "location": "seattle",
+      "sourceName": "Ranunculos white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "dbde6ca6-829e-4cf5-9959-edf0b1c3b611"
+    },
+    {
+      "product": "Ranunculus",
+      "slug": "ranunculus",
+      "location": "seattle",
+      "sourceName": "Ranunculos yellow",
+      "variety": null,
+      "color": "Yellow",
+      "lengthCm": null,
+      "sourceTaskId": "f0908da8-0ef6-4d16-aaeb-fe97e2afbcd5"
+    },
+    {
+      "product": "Ranunculus",
+      "slug": "ranunculus",
+      "location": "seattle",
+      "sourceName": "Ranunculus",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "c4deac5a-2b2e-4f54-93b4-63a82eae8ede"
+    },
+    {
+      "product": "Snapdragon",
+      "slug": "snapdragon",
+      "location": "seattle",
+      "sourceName": "Snapdragon",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "bc6aad0f-78a7-4e84-962e-0413df597887"
+    },
+    {
+      "product": "Snapdragon",
+      "slug": "snapdragon",
+      "location": "seattle",
+      "sourceName": "Snapdragon burgundy",
+      "variety": null,
+      "color": "Burgundy",
+      "lengthCm": null,
+      "sourceTaskId": "343db1e4-8d41-4f08-b0d2-37f93bc8fd8d"
+    },
+    {
+      "product": "Snapdragon",
+      "slug": "snapdragon",
+      "location": "seattle",
+      "sourceName": "Snapdragon lavender",
+      "variety": null,
+      "color": "Lavender",
+      "lengthCm": null,
+      "sourceTaskId": "821b6714-bf4f-4fb7-ad82-01afb5b51bac"
+    },
+    {
+      "product": "Snapdragon",
+      "slug": "snapdragon",
+      "location": "seattle",
+      "sourceName": "Snapdragon pink",
+      "variety": null,
+      "color": "Pink",
+      "lengthCm": null,
+      "sourceTaskId": "d0a3697e-008a-4344-b1db-0f6a8aaf4ca5"
+    },
+    {
+      "product": "Snapdragon",
+      "slug": "snapdragon",
+      "location": "seattle",
+      "sourceName": "Snapdragon purple",
+      "variety": null,
+      "color": "Purple",
+      "lengthCm": null,
+      "sourceTaskId": "1b626969-d9a0-4c71-bdb1-5ff92b8754f4"
+    },
+    {
+      "product": "Snapdragon",
+      "slug": "snapdragon",
+      "location": "seattle",
+      "sourceName": "Snapdragon white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "a84e2a46-8271-4009-a10e-ba0f464c17d8"
+    },
+    {
+      "product": "Snapdragon",
+      "slug": "snapdragon",
+      "location": "houston",
+      "sourceName": "Snapdragon",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "cd531dd9-85ae-452c-9659-dcc1194a5afa"
+    },
+    {
+      "product": "Snapdragon",
+      "slug": "snapdragon",
+      "location": "houston",
+      "sourceName": "Snapdragon white",
+      "variety": null,
+      "color": "White",
+      "lengthCm": null,
+      "sourceTaskId": "f2bd3c5e-47da-4fa6-80ca-fc0b17d2bb8f"
+    },
+    {
+      "product": "Mini Carnation",
+      "slug": "mini-carnation",
+      "location": "houston",
+      "sourceName": "Mini Carnation",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "36b1f6af-48bf-464f-97cf-e94e8ab24858"
+    },
+    {
+      "product": "Mini Carnation",
+      "slug": "mini-carnation",
+      "location": "houston",
+      "sourceName": "Mini Carnation mix",
+      "variety": null,
+      "color": "Mix",
+      "lengthCm": null,
+      "sourceTaskId": "e6497638-885c-48ca-aefd-19e061cde014"
+    },
+    {
+      "product": "Eucalyptus Baby Blue",
+      "slug": "eucalyptus-baby-blue",
+      "location": "seattle",
+      "sourceName": "Eucalyptus Baby Blue",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "4142cd89-d26b-4f2a-8ffe-06e3a1bfab13"
+    },
+    {
+      "product": "Eucalyptus Silver Dollar",
+      "slug": "eucalyptus-silver-dollar",
+      "location": "seattle",
+      "sourceName": "Eucalyptus Silver Dollar",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "9bbebf14-acc4-48c0-87e6-0f4eb9e413ba"
+    },
+    {
+      "product": "Leather leaf (10 stems)",
+      "slug": "leather-leaf-10-stems",
+      "location": "seattle",
+      "sourceName": "Leather leaf (10 stems)",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "366f58f5-638b-4a19-90eb-81954e9dc064"
+    },
+    {
+      "product": "Ruscus",
+      "slug": "ruscus",
+      "location": "seattle",
+      "sourceName": "Ruscus",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "32d71c67-0847-4b43-990c-17f8068b3b9c"
+    },
+    {
+      "product": "Shinny Pitt",
+      "slug": "shinny-pitt",
+      "location": "seattle",
+      "sourceName": "Shinny Pitt",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "bd61ebc6-dc57-41cc-b257-1a9d4bb67e6a"
+    },
+    {
+      "product": "Mini Gerbera",
+      "slug": "mini-gerbera",
+      "location": "houston",
+      "sourceName": "Mini Gerbera",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "fbda2109-5870-46e9-a177-8d0c418d066b"
+    },
+    {
+      "product": "Scabiosa",
+      "slug": "scabiosa",
+      "location": "houston",
+      "sourceName": "Scabiosa",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "53899c32-b391-4ed0-9019-b0b57cda3a6f"
+    },
+    {
+      "product": "Snapdragon (Canada)",
+      "slug": "snapdragon-canada",
+      "location": "houston",
+      "sourceName": "Snapdragon (Canada)",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "789c7ce8-449e-4e89-bf35-b3617764679a"
+    },
+    {
+      "product": "Statice",
+      "slug": "statice",
+      "location": "houston",
+      "sourceName": "Statice",
+      "variety": null,
+      "color": null,
+      "lengthCm": null,
+      "sourceTaskId": "7cb88a1f-b173-4374-8223-1006e9a7813d"
+    }
+  ],
+  "mediaHealth": {
+    "checked": 325,
+    "failed": []
+  },
+  "attachmentFlags": [
+    "Chrysanthemum - Cremom/cremon: las fotos por color existen en Texas dentro de Chrysanthemum; Seattle usa otra familia/variedad y no tiene adjuntos. Revisar nombres y asociación antes de pedir fotos.",
+    "Hydrangeas White regular: existe foto para White en Hydrangeas Premium. Confirmar con Esfenix si puede usarse para ambas presentaciones antes de pedir una foto adicional.",
+    "Hay adjuntos cuyos nombres no coinciden con la variedad asignada: Button Brown/Peach usa nombres Cremom y varias Spider usan nombres Daysi. El nombre es una señal para revisar; no prueba por sí solo que la foto sea incorrecta."
+  ]
+}
