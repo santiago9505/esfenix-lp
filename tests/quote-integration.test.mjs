@@ -145,6 +145,21 @@ test('saved-contact quotes send the regular form answers through the Worker with
   assert.equal(body.answers.products.length, 1);
 });
 
+test('temporary saved-detail failures support retry without asking for manual contact information', async () => {
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    clientLookupEndpoint: 'https://lookup.example.workers.dev',
+    async fetchImpl(_url, options) {
+      if (options.method === 'GET') return Response.json(publicFormResponse());
+      return Response.json({ success: false, code: 'SAVED_DETAILS_TEMPORARY_UNAVAILABLE' }, { status: 503 });
+    },
+  });
+  const result = await integration.start(readyPickupPayload(), { savedContactFields: ['phone'] });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'SAVED_DETAILS_TEMPORARY_UNAVAILABLE');
+  assert.match(result.error, /still saved/);
+});
+
 test('without a legacy session endpoint the response is submitted through the Fresa form API', async () => {
   const calls = [];
   const integration = createQuoteIntegration({

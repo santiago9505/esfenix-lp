@@ -108,7 +108,7 @@ export async function handleRequest(request, env, options = {}) {
       {
         success: false,
         error: 'The service is temporarily unavailable.',
-        ...(action === 'submit-quote' && { code: 'SAVED_CONTACT_UNAVAILABLE' }),
+        ...(action === 'submit-quote' && { code: 'SAVED_DETAILS_TEMPORARY_UNAVAILABLE' }),
       },
       corsOrigin,
     );

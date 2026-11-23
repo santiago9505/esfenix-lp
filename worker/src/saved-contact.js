@@ -73,13 +73,14 @@ export async function submitQuoteWithSavedContact({ body, email, client, formUrl
   const formResponse = await fetchImpl(`${formApiUrl}?catalog=metadata`, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
-    redirect: 'error',
+    // Workers supports manual redirects. Only a successful response from the configured URL is used.
+    redirect: 'manual',
     signal: AbortSignal.timeout(8_000),
   }).catch(() => null);
   const metadata = await formResponse?.json().catch(() => null);
   const form = metadata?.form;
   if (!formResponse?.ok || metadata?.success !== true || form?.enabled !== true || !Array.isArray(form.fields)) {
-    return failure(503, CONTACT_UNAVAILABLE);
+    return failure(503, 'SAVED_DETAILS_TEMPORARY_UNAVAILABLE');
   }
   const fields = resolveFresaContactFields(form.fields);
   const formAnswers = body.answers;
@@ -139,15 +140,16 @@ export async function submitQuoteWithSavedContact({ body, email, client, formUrl
         userAgent: typeof body.meta?.userAgent === 'string' ? body.meta.userAgent.slice(0, 500) : undefined,
       },
     }),
-    redirect: 'error',
+    redirect: 'manual',
     signal: AbortSignal.timeout(35_000),
   });
+  if (response.status >= 300 && response.status < 400) return failure(502);
   const result = await response.json().catch(() => null);
   if (response.ok && result?.success === true && typeof result.taskId === 'string') {
     return { status: 200, data: { success: true, taskId: result.taskId } };
   }
   // Upstream errors can include submitted values. Only forward known codes.
-  return failure(response.ok ? 502 : response.status, resolveFresaSubmitError(response.status, result?.error));
+  return failure(response.status < 400 ? 502 : response.status, resolveFresaSubmitError(response.status, result?.error));
 }
 
 function failure(status, code) {

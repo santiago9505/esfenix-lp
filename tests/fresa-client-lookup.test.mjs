@@ -216,7 +216,8 @@ test('worker rate limits before contacting Fresa', async () => {
 });
 
 function savedQuoteFixture({
-  upstreamStatus = 200, phone = '+57 350 555 0100', hasSocialField = true, shipping = { Line1: 'Hidden address' },
+  upstreamStatus = 200, metadataStatus = 200, phone = '+57 350 555 0100',
+  hasSocialField = true, shipping = { Line1: 'Hidden address' },
 } = {}) {
   const sent = [];
   const email = 'buyer@example.com';
@@ -258,13 +259,15 @@ function savedQuoteFixture({
           return Response.json(page([task({ email })]));
         }
         if (requestUrl.pathname === `/api/forms/${formToken}/submit`) {
+          assert.equal(init.redirect, 'manual', 'Cloudflare Workers does not support redirect: error');
           sent.push(JSON.parse(init.body));
           return upstreamStatus === 200
             ? Response.json({ success: true, taskId: 'created-quote', answers: sent.at(-1).answers })
             : Response.json({ success: false, error: `Your time slot is no longer available: ${phone}` }, { status: upstreamStatus });
         }
         if (requestUrl.pathname === `/api/forms/${formToken}`) {
-          return Response.json({ success: true, form: { enabled: true, fields } });
+          assert.equal(init.redirect, 'manual', 'Cloudflare Workers does not support redirect: error');
+          return Response.json({ success: true, form: { enabled: true, fields } }, { status: metadataStatus });
         }
         assert.match(decodeURIComponent(requestUrl.pathname), /buyer@example\.com-task$/);
         const detail = task({ email, name: 'Test Account', description: `\`\`\`json\n${JSON.stringify({ entity: { ShipAddr: shipping } })}\n\`\`\`` });
@@ -305,6 +308,22 @@ test('public lookup returns contact presence and last phone digits without the s
   });
   assert.equal((await request({ action: 'send-code', email: 'buyer@example.com' })).status, 400);
   assert.equal(sent.length, 0);
+});
+
+test('form metadata errors and redirects never erase saved details or submit a quote', async () => {
+  for (const metadataStatus of [302, 503]) {
+    const { request, quote, sent } = savedQuoteFixture({ metadataStatus });
+    const response = await request(quote);
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { success: false, code: 'SAVED_DETAILS_TEMPORARY_UNAVAILABLE' });
+    assert.equal(sent.length, 0);
+  }
+
+  const fixture = savedQuoteFixture({ upstreamStatus: 302 });
+  const response = await fixture.request(fixture.quote);
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { success: false });
+  assert.equal(fixture.sent.length, 1);
 });
 
 test('saved contact prefixes preserve accented letters and keep short names masked', () => {

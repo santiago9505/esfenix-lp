@@ -65,6 +65,7 @@ function delivery(value) {
  * @property {boolean} recognized
  * @property {boolean} vip
  * @property {ReturnType<typeof normalizeContactPreview>} savedContactPreview
+ * @property {boolean} manualContact
  * @property {ReturnType<typeof normalizeShippingPreview>} savedShippingPreview
  * @property {'saved'|'manual'|null} shippingAddressMode
  * @property {'idle'|'checking'|'found'|'not-found'|'unavailable'} clientLookup
@@ -91,6 +92,7 @@ export function readQuoteDraft() {
     recognized: stored.recognized === true,
     vip: stored.vip === true,
     savedContactPreview: normalizeContactPreview(stored.savedContactPreview),
+    manualContact: stored.manualContact === true,
     savedShippingPreview: normalizeShippingPreview(stored.savedShippingPreview),
     shippingAddressMode: shippingMode(stored.shippingAddressMode),
     clientLookup: lookupState(stored.clientLookup),
@@ -114,6 +116,7 @@ export function writeQuoteDraft(draft) {
     recognized: draft.recognized === true,
     vip: draft.vip === true,
     savedContactPreview: normalizeContactPreview(draft.savedContactPreview),
+    manualContact: draft.manualContact === true,
     savedShippingPreview: normalizeShippingPreview(draft.savedShippingPreview),
     shippingAddressMode: shippingMode(draft.shippingAddressMode),
     clientLookup: lookupState(draft.clientLookup),

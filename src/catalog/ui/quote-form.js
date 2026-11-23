@@ -91,6 +91,7 @@ export function renderQuoteFormView(ctx, options) {
     recognized: savedDraft?.recognized === true,
     vip: savedDraft?.vip === true,
     savedContactPreview: savedDraft?.recognized ? savedDraft.savedContactPreview : null,
+    manualContact: savedDraft?.manualContact === true,
     savedShippingPreview: savedDraft?.recognized ? savedDraft.savedShippingPreview : null,
     shippingAddressMode: savedDraft?.shippingAddressMode ?? null,
     clientLookup: savedDraft?.clientLookup ?? 'idle',
@@ -156,7 +157,6 @@ export function renderQuoteFormView(ctx, options) {
         || state.savedContactPreview !== savedContactPreview || state.shippingAddressMode !== shippingAddressMode) return;
       if (lookup?.ok !== true) return;
       applyLookupResult(lookup);
-      if (savedContactPreview && !Object.keys(savedContactPreview).length) state.savedContactPreview = savedContactPreview;
       render();
     }).catch(() => {});
   }
@@ -447,7 +447,7 @@ export function renderQuoteFormView(ctx, options) {
     state.recognized = lookup?.ok === true && lookup.found === true;
     state.vip = state.recognized && lookup.vip === true;
     state.clientLookup = lookup?.ok === true ? (state.recognized ? 'found' : 'not-found') : 'unavailable';
-    state.savedContactPreview = state.recognized ? normalizeContactPreview(lookup.contactPreview) : null;
+    state.savedContactPreview = state.recognized && !state.manualContact ? normalizeContactPreview(lookup.contactPreview) : null;
     state.savedShippingPreview = state.recognized ? normalizeShippingPreview(lookup.shippingPreview) : null;
   }
 
@@ -471,7 +471,8 @@ export function renderQuoteFormView(ctx, options) {
               class: 'btn btn-light cat-quote-edit-address',
               text: 'Enter different contact details',
               onClick: () => {
-                state.savedContactPreview = {};
+                state.manualContact = true;
+                state.savedContactPreview = null;
                 render();
                 formHost.querySelector('[name="firstName"]')?.focus();
               },
@@ -513,6 +514,7 @@ export function renderQuoteFormView(ctx, options) {
     state.recognized = false;
     state.vip = false;
     state.savedContactPreview = null;
+    state.manualContact = false;
     state.savedShippingPreview = null;
     state.shippingAddressMode = null;
     state.clientLookup = 'idle';
@@ -1419,7 +1421,10 @@ export function renderQuoteFormView(ctx, options) {
             state.result = result;
           } else {
             if (result?.code === 'SAVED_CONTACT_UNAVAILABLE') {
-              state.savedContactPreview = {};
+              if (options.onLookupClient) {
+                const refreshed = await options.onLookupClient(state.email).catch(() => null);
+                if (refreshed?.ok === true) applyLookupResult(refreshed);
+              }
               state.step = 1;
             } else if (result?.code === 'SAVED_SHIPPING_UNAVAILABLE') {
               state.savedShippingPreview = null;

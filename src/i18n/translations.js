@@ -327,6 +327,8 @@ export const ES = Object.freeze({
   'Saved details are masked. Leave a field blank to use the saved value.': 'Los datos guardados están ocultos. Deja un campo vacío para usar el dato guardado.',
   'Enter different contact details': 'Usar otros datos de contacto',
   'We couldn’t use your saved details. Please enter your contact information.': 'No pudimos usar tus datos guardados. Ingresa tus datos de contacto.',
+  'We couldn’t check your saved details right now. Your request is still saved. Please try again.': 'No pudimos consultar tus datos guardados en este momento. Tu solicitud sigue guardada. Inténtalo de nuevo.',
+  'Please review your contact information before sending your request again.': 'Revisa tus datos de contacto antes de volver a enviar la solicitud.',
   'This delivery time slot is no longer available. Please choose another window.': 'Ese horario de entrega ya no está disponible. Elige otro horario.',
   'Your saved address is masked and will be used for this delivery.': 'La dirección guardada se muestra con asteriscos y se usará para esta entrega.',
   'Use a different shipping address': 'Usar otra dirección de envío',

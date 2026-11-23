@@ -645,13 +645,16 @@ async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserve
     if (!response.ok || data?.success !== true || typeof data?.taskId !== 'string') {
       let code;
       let error = data?.error || `Fresa could not record the quote request (${response.status}).`;
-      if (savedContactEndpoint && (data?.code === 'SAVED_SHIPPING_UNAVAILABLE'
+      if (savedContactEndpoint && data?.code === 'SAVED_DETAILS_TEMPORARY_UNAVAILABLE') {
+        code = 'SAVED_DETAILS_TEMPORARY_UNAVAILABLE';
+        error = 'We couldn’t check your saved details right now. Your request is still saved. Please try again.';
+      } else if (savedContactEndpoint && (data?.code === 'SAVED_SHIPPING_UNAVAILABLE'
         || (data?.code === 'SAVED_CONTACT_UNAVAILABLE' && !savedValues.savedContactFields.length))) {
         code = 'SAVED_SHIPPING_UNAVAILABLE';
         error = 'We couldn’t use your saved shipping address. Please enter the delivery address.';
       } else if (savedContactEndpoint && data?.code === 'SAVED_CONTACT_UNAVAILABLE') {
         code = 'SAVED_CONTACT_UNAVAILABLE';
-        error = 'We couldn’t use your saved details. Please enter your contact information.';
+        error = 'Please review your contact information before sending your request again.';
       } else if (payload.orderType === 'Delivery') {
         const deliveryCode = savedContactEndpoint ? data?.code : resolveFresaSubmitError(response.status, data?.error);
         if (deliveryCode === 'DELIVERY_OPTION_REJECTED') {
