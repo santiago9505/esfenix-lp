@@ -23,7 +23,7 @@ test('a quote draft survives a new read and keeps the entered form state', () =>
     email: 'ana@example.com',
     recognized: true,
     vip: false,
-    profilePrefilled: true,
+    savedContactPreview: { firstName: true, phone: true, phoneLastDigits: '42' },
     clientLookup: 'found',
     phoneCountry: 'US',
     contact: {
@@ -49,7 +49,7 @@ test('a quote draft survives a new read and keeps the entered form state', () =>
     email: 'ana@example.com',
     recognized: true,
     vip: false,
-    profilePrefilled: true,
+    savedContactPreview: { firstName: true, phone: true, phoneLastDigits: '42' },
     clientLookup: 'found',
     phoneCountry: 'US',
     contact: {
@@ -90,7 +90,7 @@ test('malformed draft values are normalized to safe form defaults', () => {
     email: '',
     recognized: false,
     vip: false,
-    profilePrefilled: false,
+    savedContactPreview: null,
     clientLookup: 'idle',
     phoneCountry: 'US',
     contact: { firstName: '', lastName: '', phone: '', company: '', socialMediaProfiles: '' },

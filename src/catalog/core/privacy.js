@@ -1,5 +1,15 @@
 const MASK = '•';
 
+export function normalizeContactPreview(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const fields = ['firstName', 'lastName', 'phone', 'company', 'socialMediaProfiles'];
+  const preview = Object.fromEntries(fields.filter((field) => value[field] === true).map((field) => [field, true]));
+  if (preview.phone && typeof value.phoneLastDigits === 'string' && /^\d{2}$/.test(value.phoneLastDigits)) {
+    preview.phoneLastDigits = value.phoneLastDigits;
+  }
+  return preview;
+}
+
 /**
  * Keeps the beginning of a name or company visible so the returning client can
  * recognize it, while masking the remaining letters and digits.

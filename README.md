@@ -101,16 +101,14 @@ un email válido continúe como cliente nuevo. El borrador vive en
 
 ## Consulta segura de clientes activos
 
-La configuración de despliegue está en `wrangler.jsonc`. Los clientes activos
-pueden solicitar un código por correo desde el paso de contacto. Tras verificarlo,
-el formulario carga sus datos guardados en Fresa y permite editarlos.
-Para habilitar el envío, verifica el dominio de `CLIENT_PROFILE_EMAIL_FROM` en
-Resend y configura estas claves como secretos del Worker.
-[Configurar un dominio en Resend](https://resend.com/docs/dashboard/domains/introduction)
+La configuración de despliegue está en `wrangler.jsonc`. Cuando Fresa reconoce
+un correo, el formulario muestra los campos guardados con una máscara y hasta
+dos dígitos del teléfono. Al enviar la solicitud, el Worker recupera los datos
+vigentes y completa en Fresa los campos que el cliente dejó en blanco. Los
+datos guardados completos se transmiten directamente del Worker a Fresa.
 
 ```sh
 npx wrangler secret put FRESA_CLIENTS_API_KEY
-npx wrangler secret put RESEND_API_KEY
 npx wrangler deploy
 ```
 
@@ -122,8 +120,9 @@ VITE_FRESA_CLIENT_LOOKUP_URL=https://esfenix-client-lookup.<cuenta>.workers.dev 
 
 El Worker limita solicitudes, acepta los orígenes declarados en
 `ALLOWED_ORIGINS`, exige POST JSON, valida el email y marca cada respuesta como
-`no-store`. El código vence a los diez minutos y se usa una sola vez. La entrada
-manual de contacto sigue disponible para todos los clientes.
+`no-store`. `FRESA_QUOTE_FORM_URL` identifica el único formulario que recibe los
+envíos con datos guardados. La entrada manual sigue disponible para todos los
+clientes.
 
 En `npm run dev` y `npm run preview`, Vite reenvía `/api/client-lookup` al mismo
 Worker. Así localhost puede probar clientes activos sin exponer credenciales ni

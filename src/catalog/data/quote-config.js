@@ -18,7 +18,7 @@ export const QUOTE_FORM_URL = String(env.VITE_FRESA_QUOTE_FORM_URL ?? '').trim()
   || PRODUCTION_FORM_URL;
 
 /**
- * Edge endpoint for the live Active clients lookup and email verification.
+ * Edge endpoint for masked client lookup and submissions that use saved contact data.
  * The Worker keeps the Fresa API key and client directory server-side.
  */
 export const CLIENT_LOOKUP_ENDPOINT = String(env.VITE_FRESA_CLIENT_LOOKUP_URL ?? '').trim()

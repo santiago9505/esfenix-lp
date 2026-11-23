@@ -5,8 +5,7 @@ import {
   FresaClientLookupError,
   lookupActiveClientByEmail,
 } from '../worker/src/client-lookup.js';
-import { ClientProfileCodes, handleRequest } from '../worker/src/index.js';
-import { createQuoteIntegration } from '../src/catalog/core/quote-integration.js';
+import { handleRequest } from '../worker/src/index.js';
 
 const LIST_ID = 'clients-list';
 const EMAIL_FIELD_ID = 'email-field';
@@ -163,7 +162,8 @@ test('worker accepts the landing origin and returns only an exact active match',
   assert.equal(response.headers.get('Cache-Control'), 'private, no-store, max-age=0');
   assert.equal(data.success, true);
   assert.equal(data.found, true);
-  assert.deepEqual(data.profile, {});
+  assert.deepEqual(data.contactPreview, {});
+  assert.equal(Object.hasOwn(data, 'profile'), false);
   assert.equal(Object.hasOwn(data, 'email'), false);
   assert.equal(Object.hasOwn(data, 'tasks'), false);
   assert.equal(Object.hasOwn(data, 'taskId'), false);
@@ -214,10 +214,10 @@ test('worker rate limits before contacting Fresa', async () => {
   assert.equal(queried, false);
 });
 
-function verificationFixture() {
+function savedQuoteFixture({ upstreamStatus = 200, phone = '+57 350 555 0100', hasSocialField = true } = {}) {
   const sent = [];
-  const clients = ['buyer@example.com', 'other@example.com'];
-  const objects = new Map();
+  const email = 'buyer@example.com';
+  const formToken = 'quote-token';
   const env = {
     FRESA_CLIENTS_API_URL: lookupOptions.apiUrl,
     FRESA_CLIENTS_API_KEY: lookupOptions.apiKey,
@@ -225,104 +225,122 @@ function verificationFixture() {
     FRESA_CLIENTS_EMAIL_FIELD_ID: EMAIL_FIELD_ID,
     FRESA_CLIENTS_ACTIVE_FIELD_ID: ACTIVE_FIELD_ID,
     FRESA_CLIENTS_VIP_FIELD_ID: VIP_FIELD_ID,
-    RESEND_API_KEY: 'fake-resend-key',
-    CLIENT_PROFILE_EMAIL_FROM: 'Esfenix <quotes@example.com>',
-    CLIENT_PROFILE_CODES: {
-      idFromName: (email) => email,
-      get(id) {
-        if (!objects.has(id)) {
-          const records = new Map();
-          let pending = Promise.resolve();
-          const storage = {
-            get: (key) => records.get(key),
-            put: (key, value) => records.set(key, value),
-            setAlarm() {},
-            transaction(operation) {
-              const next = pending.then(operation);
-              pending = next.catch(() => {});
-              return next;
-            },
-          };
-          objects.set(id, new ClientProfileCodes({ storage }));
-        }
-        return { fetch: (url, init) => objects.get(id).fetch(new Request(url, init)) };
-      },
-    },
+    FRESA_QUOTE_FORM_URL: `https://fresaai.app/f/${formToken}`,
   };
-  const integration = createQuoteIntegration({
-    clientLookupEndpoint: 'https://lookup.example.com/',
-    fetchImpl: (url, init) => handleRequest(new Request(url, init), env, {
-      fetchImpl: async (input) => {
+  const fields = [
+    { id: 'email', label: 'Email', type: 'email' },
+    { id: 'vip', label: 'VIP?', type: 'checkbox' },
+    { id: 'first', label: 'First Name', type: 'short_text' },
+    { id: 'last', label: 'Last Name', type: 'short_text' },
+    { id: 'phone', label: 'Phone Number', type: 'phone' },
+    { id: 'company', label: 'Company', type: 'short_text' },
+    ...(hasSocialField ? [{ id: 'social', label: 'Social Media Profiles (Business)', type: 'url' }] : []),
+    { id: 'notes', label: 'Notes for the seller', type: 'long_text' },
+    { id: 'items', label: 'Products', type: 'catalog_items' },
+    { id: 'unrelatedEmail', label: 'Unrelated email', type: 'email' },
+    { id: 'price', label: 'order_price', type: 'number' },
+  ];
+  function request(body) {
+    return handleRequest(new Request('https://lookup.example.com/', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    }), env, {
+      fetchImpl: async (input, init) => {
         const requestUrl = new URL(input);
         if (requestUrl.pathname.endsWith('/tasks')) {
-          return Response.json(page(clients.map((email) => task({ email }))));
+          return Response.json(page([task({ email })]));
         }
-        const email = clients.find((candidate) => decodeURIComponent(requestUrl.pathname).endsWith(`/${candidate}-task`));
-        const detail = task({ email, name: 'Ana Flowers' });
+        if (requestUrl.pathname === `/api/forms/${formToken}/submit`) {
+          sent.push(JSON.parse(init.body));
+          return upstreamStatus === 200
+            ? Response.json({ success: true, taskId: 'created-quote', answers: sent.at(-1).answers })
+            : Response.json({ success: false, error: `Your time slot is no longer available: ${phone}` }, { status: upstreamStatus });
+        }
+        if (requestUrl.pathname === `/api/forms/${formToken}`) {
+          return Response.json({ success: true, form: { enabled: true, fields } });
+        }
+        assert.match(decodeURIComponent(requestUrl.pathname), /buyer@example\.com-task$/);
+        const detail = task({ email, name: 'Ana Flowers', description: '```json\n{"entity":{"ShipAddr":{"Line1":"Hidden address"}}}\n```' });
         detail.custom_fields.social = { name: 'Social media profiles (business)', value: 'https://example.com/flowers' };
-        detail.custom_fields.phone = { name: 'Phone Number', value: '+57 350 555 0100' };
+        detail.custom_fields.phone = { name: 'Phone Number', value: phone };
         detail.custom_fields.company.value = 'Flower Studio';
         return Response.json({ success: true, task: detail });
       },
-      sendEmailFetch: async (_url, { body }) => {
-        const message = JSON.parse(body);
-        sent.push({ email: message.to[0], code: message.text.match(/\b\d{8}\b/)[0] });
-        return Response.json({ id: 'mock-email' });
-      },
-    }),
-  });
-  return { integration, sent };
+    });
+  }
+  const quote = {
+    action: 'submit-quote', formToken, email,
+    savedContactFields: ['firstName', 'lastName', 'phone', 'company', 'socialMediaProfiles'],
+    answers: { email, vip: true, first: '', last: '', phone: '', company: '', social: '', notes: 'Morning please', items: [{ id: 'flower' }] },
+    meta: { source: 'esfenix-product-catalog', timeZone: 'America/Chicago', updateToken: 'ignore' },
+  };
+  return { request, quote, sent };
 }
 
-test('a returning client receives their profile only after verifying their own email', async () => {
-  const { integration, sent } = verificationFixture();
-  const lookup = await integration.lookupClient(' Buyer@Example.com ');
-  assert.equal(lookup.found, true);
-  assert.equal(lookup.vip, true);
-  assert.equal(lookup.verificationAvailable, true);
-  assert.deepEqual(lookup.profile, {});
-  assert.deepEqual(sent, []);
-
-  assert.equal((await integration.lookupClient('new@example.com')).found, false);
-  assert.equal((await integration.requestClientCode('new@example.com', 'en')).status, 404);
-
-  const issued = await integration.requestClientCode(' BUYER@EXAMPLE.COM ', 'es');
-  assert.equal(issued.ok, true);
-  assert.equal(Object.hasOwn(issued, 'code'), false);
-  assert.deepEqual(sent.map(({ email }) => email), ['buyer@example.com']);
-  const { code } = sent[0];
-  assert.equal((await integration.requestClientCode('buyer@example.com', 'en')).status, 429);
-  assert.equal((await integration.verifyClientCode('other@example.com', issued.challengeId, code)).status, 400);
-
-  const attempts = await Promise.all([
-    integration.verifyClientCode('buyer@example.com', issued.challengeId, code),
-    integration.verifyClientCode('buyer@example.com', issued.challengeId, code),
-  ]);
-  const verified = attempts.find((attempt) => attempt.ok);
-  assert.equal(attempts.filter((attempt) => attempt.verified).length, 1);
-  assert.equal(attempts.find((attempt) => !attempt.ok).status, 400);
-  assert.deepEqual(verified.profile, {
-    'First Name': 'Ana',
-    'Last Name': 'Flowers',
-    'Phone Number': '+57 350 555 0100',
-    Company: 'Flower Studio',
-    'Social Media Profiles': 'https://example.com/flowers',
+test('public lookup returns contact presence and last phone digits without the saved values', async () => {
+  const { request, sent } = savedQuoteFixture();
+  const response = await request({ email: ' Buyer@Example.com ' });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    success: true, found: true, vip: true, verificationAvailable: false,
+    contactPreview: { firstName: true, lastName: true, phone: true, phoneLastDigits: '00', company: true, socialMediaProfiles: true },
   });
+  assert.deepEqual(await (await request({ email: 'new@example.com' })).json(), {
+    success: true, found: false, vip: false, verificationAvailable: false, contactPreview: {},
+  });
+  assert.equal((await request({ action: 'send-code', email: 'buyer@example.com' })).status, 400);
+  assert.equal(sent.length, 0);
 });
 
-test('verification stops accepting an expired code or a code with too many wrong attempts', async (context) => {
-  context.mock.timers.enable({ apis: ['Date'] });
-  const { integration, sent } = verificationFixture();
-  const email = 'buyer@example.com';
-  const first = await integration.requestClientCode(email, 'en');
-  context.mock.timers.tick(10 * 60_000);
-  assert.equal((await integration.verifyClientCode(email, first.challengeId, sent[0].code)).status, 400);
+test('sends saved social details in notes when the live Fresa form has no social field', async () => {
+  const { request, quote, sent } = savedQuoteFixture({ hasSocialField: false });
+  assert.equal((await request(quote)).status, 200);
+  assert.match(sent[0].answers.notes, /Social media profiles \(business\): https:\/\/example\.com\/flowers/);
 
-  const second = await integration.requestClientCode(email, 'en');
-  const correct = sent[1].code;
-  const wrong = correct === '00000000' ? '00000001' : '00000000';
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    assert.equal((await integration.verifyClientCode(email, second.challengeId, wrong)).status, 400);
-  }
-  assert.equal((await integration.verifyClientCode(email, second.challengeId, correct)).status, 400);
+  quote.savedContactFields = quote.savedContactFields.filter((field) => field !== 'socialMediaProfiles');
+  quote.answers.notes = 'Social media profiles (business): https://example.com/manual';
+  assert.equal((await request(quote)).status, 200);
+  assert.match(sent[1].answers.notes, /example\.com\/manual/);
+  assert.doesNotMatch(sent[1].answers.notes, /example\.com\/flowers/);
+});
+
+test('quote submission fills contact values at Fresa and honors manual edits without echoing private data', async () => {
+  const { request, quote, sent } = savedQuoteFixture();
+  quote.answers.first = 'Anita';
+  quote.answers.extraField = 'discard';
+  quote.answers.unrelatedEmail = 'attacker@example.com';
+  quote.answers.price = 0;
+  const response = await request(quote);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { success: true, taskId: 'created-quote' });
+  assert.deepEqual(sent, [{
+    answers: {
+      email: 'buyer@example.com', vip: true, first: 'Anita', last: 'Flowers', phone: '+57 350 555 0100',
+      company: 'Flower Studio', social: 'https://example.com/flowers',
+      notes: 'Company: Flower Studio\n\nMorning please', items: [{ id: 'flower' }],
+    },
+    meta: { source: 'esfenix-product-catalog', timeZone: 'America/Chicago' },
+  }]);
+});
+
+test('rejects submissions with a different client or form and never forwards upstream private error text', async () => {
+  const { request, quote, sent } = savedQuoteFixture({ upstreamStatus: 409 });
+  assert.equal((await request({ ...quote, formToken: 'different-form' })).status, 409);
+  assert.equal((await request({ ...quote, answers: { ...quote.answers, email: 'other@example.com' } })).status, 400);
+  assert.equal(sent.length, 0);
+  const response = await request(quote);
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { success: false, code: 'SLOT_FULL' });
+});
+
+test('does not disclose the entire phone or submit incomplete required saved contact details', async () => {
+  const short = savedQuoteFixture({ phone: '12' });
+  const lookup = await (await short.request({ email: short.quote.email })).json();
+  assert.equal(lookup.contactPreview.phone, true);
+  assert.equal(Object.hasOwn(lookup.contactPreview, 'phoneLastDigits'), false);
+
+  const missing = savedQuoteFixture({ phone: '' });
+  const response = await missing.request(missing.quote);
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { success: false, code: 'SAVED_CONTACT_UNAVAILABLE' });
+  assert.equal(missing.sent.length, 0);
 });

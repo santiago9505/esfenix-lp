@@ -368,8 +368,8 @@ export function createApp({ head, body }) {
   }
 
   /** Hands the completed internal form to the Fresa quote adapter. */
-  function submitQuoteForm(payload) {
-    return integration.start(payload);
+  function submitQuoteForm(payload, options) {
+    return integration.start(payload, options);
   }
 
   function lookupClient(email) {
@@ -402,8 +402,6 @@ export function createApp({ head, body }) {
             onBack: closeQuoteFormScreen,
             onOpenProductPicker: openProductPicker,
             onLookupClient: lookupClient,
-            onRequestClientCode: (email, language) => integration.requestClientCode(email, language),
-            onVerifyClientCode: (email, challengeId, code) => integration.verifyClientCode(email, challengeId, code),
             onCheckDeliveryEligibility: checkDeliveryEligibility,
             onGetDeliveryAvailability: (dateKey, timeZone) => integration.getDeliveryAvailability(dateKey, timeZone),
             onPrepareSubmission: (payload) => integration.prepareSubmission(payload),

@@ -12,8 +12,8 @@ const clientLookupPath = '/api/client-lookup';
 const clientLookupWorker = 'https://esfenix-client-lookup.esfenix724.workers.dev';
 
 /**
- * Keeps local browser requests same-origin while forwarding only the scoped
- * email lookup to the production Worker. The Worker deliberately rejects
+ * Keeps local browser requests same-origin while forwarding scoped client
+ * lookups and submissions with saved contact data. The Worker rejects
  * browser requests from localhost, so the development proxy removes Origin
  * before forwarding instead of weakening the production CORS allowlist.
  */

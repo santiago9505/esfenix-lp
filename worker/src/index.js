@@ -1,7 +1,15 @@
 import { FresaClientLookupError, lookupActiveClientByEmail, normalizeEmail } from './client-lookup.js';
-import { profileVerificationConfigured, sendProfileCode, verifyProfileCode } from './profile-verification.js';
+import { contactPreview, submitQuoteWithSavedContact } from './saved-contact.js';
 
-export { ClientProfileCodes } from './profile-verification.js';
+// Retain the deployed class for the existing Cloudflare migration.
+export class ClientProfileCodes {
+  fetch() {
+    return new Response(null, { status: 410 });
+  }
+}
+
+const MAX_LOOKUP_BYTES = 2_048;
+const MAX_SUBMISSION_BYTES = 1024 * 1024;
 
 const SECURITY_HEADERS = {
   'Cache-Control': 'private, no-store, max-age=0',
@@ -55,15 +63,18 @@ export async function handleRequest(request, env, options = {}) {
   }
 
   const declaredLength = Number(request.headers.get('Content-Length') ?? 0);
-  if (Number.isFinite(declaredLength) && declaredLength > 2048) {
+  if (declaredLength > MAX_SUBMISSION_BYTES) {
     return jsonResponse(413, { success: false, error: 'Request too large.' }, corsOrigin);
   }
 
   let body;
   try {
-    const rawBody = await request.text();
-    if (rawBody.length > 2048) throw new Error('too large');
-    body = JSON.parse(rawBody);
+    const decoded = await readBoundedBody(request);
+    if (!decoded) return jsonResponse(413, { success: false, error: 'Request too large.' }, corsOrigin);
+    body = JSON.parse(decoded.text);
+    if (body?.action !== 'submit-quote' && decoded.bytes > MAX_LOOKUP_BYTES) {
+      return jsonResponse(413, { success: false, error: 'Request too large.' }, corsOrigin);
+    }
   } catch {
     return jsonResponse(400, { success: false, error: 'Invalid request.' }, corsOrigin);
   }
@@ -74,21 +85,12 @@ export async function handleRequest(request, env, options = {}) {
   }
 
   const action = body.action ?? 'lookup';
-  if (!['lookup', 'send-code', 'verify-code'].includes(action)) {
+  if (action !== 'lookup' && action !== 'submit-quote') {
     return jsonResponse(400, { success: false }, corsOrigin);
   }
-  if (action !== 'lookup' && !isVerificationEmail(email)) {
-    return jsonResponse(400, { success: false }, corsOrigin);
-  }
-  const verificationAvailable = profileVerificationConfigured(env);
+  let client;
   try {
-    if (action !== 'lookup' && !verificationAvailable) {
-      return jsonResponse(503, { success: false }, corsOrigin);
-    }
-    if (action === 'verify-code' && !await verifyProfileCode(env, email, body.challengeId, body.code)) {
-      return jsonResponse(400, { success: false }, corsOrigin);
-    }
-    const result = await lookupActiveClientByEmail(email, {
+    client = await lookupActiveClientByEmail(email, {
       apiUrl: env.FRESA_CLIENTS_API_URL,
       apiKey: env.FRESA_CLIENTS_API_KEY,
       expectedListId: env.FRESA_CLIENTS_LIST_ID,
@@ -97,38 +99,61 @@ export async function handleRequest(request, env, options = {}) {
       vipFieldId: env.FRESA_CLIENTS_VIP_FIELD_ID,
       fetchImpl: options.fetchImpl,
     });
-    if (action === 'send-code') {
-      if (!result.found) return jsonResponse(404, { success: false }, corsOrigin);
-      const { status, challengeId } = await sendProfileCode(env, email, body.language, options.sendEmailFetch);
-      return jsonResponse(status, { success: status === 200, challengeId }, corsOrigin);
-    }
-    return jsonResponse(200, {
-      success: true,
-      found: result.found,
-      vip: result.vip,
-      verificationAvailable,
-      verified: action === 'verify-code' && result.found,
-      profile: action === 'verify-code' ? result.profile : {},
-    }, corsOrigin);
   } catch (error) {
     if (!(error instanceof FresaClientLookupError) || error.status >= 500) {
       console.error('Fresa client lookup failed', error);
     }
     return jsonResponse(
       error instanceof FresaClientLookupError && error.status >= 400 && error.status < 500 ? error.status : 503,
-      { success: false, error: 'The service is temporarily unavailable.' },
+      {
+        success: false,
+        error: 'The service is temporarily unavailable.',
+        ...(action === 'submit-quote' && { code: 'SAVED_CONTACT_UNAVAILABLE' }),
+      },
       corsOrigin,
     );
   }
+
+  if (action === 'submit-quote') {
+    try {
+      const result = await submitQuoteWithSavedContact({
+        body, email, client, formUrl: env.FRESA_QUOTE_FORM_URL, fetchImpl: options.fetchImpl,
+      });
+      return jsonResponse(result.status, result.data, corsOrigin);
+    } catch {
+      return jsonResponse(503, { success: false }, corsOrigin);
+    }
+  }
+
+  return jsonResponse(200, {
+    success: true,
+    found: client.found,
+    vip: client.vip,
+    verificationAvailable: false,
+    contactPreview: env.FRESA_QUOTE_FORM_URL ? contactPreview(client.profile) : {},
+  }, corsOrigin);
 }
 
 function isEmail(value) {
   return value.length <= 254 && /^[^\s@]+@[^\s@]+$/.test(value);
 }
 
-function isVerificationEmail(value) {
-  // Only a single bare address may be sent to the email provider.
-  return /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(value);
+async function readBoundedBody(request) {
+  const reader = request.body?.getReader();
+  if (!reader) throw new Error('Request body is required.');
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) return { bytes, text: text + decoder.decode() };
+    bytes += value.byteLength;
+    if (bytes > MAX_SUBMISSION_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    text += decoder.decode(value, { stream: true });
+  }
 }
 
 function jsonResponse(status, data, corsOrigin = '', extraHeaders = {}) {

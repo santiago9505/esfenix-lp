@@ -578,13 +578,10 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     throw new FresaFormConfigurationError('The Fresa quote form is unavailable or disabled.');
   }
 
-  const emailField = requireField(fields, 'Email', 'email');
-  const vipField = requireField(fields, 'VIP?', 'checkbox');
-  const firstNameField = requireField(fields, 'First Name', 'short_text');
-  const lastNameField = requireField(fields, 'Last Name', 'short_text');
-  const phoneField = requireField(fields, 'Phone Number', 'phone');
-  const companyField = findField(fields, 'Company', 'short_text');
-  const socialMediaField = findSocialMediaField(fields);
+  const {
+    email: emailField, vip: vipField, firstName: firstNameField, lastName: lastNameField,
+    phone: phoneField, company: companyField, socialMediaProfiles: socialMediaField, notes: notesField,
+  } = resolveFresaContactFields(fields);
   const locationField = requireField(fields, 'Location', 'select');
   const orderTypeField = requireField(fields, 'Type of Order', 'select');
 
@@ -665,7 +662,6 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     }
   }
 
-  const notesField = findField(fields, 'Notes for the seller', 'long_text');
   const notes = [
     contact.company ? `Company: ${contact.company}` : '',
     deliveryWindowNote(payload),
@@ -686,4 +682,42 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     listId: publicFormResponse?.listId ?? null,
     productFieldId: productField.id,
   };
+}
+
+export function resolveFresaContactFields(fields) {
+  return {
+    email: requireField(fields, 'Email', 'email'),
+    vip: requireField(fields, 'VIP?', 'checkbox'),
+    firstName: requireField(fields, 'First Name', 'short_text'),
+    lastName: requireField(fields, 'Last Name', 'short_text'),
+    phone: requireField(fields, 'Phone Number', 'phone'),
+    company: findField(fields, 'Company', 'short_text'),
+    socialMediaProfiles: findSocialMediaField(fields),
+    notes: findField(fields, 'Notes for the seller', 'long_text'),
+  };
+}
+
+export function resolveFresaQuoteAnswerIds(fields, contactFields) {
+  const quoteFields = [
+    ['Location', 'select'],
+    ['Type of Order', 'select'],
+    ['Delivery', 'date'],
+    ['pickup', 'date'],
+    ['Address', 'short_text'],
+    ['City', 'short_text'],
+    ['State', 'short_text'],
+    ['Zip Code', 'short_text'],
+  ];
+  return [
+    ...Object.values(contactFields),
+    ...quoteFields.map(([label, type]) => findField(fields, label, type)),
+    ...fields.filter((field) => field?.type === 'catalog_items'),
+  ].flatMap((field) => typeof field?.id === 'string' ? [field.id] : []);
+}
+
+export function resolveFresaSubmitError(status, message) {
+  const error = String(message ?? '');
+  if (status === 409 && /time slot is no longer available|horario ya no tiene cupos/i.test(error)) return 'SLOT_FULL';
+  if (/["“]?Type of Order["”]?\s+(?:has an invalid option|tiene una opción no válida)/i.test(error)) return 'DELIVERY_OPTION_REJECTED';
+  return null;
 }

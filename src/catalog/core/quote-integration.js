@@ -28,8 +28,10 @@ import {
   getFresaDeliveryEligibility,
   resolveFresaFormApi,
   resolveFresaProductFieldId,
+  resolveFresaSubmitError,
   validateFresaQuoteProducts,
 } from './fresa-form-submission.js';
+import { normalizeContactPreview } from './privacy.js';
 
 /**
  * @typedef {{ ok: true, mode: 'session'|'form-api', url?: string, summary: string, sessionId?: string, taskId?: string, listId?: string }} QuoteSuccess
@@ -41,6 +43,7 @@ import {
 // more than ten seconds, so keep the user-facing request alive long enough for
 // Fresa to return the created task id.
 const REQUEST_TIMEOUT_MS = 45000;
+const SAVED_QUOTE_TIMEOUT_MS = 65_000;
 const FORM_CATALOG_TTL_MS = 90_000;
 const FALLBACK_EMAIL_FIELD_ID = 'email';
 
@@ -66,18 +69,6 @@ export function createQuoteIntegration(options = {}) {
   const openUrl =
     options.openImpl ?? ((url) => window.open(url, '_blank', 'noopener,noreferrer'));
   const formCatalogs = new Map();
-
-  async function requestProfileVerification(email, details) {
-    if (!clientLookupEndpoint) return { ok: false };
-    try {
-      const response = await postClientLookup({ endpoint: clientLookupEndpoint, email, details, doFetch, timeoutMs });
-      const data = await readJson(response);
-      if (response.ok && data?.success === true) return { ...data, ok: true };
-      return { ok: false, status: response.status };
-    } catch {
-      return { ok: false };
-    }
-  }
 
   function getFormCatalog(payload) {
     // The form's product field depends on location and VIP routing. Quantities
@@ -163,14 +154,6 @@ export function createQuoteIntegration(options = {}) {
       });
     },
 
-    requestClientCode(email, language) {
-      return requestProfileVerification(email, { action: 'send-code', language });
-    },
-
-    verifyClientCode(email, challengeId, code) {
-      return requestProfileVerification(email, { action: 'verify-code', challengeId, code });
-    },
-
     /**
      * Checks Delivery eligibility against the live Fresa catalog. Only the
      * selected product ids, measures and quantities are used locally; no order
@@ -211,7 +194,7 @@ export function createQuoteIntegration(options = {}) {
      * Submits the quote payload to Fresa.
      *
      * @param {ReturnType<typeof import('./quote-payload').buildQuotePayload>} payload
-     * @param {{ targetWindow?: Window|null }} [openOptions]
+     * @param {{ targetWindow?: Window|null, savedContactFields?: string[] }} [openOptions]
      * @returns {Promise<QuoteSuccess|QuoteFailure>}
      */
     async start(payload, openOptions = {}) {
@@ -235,6 +218,13 @@ export function createQuoteIntegration(options = {}) {
       if (!sessionEndpoint) {
         // The API flow does not navigate away or need a reserved browser tab.
         openOptions.targetWindow?.close?.();
+        const savedContactFields = openOptions.savedContactFields ?? [];
+        if (savedContactFields.length && !clientLookupEndpoint) {
+          return {
+            ok: false, mode: 'form-api', code: 'SAVED_CONTACT_UNAVAILABLE', summary,
+            error: 'We couldn’t use your saved details. Please enter your contact information.',
+          };
+        }
         return submitToFresaForm({
           formUrl,
           payload,
@@ -243,6 +233,8 @@ export function createQuoteIntegration(options = {}) {
           reserveSlot: reserveDeliverySlotImpl,
           getFormCatalog,
           summary,
+          savedContactEndpoint: savedContactFields.length ? clientLookupEndpoint : null,
+          savedContactFields,
         });
       }
 
@@ -489,7 +481,7 @@ async function lookupClientThroughEndpoint({ endpoint, email, doFetch, timeoutMs
       vip: booleanValue(data.vip),
       profile: data.profile && typeof data.profile === 'object' ? data.profile : {},
       taskId: typeof data.taskId === 'string' ? data.taskId : null,
-      ...(typeof data.verificationAvailable === 'boolean' && { verificationAvailable: data.verificationAvailable }),
+      ...(data.contactPreview && { contactPreview: normalizeContactPreview(data.contactPreview) }),
     };
   } catch (error) {
     return {
@@ -585,9 +577,9 @@ async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
   }
 }
 
-async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserveSlot, getFormCatalog, summary }) {
+async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserveSlot, getFormCatalog, summary, savedContactEndpoint, savedContactFields }) {
   try {
-    const { submitUrl } = resolveFresaFormApi(formUrl);
+    const { token, submitUrl } = resolveFresaFormApi(formUrl);
     const formData = await getFormCatalog(payload);
     const submission = buildFresaFormSubmission(payload, formData);
     const { productFieldId } = submission;
@@ -634,25 +626,40 @@ async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserve
       }
     }
 
-    const response = await fetchWithTimeout(doFetch, submitUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ answers: submission.answers, meta: submission.meta }),
-    }, timeoutMs);
+    const details = { answers: submission.answers, meta: submission.meta };
+    const response = savedContactEndpoint
+      ? await postClientLookup({
+          endpoint: savedContactEndpoint, email: payload.email, doFetch,
+          timeoutMs: timeoutMs === REQUEST_TIMEOUT_MS ? SAVED_QUOTE_TIMEOUT_MS : timeoutMs,
+          details: { action: 'submit-quote', formToken: token, savedContactFields, ...details },
+        })
+      : await fetchWithTimeout(doFetch, submitUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(details),
+        }, timeoutMs);
     const data = await readJson(response);
     if (!response.ok || data?.success !== true || typeof data?.taskId !== 'string') {
-      const deliveryOptionRejected = payload.orderType === 'Delivery'
-        && /["“]?Type of Order["”]?\s+(?:has an invalid option|tiene una opción no válida)/i
-          .test(String(data?.error ?? ''));
-      const slotFull = payload.orderType === 'Delivery' && response.status === 409
-        && /time slot is no longer available|horario ya no tiene cupos/i.test(String(data?.error ?? ''));
+      let code;
+      let error = data?.error || `Fresa could not record the quote request (${response.status}).`;
+      if (savedContactEndpoint && data?.code === 'SAVED_CONTACT_UNAVAILABLE') {
+        code = 'SAVED_CONTACT_UNAVAILABLE';
+        error = 'We couldn’t use your saved details. Please enter your contact information.';
+      } else if (payload.orderType === 'Delivery') {
+        const deliveryCode = savedContactEndpoint ? data?.code : resolveFresaSubmitError(response.status, data?.error);
+        if (deliveryCode === 'DELIVERY_OPTION_REJECTED') {
+          code = deliveryCode;
+          error = 'Fresa could not accept Delivery for this selection. Please try another selection or choose Pickup.';
+        } else if (deliveryCode === 'SLOT_FULL') {
+          code = deliveryCode;
+          if (savedContactEndpoint) error = 'This delivery time slot is no longer available. Please choose another window.';
+        }
+      }
       return {
         ok: false,
         mode: 'form-api',
-        ...(slotFull ? { code: 'SLOT_FULL' } : deliveryOptionRejected ? { code: 'DELIVERY_OPTION_REJECTED' } : {}),
-        error: deliveryOptionRejected
-          ? 'Fresa could not accept Delivery for this selection. Please try another selection or choose Pickup.'
-          : data?.error || `Fresa could not record the quote request (${response.status}).`,
+        ...(code && { code }),
+        error,
         summary,
       };
     }

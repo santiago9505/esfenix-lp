@@ -17,6 +17,7 @@ import { clearQuoteDraft, readQuoteDraft, writeQuoteDraft } from '../core/quote-
 import { getQuotePricing, quotePricingKey } from '../core/pricing.js';
 import { describeQuoteItem } from '../core/format.js';
 import { normalizeSocialMediaUrl } from '../core/social-media-url.js';
+import { normalizeContactPreview } from '../core/privacy.js';
 import { resolveSeason } from '../core/season.js';
 import { getCategoryLabel } from '../data/categories.js';
 // Temporarily disabled with the advisor portrait block below.
@@ -39,7 +40,7 @@ import { createLoadingOverlay } from './loading-indicator.js';
 import { NO_PAYMENT_NOTE } from './states.js';
 import { openVariantPicker } from './variant-picker.js';
 import { imageForQuoteItem } from './quote-summary.js';
-import { getLanguage, t } from '../../i18n/locale.js';
+import { t } from '../../i18n/locale.js';
 
 const STEPS = [
   'Email',
@@ -54,6 +55,7 @@ const STEPS = [
 const DELIVERY_STEP_INDEX = 4;
 const REVIEW_STEP_INDEX = STEPS.length - 1;
 const PRODUCTS_REQUIRED_ERROR = 'Select at least one product to continue.';
+const CONTACT_MASK = '••••••';
 const PLURAL_MEASURES = { stem: 'stems', bunch: 'bunches', unit: 'units', pack: 'packs', box: 'boxes' };
 
 /**
@@ -62,12 +64,10 @@ const PLURAL_MEASURES = { stem: 'stems', bunch: 'bunches', unit: 'units', pack: 
  *   onBack: () => void,
  *   onOpenProductPicker?: (options?: { onClose?: () => void }) => void,
  *   onLookupClient?: (email: string) => Promise<any>,
- *   onRequestClientCode?: (email: string, language: string) => Promise<any>,
- *   onVerifyClientCode?: (email: string, challengeId: string, code: string) => Promise<any>,
  *   onCheckDeliveryEligibility?: (payload: ReturnType<typeof buildQuotePayload>) => Promise<any>,
  *   onGetDeliveryAvailability?: (dateKey: string, timeZone: string) => Promise<Array<{ start: string, booked?: number }>>,
  *   onPrepareSubmission?: (payload: ReturnType<typeof buildQuotePayload>) => Promise<void>,
- *   onSubmit: (payload: ReturnType<typeof buildQuotePayload>) => Promise<any>,
+ *   onSubmit: (payload: ReturnType<typeof buildQuotePayload>, options?: { savedContactFields?: string[] }) => Promise<any>,
  * }} options
  */
 export function renderQuoteFormView(ctx, options) {
@@ -89,8 +89,7 @@ export function renderQuoteFormView(ctx, options) {
     email: savedDraft?.email ?? '',
     recognized: savedDraft?.recognized === true,
     vip: savedDraft?.vip === true,
-    profilePrefilled: savedDraft?.profilePrefilled === true,
-    verificationAvailable: undefined,
+    savedContactPreview: savedDraft?.recognized ? savedDraft.savedContactPreview : null,
     clientLookup: savedDraft?.clientLookup ?? 'idle',
     phoneCountry: savedDraft?.phoneCountry ?? savedPhone.countryCode,
     contact: { ...savedContact, phone: savedPhone.nationalNumber },
@@ -148,6 +147,15 @@ export function renderQuoteFormView(ctx, options) {
   ]);
 
   render(true);
+  if (state.step === 1 && state.recognized && !state.savedContactPreview && options.onLookupClient) {
+    const email = state.email;
+    void options.onLookupClient(email).then((lookup) => {
+      if (!screen.isConnected || state.step !== 1 || state.email !== email || state.savedContactPreview) return;
+      if (lookup?.ok !== true) return;
+      applyLookupResult(lookup);
+      render();
+    }).catch(() => {});
+  }
   return {
     head: null,
     body: [screen],
@@ -408,12 +416,7 @@ export function renderQuoteFormView(ctx, options) {
         // Client lookup is an optional prefill. A temporary Fresa failure
         // must never prevent a new visitor from requesting a quote; only the
         // native email input validation above can stop this step.
-        state.recognized = lookup?.ok === true && lookup.found === true;
-        state.vip = state.recognized && lookup.vip === true;
-        state.verificationAvailable = lookup?.verificationAvailable;
-        state.clientLookup = lookup?.ok === true
-          ? lookup.found ? 'found' : 'not-found'
-          : 'unavailable';
+        applyLookupResult(lookup);
         state.step = 1;
         state.error = '';
         persistDraft();
@@ -436,6 +439,13 @@ export function renderQuoteFormView(ctx, options) {
     ]);
   }
 
+  function applyLookupResult(lookup) {
+    state.recognized = lookup?.ok === true && lookup.found === true;
+    state.vip = state.recognized && lookup.vip === true;
+    state.clientLookup = lookup?.ok === true ? (state.recognized ? 'found' : 'not-found') : 'unavailable';
+    state.savedContactPreview = state.recognized ? normalizeContactPreview(lookup.contactPreview) : null;
+  }
+
   function contactStep() {
     const fields = [
       field({
@@ -448,6 +458,21 @@ export function renderQuoteFormView(ctx, options) {
         required: true,
         readonly: true,
       }),
+      Object.keys(state.savedContactPreview ?? {}).length > 0
+        ? el('div', { class: 'cat-quote-info-note' }, [
+            el('p', { text: 'Saved details are masked. Leave a field blank to use the saved value.' }),
+            el('button', {
+              type: 'button',
+              class: 'btn btn-light cat-quote-edit-address',
+              text: 'Enter different contact details',
+              onClick: () => {
+                state.savedContactPreview = {};
+                render();
+                formHost.querySelector('[name="firstName"]')?.focus();
+              },
+            }),
+          ])
+        : null,
       el('div', { class: 'cat-quote-field-grid' }, [
         contactField('First name', 'firstName', 'given-name', true),
         contactField('Last name', 'lastName', 'family-name', true),
@@ -459,7 +484,7 @@ export function renderQuoteFormView(ctx, options) {
       contactField('Social media link', 'socialMediaProfiles', 'url', false),
     ];
 
-    const contactForm = el('form', {
+    return el('form', {
       class: 'cat-quote-step-form',
       onSubmit: (event) => {
         event.preventDefault();
@@ -476,90 +501,13 @@ export function renderQuoteFormView(ctx, options) {
       ...fields,
       stepActions('Continue to products'),
     ]);
-    if (!state.recognized || state.profilePrefilled || state.verificationAvailable === false
-      || !options.onRequestClientCode || !options.onVerifyClientCode) return contactForm;
-
-    return el('div', { class: 'cat-quote-step-form' }, [profileVerificationPanel(contactForm), contactForm]);
-  }
-
-  function profileVerificationPanel(contactForm) {
-    const email = state.email;
-    let challengeId;
-    const status = el('p', { role: 'status' });
-    const sendButton = el('button', {
-      type: 'button',
-      class: 'btn btn-light',
-      text: 'Send code to fill saved details',
-      onClick: async () => {
-        sendButton.disabled = true;
-        verifyButton.disabled = true;
-        status.textContent = 'Sending your code…';
-        const result = await options.onRequestClientCode(email, getLanguage());
-        if (!contactForm.isConnected) return;
-
-        sendButton.disabled = false;
-        verifyButton.disabled = false;
-        if (result.ok && typeof result.challengeId === 'string') {
-          challengeId = result.challengeId;
-          codeForm.hidden = false;
-          sendButton.textContent = 'Send another code';
-          status.textContent = 'Check your email for an 8-digit code.';
-          codeInput.value = '';
-          codeInput.focus();
-        } else {
-          status.textContent = result.status === 429
-            ? 'Please wait before requesting another code. You can enter your details manually.'
-            : 'We couldn’t send a code. You can enter your details manually.';
-        }
-      },
-    });
-    const verifyButton = el('button', { type: 'submit', class: 'btn btn-primary', text: 'Verify and fill details' });
-    const codeField = field({
-      label: 'Verification code',
-      name: 'profileCode',
-      autocomplete: 'one-time-code',
-      inputmode: 'numeric',
-      maxlength: '8',
-      pattern: '[0-9]{8}',
-      required: true,
-    });
-    const codeInput = codeField.querySelector('input');
-    const codeForm = el('form', {
-      class: 'cat-quote-profile-code',
-      hidden: true,
-      onSubmit: async (event) => {
-        event.preventDefault();
-        if (verifyButton.disabled || !challengeId) return;
-        sendButton.disabled = true;
-        verifyButton.disabled = true;
-        status.textContent = 'Verifying your code…';
-        const result = await options.onVerifyClientCode(email, challengeId, codeInput.value);
-        if (!contactForm.isConnected) return;
-
-        sendButton.disabled = false;
-        verifyButton.disabled = false;
-        if (result.ok && result.verified === true) {
-          readContact(contactForm);
-          applyLookupProfile(result.profile);
-          state.profilePrefilled = true;
-          state.vip = result.vip === true;
-          render(true);
-        } else {
-          status.textContent = result.status === 400
-            ? 'That code is invalid or expired. Check it or request another code.'
-            : 'We couldn’t load your saved details. You can enter them manually.';
-          codeInput.focus();
-        }
-      },
-    }, [codeField, verifyButton]);
-    return el('div', { class: 'cat-quote-info-note' }, [sendButton, status, codeForm]);
   }
 
   function clearProfileData() {
     const currentDestination = ctx.locationStore.getShippingDestination() ?? {};
     state.recognized = false;
     state.vip = false;
-    state.profilePrefilled = false;
+    state.savedContactPreview = null;
     state.clientLookup = 'idle';
     state.phoneCountry = DEFAULT_COUNTRY;
     state.contact = {
@@ -579,44 +527,6 @@ export function renderQuoteFormView(ctx, options) {
     state.editingShippingAddress = false;
   }
 
-  function applyLookupProfile(profile = {}) {
-    const value = (...labels) => {
-      for (const label of labels) {
-        const found = profile?.[label];
-        if (found !== null && found !== undefined && String(found).trim()) return String(found).trim();
-      }
-      return '';
-    };
-    const contact = state.contact;
-    contact.firstName ||= value('First Name');
-    contact.lastName ||= value('Last Name');
-    contact.company ||= value('Company');
-    contact.socialMediaProfiles ||= normalizeSocialMediaUrl(value(
-      'Social media profiles (business)',
-      'Social Media Profiles (Business)',
-      'Social Media Profiles',
-      'Social media link',
-      'Social Media URL',
-    ));
-    if (!contact.phone) {
-      const phone = splitPhoneNumber(value('Phone Number', 'Phone'));
-      contact.phone = phone.nationalNumber;
-      if (phone.nationalNumber) state.phoneCountry = phone.countryCode;
-    }
-
-    const savedDestination = {
-      city: value('City'),
-      state: value('State'),
-      zipCode: value('Zip Code', 'ZIP Code'),
-    };
-    const matchesDestination = Object.entries(savedDestination).every(([key, saved]) => (
-      !state.delivery[key] || state.delivery[key].toLowerCase() === saved.toLowerCase()
-    ));
-    if (!state.delivery.address && matchesDestination) {
-      Object.assign(state.delivery, savedDestination, { address: value('Address') });
-    }
-  }
-
   function contactField(label, name, autocomplete, required, type = 'text') {
     const value = name === 'socialMediaProfiles'
       ? normalizeSocialMediaUrl(state.contact[name])
@@ -626,13 +536,14 @@ export function renderQuoteFormView(ctx, options) {
       name,
       type,
       value,
+      placeholder: state.savedContactPreview?.[name] ? CONTACT_MASK : undefined,
       autocomplete,
       inputmode: name === 'socialMediaProfiles' ? 'url' : undefined,
       spellcheck: name === 'socialMediaProfiles' ? 'false' : undefined,
       autocapitalize: name === 'socialMediaProfiles' ? 'none' : undefined,
       linkPreview: name === 'socialMediaProfiles',
       maxlength: name === 'company' ? '120' : name === 'socialMediaProfiles' ? '500' : '80',
-      required,
+      required: required && !state.savedContactPreview?.[name],
       optional: !required,
     });
   }
@@ -641,7 +552,11 @@ export function renderQuoteFormView(ctx, options) {
     const rawValue = state.contact.phone ?? '';
     const phone = splitPhoneNumber(rawValue, dialCodeForCountry(state.phoneCountry));
     const displayValue = phone.nationalNumber;
-    const knownPhone = false;
+    const phonePreview = state.savedContactPreview?.phone;
+    const lastDigits = state.savedContactPreview?.phoneLastDigits;
+    const placeholder = phonePreview
+      ? (lastDigits ? `•••• ${lastDigits}` : CONTACT_MASK)
+      : (state.phoneCountry === DEFAULT_COUNTRY ? '(555) 123-4567' : 'Phone number');
     const countryCode = el('span', {
       class: 'cat-quote-country-trigger-code',
       text: dialCodeForCountry(state.phoneCountry),
@@ -678,7 +593,6 @@ export function renderQuoteFormView(ctx, options) {
       'aria-controls': 'cat-quote-field-phone-country-menu',
       'aria-expanded': 'false',
       'aria-haspopup': 'listbox',
-      disabled: knownPhone,
       onClick: () => setCountryMenuOpen(!isOpen),
       onKeydown: (event) => {
         if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
@@ -691,14 +605,14 @@ export function renderQuoteFormView(ctx, options) {
       el('span', { class: 'cat-quote-country-trigger-chevron', 'aria-hidden': 'true' }),
     ]);
     const countryPicker = el('div', {
-      class: `cat-quote-country-picker${knownPhone ? ' is-readonly' : ''}`,
+      class: 'cat-quote-country-picker',
       onFocusout: (event) => {
         if (!countryPicker.contains(event.relatedTarget)) setCountryMenuOpen(false);
       },
     }, [countryTrigger, countryMenu, hiddenCountry]);
 
     function setCountryMenuOpen(open) {
-      isOpen = open && !knownPhone;
+      isOpen = open;
       countryMenu.hidden = !isOpen;
       countryTrigger.setAttribute('aria-expanded', String(isOpen));
       countryPicker.classList.toggle('is-open', isOpen);
@@ -748,12 +662,11 @@ export function renderQuoteFormView(ctx, options) {
           name: 'phone',
           type: 'tel',
           value: displayValue,
-          placeholder: state.phoneCountry === DEFAULT_COUNTRY ? '(555) 123-4567' : 'Phone number',
-          autocomplete: knownPhone ? 'off' : 'tel-national',
+          placeholder,
+          autocomplete: 'tel-national',
           inputmode: 'tel',
           maxlength: '40',
-          required: true,
-          readonly: knownPhone,
+          required: !phonePreview,
           onInput: (event) => {
             state.contact.phone = event.currentTarget.value;
             persistDraft();
@@ -1465,13 +1378,19 @@ export function renderQuoteFormView(ctx, options) {
             shippingDestination: ctx.locationStore.getShippingDestination(),
             notes: state.notes,
           });
-          const result = await options.onSubmit(payload);
+          const savedContactFields = Object.keys(state.contact).filter((key) => (
+            state.savedContactPreview?.[key] === true && !state.contact[key]?.trim()
+          ));
+          const result = await options.onSubmit(payload, { savedContactFields });
           if (result?.ok) {
             ctx.quoteStore.clear();
             clearQuoteDraft();
             state.result = result;
           } else {
-            if (result?.code === 'SLOT_FULL') {
+            if (result?.code === 'SAVED_CONTACT_UNAVAILABLE') {
+              state.savedContactPreview = {};
+              state.step = 1;
+            } else if (result?.code === 'SLOT_FULL') {
               state.delivery.dateTime = '';
               state.delivery.slot = undefined;
               state.step = 4;
@@ -1643,7 +1562,6 @@ export function renderQuoteFormView(ctx, options) {
       spellcheck: config.spellcheck,
       autocapitalize: config.autocapitalize,
       maxlength: config.maxlength,
-      pattern: config.pattern,
       required: config.required,
       readonly: config.readonly,
       onInput: (event) => {
@@ -1652,7 +1570,11 @@ export function renderQuoteFormView(ctx, options) {
         if (config.name === 'phone') state.contact.phone = event.currentTarget.value;
         if (config.name === 'company') state.contact.company = event.currentTarget.value;
         if (config.name === 'socialMediaProfiles') state.contact.socialMediaProfiles = event.currentTarget.value;
-        if (config.name === 'email') state.email = event.currentTarget.value;
+        if (config.name === 'email') {
+          const email = event.currentTarget.value;
+          if (email.trim().toLowerCase() !== state.email.trim().toLowerCase()) clearProfileData();
+          state.email = email;
+        }
         if (config.name === 'address') state.delivery.address = event.currentTarget.value;
         if (config.name === 'city') state.delivery.city = event.currentTarget.value;
         if (config.name === 'state') state.delivery.state = event.currentTarget.value;

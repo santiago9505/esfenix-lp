@@ -114,6 +114,37 @@ function recorder() {
   };
 }
 
+test('saved-contact quotes send the regular form answers through the Worker with blank contact values', async () => {
+  const endpoint = 'https://lookup.example.workers.dev';
+  const calls = [];
+  const integration = createQuoteIntegration({
+    formUrl: FORM_URL,
+    clientLookupEndpoint: endpoint,
+    async fetchImpl(url, options) {
+      if (options.method === 'GET') return Response.json(publicFormResponse());
+      calls.push({ url, body: JSON.parse(options.body) });
+      return Response.json({ success: true, taskId: 'saved-contact-quote' });
+    },
+  });
+  const payload = readyPickupPayload();
+  payload.contact = { firstName: '', lastName: '', phone: '', company: 'Updated Business' };
+  const savedContactFields = ['firstName', 'lastName', 'phone'];
+  const result = await integration.start(payload, { savedContactFields });
+  assert.equal(result.taskId, 'saved-contact-quote');
+  assert.equal(calls.length, 1);
+  const [{ url, body }] = calls;
+  assert.equal(url, endpoint);
+  assert.equal(body.action, 'submit-quote');
+  assert.deepEqual(body.savedContactFields, savedContactFields);
+  assert.equal(body.formToken, '0578f97716840e34cf5472d5');
+  assert.equal(body.email, 'buyer@example.com');
+  assert.equal(body.answers.first, '');
+  assert.equal(body.answers.last, '');
+  assert.equal(body.answers.phone, '');
+  assert.equal(body.answers.company, 'Updated Business');
+  assert.equal(body.answers.products.length, 1);
+});
+
 test('without a legacy session endpoint the response is submitted through the Fresa form API', async () => {
   const calls = [];
   const integration = createQuoteIntegration({
