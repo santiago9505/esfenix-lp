@@ -31,7 +31,7 @@ import {
   resolveFresaSubmitError,
   validateFresaQuoteProducts,
 } from './fresa-form-submission.js';
-import { normalizeContactPreview } from './privacy.js';
+import { normalizeContactPreview, normalizeShippingPreview } from './privacy.js';
 
 /**
  * @typedef {{ ok: true, mode: 'session'|'form-api', url?: string, summary: string, sessionId?: string, taskId?: string, listId?: string }} QuoteSuccess
@@ -194,7 +194,7 @@ export function createQuoteIntegration(options = {}) {
      * Submits the quote payload to Fresa.
      *
      * @param {ReturnType<typeof import('./quote-payload').buildQuotePayload>} payload
-     * @param {{ targetWindow?: Window|null, savedContactFields?: string[] }} [openOptions]
+     * @param {{ targetWindow?: Window|null, savedContactFields?: string[], useSavedShippingAddress?: boolean }} [openOptions]
      * @returns {Promise<QuoteSuccess|QuoteFailure>}
      */
     async start(payload, openOptions = {}) {
@@ -219,7 +219,9 @@ export function createQuoteIntegration(options = {}) {
         // The API flow does not navigate away or need a reserved browser tab.
         openOptions.targetWindow?.close?.();
         const savedContactFields = openOptions.savedContactFields ?? [];
-        if (savedContactFields.length && !clientLookupEndpoint) {
+        const useSavedShippingAddress = payload.orderType === 'Delivery' && openOptions.useSavedShippingAddress === true;
+        const usesSavedValues = savedContactFields.length > 0 || useSavedShippingAddress;
+        if (usesSavedValues && !clientLookupEndpoint) {
           return {
             ok: false, mode: 'form-api', code: 'SAVED_CONTACT_UNAVAILABLE', summary,
             error: 'We couldn’t use your saved details. Please enter your contact information.',
@@ -233,8 +235,8 @@ export function createQuoteIntegration(options = {}) {
           reserveSlot: reserveDeliverySlotImpl,
           getFormCatalog,
           summary,
-          savedContactEndpoint: savedContactFields.length ? clientLookupEndpoint : null,
-          savedContactFields,
+          savedContactEndpoint: usesSavedValues ? clientLookupEndpoint : null,
+          savedValues: { savedContactFields, ...(useSavedShippingAddress && { useSavedShippingAddress }) },
         });
       }
 
@@ -482,6 +484,7 @@ async function lookupClientThroughEndpoint({ endpoint, email, doFetch, timeoutMs
       profile: data.profile && typeof data.profile === 'object' ? data.profile : {},
       taskId: typeof data.taskId === 'string' ? data.taskId : null,
       ...(data.contactPreview && { contactPreview: normalizeContactPreview(data.contactPreview) }),
+      ...(data.shippingPreview && { shippingPreview: normalizeShippingPreview(data.shippingPreview) }),
     };
   } catch (error) {
     return {
@@ -577,7 +580,7 @@ async function lookupFresaClient({ formUrl, email, doFetch, timeoutMs }) {
   }
 }
 
-async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserveSlot, getFormCatalog, summary, savedContactEndpoint, savedContactFields }) {
+async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserveSlot, getFormCatalog, summary, savedContactEndpoint, savedValues }) {
   try {
     const { token, submitUrl } = resolveFresaFormApi(formUrl);
     const formData = await getFormCatalog(payload);
@@ -631,7 +634,7 @@ async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserve
       ? await postClientLookup({
           endpoint: savedContactEndpoint, email: payload.email, doFetch,
           timeoutMs: timeoutMs === REQUEST_TIMEOUT_MS ? SAVED_QUOTE_TIMEOUT_MS : timeoutMs,
-          details: { action: 'submit-quote', formToken: token, savedContactFields, ...details },
+          details: { action: 'submit-quote', formToken: token, ...savedValues, ...details },
         })
       : await fetchWithTimeout(doFetch, submitUrl, {
           method: 'POST',
@@ -642,7 +645,11 @@ async function submitToFresaForm({ formUrl, payload, doFetch, timeoutMs, reserve
     if (!response.ok || data?.success !== true || typeof data?.taskId !== 'string') {
       let code;
       let error = data?.error || `Fresa could not record the quote request (${response.status}).`;
-      if (savedContactEndpoint && data?.code === 'SAVED_CONTACT_UNAVAILABLE') {
+      if (savedContactEndpoint && (data?.code === 'SAVED_SHIPPING_UNAVAILABLE'
+        || (data?.code === 'SAVED_CONTACT_UNAVAILABLE' && !savedValues.savedContactFields.length))) {
+        code = 'SAVED_SHIPPING_UNAVAILABLE';
+        error = 'We couldn’t use your saved shipping address. Please enter the delivery address.';
+      } else if (savedContactEndpoint && data?.code === 'SAVED_CONTACT_UNAVAILABLE') {
         code = 'SAVED_CONTACT_UNAVAILABLE';
         error = 'We couldn’t use your saved details. Please enter your contact information.';
       } else if (payload.orderType === 'Delivery') {

@@ -17,7 +17,7 @@ import { clearQuoteDraft, readQuoteDraft, writeQuoteDraft } from '../core/quote-
 import { getQuotePricing, quotePricingKey } from '../core/pricing.js';
 import { describeQuoteItem } from '../core/format.js';
 import { normalizeSocialMediaUrl } from '../core/social-media-url.js';
-import { normalizeContactPreview } from '../core/privacy.js';
+import { normalizeContactPreview, normalizeShippingPreview } from '../core/privacy.js';
 import { resolveSeason } from '../core/season.js';
 import { getCategoryLabel } from '../data/categories.js';
 // Temporarily disabled with the advisor portrait block below.
@@ -55,7 +55,8 @@ const STEPS = [
 const DELIVERY_STEP_INDEX = 4;
 const REVIEW_STEP_INDEX = STEPS.length - 1;
 const PRODUCTS_REQUIRED_ERROR = 'Select at least one product to continue.';
-const CONTACT_MASK = '••••••';
+const SAVED_VALUE_MASK = '***';
+const SHIPPING_FIELDS = ['address', 'city', 'state', 'zipCode'];
 const PLURAL_MEASURES = { stem: 'stems', bunch: 'bunches', unit: 'units', pack: 'packs', box: 'boxes' };
 
 /**
@@ -67,7 +68,7 @@ const PLURAL_MEASURES = { stem: 'stems', bunch: 'bunches', unit: 'units', pack: 
  *   onCheckDeliveryEligibility?: (payload: ReturnType<typeof buildQuotePayload>) => Promise<any>,
  *   onGetDeliveryAvailability?: (dateKey: string, timeZone: string) => Promise<Array<{ start: string, booked?: number }>>,
  *   onPrepareSubmission?: (payload: ReturnType<typeof buildQuotePayload>) => Promise<void>,
- *   onSubmit: (payload: ReturnType<typeof buildQuotePayload>, options?: { savedContactFields?: string[] }) => Promise<any>,
+ *   onSubmit: (payload: ReturnType<typeof buildQuotePayload>, options?: { savedContactFields?: string[], useSavedShippingAddress?: boolean }) => Promise<any>,
  * }} options
  */
 export function renderQuoteFormView(ctx, options) {
@@ -90,6 +91,8 @@ export function renderQuoteFormView(ctx, options) {
     recognized: savedDraft?.recognized === true,
     vip: savedDraft?.vip === true,
     savedContactPreview: savedDraft?.recognized ? savedDraft.savedContactPreview : null,
+    savedShippingPreview: savedDraft?.recognized ? savedDraft.savedShippingPreview : null,
+    shippingAddressMode: savedDraft?.shippingAddressMode ?? null,
     clientLookup: savedDraft?.clientLookup ?? 'idle',
     phoneCountry: savedDraft?.phoneCountry ?? savedPhone.countryCode,
     contact: { ...savedContact, phone: savedPhone.nationalNumber },
@@ -102,7 +105,6 @@ export function renderQuoteFormView(ctx, options) {
       zipCode: existingDestination.zipCode ?? '',
       ...savedDraft?.delivery,
     },
-    editingShippingAddress: false,
     notes: savedDraft?.notes ?? '',
     submitPending: false,
     pricing: null,
@@ -147,12 +149,14 @@ export function renderQuoteFormView(ctx, options) {
   ]);
 
   render(true);
-  if (state.step === 1 && state.recognized && !state.savedContactPreview && options.onLookupClient) {
-    const email = state.email;
+  if ([1, DELIVERY_STEP_INDEX, REVIEW_STEP_INDEX].includes(state.step) && state.recognized && options.onLookupClient) {
+    const { email, step, savedContactPreview, shippingAddressMode } = state;
     void options.onLookupClient(email).then((lookup) => {
-      if (!screen.isConnected || state.step !== 1 || state.email !== email || state.savedContactPreview) return;
+      if (!screen.isConnected || state.step !== step || state.email !== email
+        || state.savedContactPreview !== savedContactPreview || state.shippingAddressMode !== shippingAddressMode) return;
       if (lookup?.ok !== true) return;
       applyLookupResult(lookup);
+      if (savedContactPreview && !Object.keys(savedContactPreview).length) state.savedContactPreview = savedContactPreview;
       render();
     }).catch(() => {});
   }
@@ -444,6 +448,7 @@ export function renderQuoteFormView(ctx, options) {
     state.vip = state.recognized && lookup.vip === true;
     state.clientLookup = lookup?.ok === true ? (state.recognized ? 'found' : 'not-found') : 'unavailable';
     state.savedContactPreview = state.recognized ? normalizeContactPreview(lookup.contactPreview) : null;
+    state.savedShippingPreview = state.recognized ? normalizeShippingPreview(lookup.shippingPreview) : null;
   }
 
   function contactStep() {
@@ -508,6 +513,8 @@ export function renderQuoteFormView(ctx, options) {
     state.recognized = false;
     state.vip = false;
     state.savedContactPreview = null;
+    state.savedShippingPreview = null;
+    state.shippingAddressMode = null;
     state.clientLookup = 'idle';
     state.phoneCountry = DEFAULT_COUNTRY;
     state.contact = {
@@ -524,7 +531,6 @@ export function renderQuoteFormView(ctx, options) {
       state: currentDestination.state ?? '',
       zipCode: currentDestination.zipCode ?? '',
     };
-    state.editingShippingAddress = false;
   }
 
   function contactField(label, name, autocomplete, required, type = 'text') {
@@ -536,7 +542,8 @@ export function renderQuoteFormView(ctx, options) {
       name,
       type,
       value,
-      placeholder: state.savedContactPreview?.[name] ? CONTACT_MASK : undefined,
+      placeholder: state.savedContactPreview?.[name] ? `${state.savedContactPreview[`${name}Initial`] ?? ''}${SAVED_VALUE_MASK}` : undefined,
+      savedValue: state.savedContactPreview?.[name],
       autocomplete,
       inputmode: name === 'socialMediaProfiles' ? 'url' : undefined,
       spellcheck: name === 'socialMediaProfiles' ? 'false' : undefined,
@@ -555,7 +562,7 @@ export function renderQuoteFormView(ctx, options) {
     const phonePreview = state.savedContactPreview?.phone;
     const lastDigits = state.savedContactPreview?.phoneLastDigits;
     const placeholder = phonePreview
-      ? (lastDigits ? `•••• ${lastDigits}` : CONTACT_MASK)
+      ? `${SAVED_VALUE_MASK}${lastDigits ?? ''}`
       : (state.phoneCountry === DEFAULT_COUNTRY ? '(555) 123-4567' : 'Phone number');
     const countryCode = el('span', {
       class: 'cat-quote-country-trigger-code',
@@ -654,7 +661,7 @@ export function renderQuoteFormView(ctx, options) {
     }
 
     return el('div', { class: 'cat-quote-field cat-quote-phone-field' }, [
-      el('label', { for: 'cat-quote-field-phone', text: 'Phone number *' }),
+      el('label', { for: 'cat-quote-field-phone', text: phonePreview ? 'Phone number' : 'Phone number *' }),
       el('div', { class: 'cat-quote-phone-control' }, [
         countryPicker,
         el('input', {
@@ -663,6 +670,7 @@ export function renderQuoteFormView(ctx, options) {
           type: 'tel',
           value: displayValue,
           placeholder,
+          'data-saved-value': phonePreview,
           autocomplete: 'tel-national',
           inputmode: 'tel',
           maxlength: '40',
@@ -1147,28 +1155,23 @@ export function renderQuoteFormView(ctx, options) {
     state.delivery.slot = isDelivery && validValue
       ? getDeliverySlots(validValue.slice(0, 10), scheduleOptions).find((slot) => slot.value === validValue)
       : undefined;
-    const hasSavedShipping = state.clientLookup === 'found' && Boolean(
-      state.delivery.address
-      && state.delivery.city
-      && state.delivery.state
-      && state.delivery.zipCode,
-    );
+    const hasSavedShipping = Boolean(state.savedShippingPreview);
+    const usingSavedShipping = useSavedShippingAddress();
     const shippingAddressNotice = el('div', { class: 'cat-quote-info-note cat-quote-shipping-address-note' }, [
       el('strong', { text: 'Shipping address' }),
       el('p', {
-        text: hasSavedShipping
-          ? state.editingShippingAddress
-            ? 'Update the saved address below for this delivery.'
-            : 'We filled in your saved shipping address for this delivery.'
+        text: usingSavedShipping
+          ? 'Your saved address is masked and will be used for this delivery.'
           : 'Enter the address where this order should be delivered.',
       }),
-      hasSavedShipping && !state.editingShippingAddress
+      hasSavedShipping && !usingSavedShipping ? el('p', { text: maskedShippingAddress() }) : null,
+      hasSavedShipping
         ? el('button', {
             type: 'button',
             class: 'btn btn-light cat-quote-edit-address',
-            text: 'Update shipping address',
+            text: usingSavedShipping ? 'Use a different shipping address' : 'Use saved shipping address',
             onClick: () => {
-              state.editingShippingAddress = true;
+              state.shippingAddressMode = usingSavedShipping ? 'manual' : 'saved';
               state.error = '';
               render();
               window.setTimeout(() => formHost.querySelector('[name="address"]')?.focus(), 0);
@@ -1256,7 +1259,7 @@ export function renderQuoteFormView(ctx, options) {
           event.currentTarget.reportValidity();
           return;
         }
-        readDelivery(event.currentTarget);
+        if (!usingSavedShipping) readDelivery(event.currentTarget);
         state.step = 5;
         state.error = '';
         render(true);
@@ -1266,12 +1269,12 @@ export function renderQuoteFormView(ctx, options) {
       isDelivery
         ? el('div', { class: 'cat-quote-delivery-fields' }, [
             shippingAddressNotice,
-            deliveryField('Shipping address', 'address', 'street-address', true),
+            deliveryField('Shipping address', 'address', 'street-address', usingSavedShipping),
             el('div', { class: 'cat-quote-field-grid' }, [
-              deliveryField('City', 'city', 'address-level2', true),
-              deliveryField('State', 'state', 'address-level1', true),
+              deliveryField('City', 'city', 'address-level2', usingSavedShipping),
+              deliveryField('State', 'state', 'address-level1', usingSavedShipping),
             ]),
-            deliveryField('ZIP code', 'zipCode', 'postal-code', true, 'text', 'numeric'),
+            deliveryField('ZIP code', 'zipCode', 'postal-code', usingSavedShipping, 'numeric'),
           ])
         : !isOutsideAreaQuote && el('div', { class: 'cat-quote-info-note' }, [
             el('strong', { text: 'Pickup selected' }),
@@ -1281,17 +1284,34 @@ export function renderQuoteFormView(ctx, options) {
     ]);
   }
 
-  function deliveryField(label, name, autocomplete, required, type = 'text', inputmode) {
-    const value = state.delivery[name] ?? '';
+  function useSavedShippingAddress() {
+    if (!state.savedShippingPreview) return false;
+    if (state.shippingAddressMode) return state.shippingAddressMode === 'saved';
+    return !ctx.location.requiresShippingDestination && SHIPPING_FIELDS.every((field) => !state.delivery[field]?.trim());
+  }
+
+  function maskedShippingField(name) {
+    const preview = state.savedShippingPreview;
+    if (name === 'zipCode') return `${SAVED_VALUE_MASK}${preview.zipCodeLastDigits ?? ''}`;
+    return `${preview[`${name}Initial`] ?? ''}${SAVED_VALUE_MASK}`;
+  }
+
+  function maskedShippingAddress() {
+    return SHIPPING_FIELDS.map(maskedShippingField).join(', ');
+  }
+
+  function deliveryField(label, name, autocomplete, useSavedAddress, inputmode) {
     return field({
       label,
       name,
-      type,
-      value,
-      autocomplete,
+      value: useSavedAddress ? '' : state.delivery[name],
+      placeholder: useSavedAddress ? maskedShippingField(name) : undefined,
+      savedValue: useSavedAddress,
+      autocomplete: useSavedAddress ? 'off' : autocomplete,
       inputmode,
       maxlength: name === 'address' ? '160' : name === 'zipCode' ? '20' : '80',
-      required,
+      required: !useSavedAddress,
+      readonly: useSavedAddress,
     });
   }
 
@@ -1354,6 +1374,14 @@ export function renderQuoteFormView(ctx, options) {
           return;
         }
 
+        const usingSavedShipping = orderType === 'Delivery' && useSavedShippingAddress();
+        if (orderType === 'Delivery' && !usingSavedShipping && SHIPPING_FIELDS.some((key) => !state.delivery[key]?.trim())) {
+          state.step = DELIVERY_STEP_INDEX;
+          state.error = 'Please enter the complete delivery address.';
+          render(true);
+          return;
+        }
+
         state.submitPending = true;
         button.disabled = true;
         button.textContent = 'Sending request…';
@@ -1373,6 +1401,7 @@ export function renderQuoteFormView(ctx, options) {
             orderType,
             delivery: {
               ...state.delivery,
+              ...(usingSavedShipping && { address: '', city: '', state: '', zipCode: '' }),
               timeZone: resolveLocation(ctx.locationId).timeZone,
             },
             shippingDestination: ctx.locationStore.getShippingDestination(),
@@ -1381,7 +1410,7 @@ export function renderQuoteFormView(ctx, options) {
           const savedContactFields = Object.keys(state.contact).filter((key) => (
             state.savedContactPreview?.[key] === true && !state.contact[key]?.trim()
           ));
-          const result = await options.onSubmit(payload, { savedContactFields });
+          const result = await options.onSubmit(payload, { savedContactFields, useSavedShippingAddress: usingSavedShipping });
           if (result?.ok) {
             ctx.quoteStore.clear();
             clearQuoteDraft();
@@ -1390,6 +1419,10 @@ export function renderQuoteFormView(ctx, options) {
             if (result?.code === 'SAVED_CONTACT_UNAVAILABLE') {
               state.savedContactPreview = {};
               state.step = 1;
+            } else if (result?.code === 'SAVED_SHIPPING_UNAVAILABLE') {
+              state.savedShippingPreview = null;
+              state.shippingAddressMode = 'manual';
+              state.step = DELIVERY_STEP_INDEX;
             } else if (result?.code === 'SLOT_FULL') {
               state.delivery.dateTime = '';
               state.delivery.slot = undefined;
@@ -1429,7 +1462,9 @@ export function renderQuoteFormView(ctx, options) {
     const outsideArea = location.requiresShippingDestination;
     const isDelivery = orderType === 'Delivery';
     const city = [delivery.city, [delivery.state, delivery.zipCode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-    const destination = isDelivery || outsideArea ? [delivery.address, city].filter(Boolean).join(', ') : location.label;
+    const destination = isDelivery && useSavedShippingAddress()
+      ? maskedShippingAddress()
+      : (isDelivery || outsideArea ? [delivery.address, city].filter(Boolean).join(', ') : location.label);
     const dateKey = delivery.dateTime.slice(0, 10);
     const date = new Date(`${dateKey}T12:00:00Z`);
     const hasDate = !Number.isNaN(date.getTime());
@@ -1557,6 +1592,7 @@ export function renderQuoteFormView(ctx, options) {
       type: config.type ?? 'text',
       value: config.value ?? '',
       placeholder: config.placeholder,
+      'data-saved-value': config.savedValue,
       autocomplete: config.autocomplete,
       inputmode: config.inputmode,
       spellcheck: config.spellcheck,

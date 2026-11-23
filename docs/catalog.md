@@ -340,11 +340,12 @@ its source task identity.
 The email step calls the Cloudflare Worker configured by
 `VITE_FRESA_CLIENT_LOOKUP_URL`. The Worker uses a server-only key to match one
 normalized email in Fresa’s `Active clients` list and determines VIP routing.
-In the contact step, saved fields are masked and the phone preview can display
-its last two digits. Typed values take precedence. The Worker rechecks the
-active client at submission and fills blank contact fields in the configured
-Fresa form. Complete directory values pass from the Worker to Fresa. Manual
-entry remains available if the lookup fails or the email is unknown.
+In the contact step, saved fields show asterisks with initials or the last two
+phone digits. Typed values take precedence. For Delivery, a complete saved
+shipping address can be selected as a unit and is shown with a masked street,
+city, state and ZIP code. A destination already entered for Other U.S. location
+is used by default. The Worker rechecks the active client and sends the saved
+values to Fresa on submission. Manual entry stays available.
 For `Other U.S. location`, the catalog also keeps the destination state, city
 and ZIP in the active session and includes them in Pickup submissions, even
 though Fresa hides those fields for Pickup.

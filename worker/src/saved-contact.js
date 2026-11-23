@@ -1,5 +1,6 @@
 import {
-  resolveFresaContactFields, resolveFresaFormApi, resolveFresaQuoteAnswerIds, resolveFresaSubmitError,
+  isFresaDeliveryOrder, resolveFresaContactFields, resolveFresaFormApi, resolveFresaQuoteAnswerIds,
+  resolveFresaShippingFields, resolveFresaSubmitError,
 } from '../../src/catalog/core/fresa-form-submission.js';
 import { normalizeSocialMediaUrl } from '../../src/catalog/core/social-media-url.js';
 import { normalizeEmail } from './client-lookup.js';
@@ -7,6 +8,7 @@ import { normalizeEmail } from './client-lookup.js';
 const CONTACT_KEYS = ['firstName', 'lastName', 'phone', 'company', 'socialMediaProfiles'];
 const REQUIRED_KEYS = ['firstName', 'lastName', 'phone'];
 const CONTACT_UNAVAILABLE = 'SAVED_CONTACT_UNAVAILABLE';
+const SHIPPING_UNAVAILABLE = 'SAVED_SHIPPING_UNAVAILABLE';
 
 function savedContact(profile) {
   return {
@@ -23,7 +25,34 @@ export function contactPreview(profile) {
   const preview = Object.fromEntries(CONTACT_KEYS.filter((key) => contact[key]).map((key) => [key, true]));
   const digits = contact.phone.replace(/\D/g, '');
   if (digits.length > 2) preview.phoneLastDigits = digits.slice(-2);
+  for (const key of ['firstName', 'lastName', 'company']) {
+    const initial = maskedInitial(contact[key]);
+    if (initial) preview[`${key}Initial`] = initial;
+  }
   return preview;
+}
+
+function maskedInitial(value) {
+  const characters = value.normalize('NFC').match(/[\p{L}\p{N}]/gu) ?? [];
+  const first = characters[0];
+  return characters.length > 1 && /^\p{L}$/u.test(first) ? first : '';
+}
+
+function savedShipping(profile) {
+  const shipping = { address: profile.Address, city: profile.City, state: profile.State, zipCode: profile['Zip Code'] };
+  return Object.values(shipping).every((value) => typeof value === 'string' && value.trim()) ? shipping : null;
+}
+
+export function shippingPreview(profile) {
+  const shipping = savedShipping(profile);
+  if (!shipping) return null;
+  const zipDigits = shipping.zipCode.replace(/\D/g, '');
+  return {
+    available: true,
+    cityInitial: maskedInitial(shipping.city),
+    stateInitial: maskedInitial(shipping.state),
+    zipCodeLastDigits: zipDigits.length > 2 ? zipDigits.slice(-2) : '',
+  };
 }
 
 export async function submitQuoteWithSavedContact({ body, email, client, formUrl, fetchImpl = globalThis.fetch }) {
@@ -31,10 +60,12 @@ export async function submitQuoteWithSavedContact({ body, email, client, formUrl
   const { token, formApiUrl, submitUrl } = resolveFresaFormApi(formUrl);
   if (body.formToken !== token || !submitUrl.startsWith('https://')) return failure(409, CONTACT_UNAVAILABLE);
   if (!body.answers || typeof body.answers !== 'object' || Array.isArray(body.answers)) return failure(400);
-  if (!Array.isArray(body.savedContactFields) || !body.savedContactFields.length
-    || body.savedContactFields.length > CONTACT_KEYS.length
-    || !body.savedContactFields.every((key) => CONTACT_KEYS.includes(key))) return failure(400);
-  const requested = new Set(body.savedContactFields);
+  const requestedFields = body.savedContactFields ?? [];
+  const useSavedShippingAddress = body.useSavedShippingAddress === true;
+  if (!Array.isArray(requestedFields) || (!requestedFields.length && !useSavedShippingAddress)
+    || requestedFields.length > CONTACT_KEYS.length
+    || !requestedFields.every((key) => CONTACT_KEYS.includes(key))) return failure(400);
+  const requested = new Set(requestedFields);
 
   const formResponse = await fetchImpl(`${formApiUrl}?catalog=metadata`, {
     headers: { Accept: 'application/json' },
@@ -72,6 +103,14 @@ export async function submitQuoteWithSavedContact({ body, email, client, formUrl
   }
   if (REQUIRED_KEYS.some((key) => typeof answers[fields[key].id] !== 'string' || !answers[fields[key].id].trim())) {
     return failure(409, CONTACT_UNAVAILABLE);
+  }
+
+  if (useSavedShippingAddress) {
+    if (!isFresaDeliveryOrder(form.fields, answers)) return failure(400);
+    const shipping = savedShipping(client.profile);
+    if (!shipping) return failure(409, SHIPPING_UNAVAILABLE);
+    const shippingFields = resolveFresaShippingFields(form.fields);
+    for (const [key, field] of Object.entries(shippingFields)) answers[field.id] = shipping[key];
   }
 
   if (fields.notes?.id) {

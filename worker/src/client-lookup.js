@@ -216,37 +216,34 @@ function profileFromTask(task, vipFieldId) {
   const nameParts = splitTaskName(task.name);
 
   const firstName = firstText(
-    fieldValue(findField(fields, '', FIRST_NAME_ALIASES)),
+    profileFieldText(fields, FIRST_NAME_ALIASES),
     entity.GivenName,
     nameParts.first,
   );
   const lastName = firstText(
-    fieldValue(findField(fields, '', LAST_NAME_ALIASES)),
+    profileFieldText(fields, LAST_NAME_ALIASES),
     entity.FamilyName,
     nameParts.last,
   );
-  const phone = firstText(
-    fieldValue(findField(fields, '', PHONE_ALIASES)),
-    entity.PrimaryPhone?.FreeFormNumber,
-    entity.PrimaryPhone?.freeFormNumber,
-  );
+  const phone = profileFieldText(fields, PHONE_ALIASES, phoneText)
+    || phoneText(entity.PrimaryPhone) || phoneText(entity.Mobile);
   const company = firstText(
-    fieldValue(findField(fields, '', COMPANY_ALIASES)),
+    profileFieldText(fields, COMPANY_ALIASES),
     entity.CompanyName,
   );
   const address = firstText(
-    fieldValue(findField(fields, '', ADDRESS_ALIASES)),
+    profileFieldText(fields, ADDRESS_ALIASES),
     shipping.Line1,
     shipping.Line2,
   );
-  const city = firstText(fieldValue(findField(fields, '', CITY_ALIASES)), shipping.City);
+  const city = firstText(profileFieldText(fields, CITY_ALIASES), shipping.City);
   const state = firstText(
-    fieldValue(findField(fields, '', STATE_ALIASES)),
+    profileFieldText(fields, STATE_ALIASES),
     shipping.CountrySubDivisionCode,
     shipping.CountrySubdivisionCode,
   );
-  const zipCode = firstText(fieldValue(findField(fields, '', ZIP_ALIASES)), shipping.PostalCode);
-  const socialMedia = firstText(fieldValue(findField(fields, '', SOCIAL_ALIASES)));
+  const zipCode = firstText(profileFieldText(fields, ZIP_ALIASES), shipping.PostalCode);
+  const socialMedia = profileFieldText(fields, SOCIAL_ALIASES);
   const vip = booleanValue(
     fieldValue(findField(fields, vipFieldId, VIP_ALIASES))
       ?? task.vip
@@ -285,11 +282,36 @@ function findField(fields, fieldId, aliases) {
     if (exact) return exact;
   }
   for (const alias of aliases.map(normalizeLabel)) {
-    const field = fields.find((candidate) => [candidate.key, candidate.name, candidate.label, candidate._mapKey]
-      .some((value) => normalizeLabel(value) === alias));
+    const field = fields.find((candidate) => matchesFieldAlias(candidate, alias));
     if (field) return field;
   }
   return undefined;
+}
+
+function matchesFieldAlias(field, alias) {
+  return [field.key, field.name, field.label, field._mapKey].some((value) => normalizeLabel(value) === alias);
+}
+
+function profileFieldText(fields, aliases, toText = scalarText) {
+  for (const alias of aliases.map(normalizeLabel)) {
+    for (const field of fields) {
+      if (!matchesFieldAlias(field, alias)) continue;
+      const text = toText(fieldValue(field));
+      if (text) return text;
+    }
+  }
+  return '';
+}
+
+function scalarText(value) {
+  return typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
+}
+
+function phoneText(value) {
+  const candidates = value && typeof value === 'object'
+    ? [value.e164, value.FreeFormNumber, value.freeFormNumber, value.number]
+    : [value];
+  return candidates.map(scalarText).find((text) => /\d/.test(text)) ?? '';
 }
 
 function fieldValue(field) {

@@ -1,5 +1,5 @@
 import { FresaClientLookupError, lookupActiveClientByEmail, normalizeEmail } from './client-lookup.js';
-import { contactPreview, submitQuoteWithSavedContact } from './saved-contact.js';
+import { contactPreview, shippingPreview, submitQuoteWithSavedContact } from './saved-contact.js';
 
 // Retain the deployed class for the existing Cloudflare migration.
 export class ClientProfileCodes {
@@ -131,6 +131,7 @@ export async function handleRequest(request, env, options = {}) {
     vip: client.vip,
     verificationAvailable: false,
     contactPreview: env.FRESA_QUOTE_FORM_URL ? contactPreview(client.profile) : {},
+    shippingPreview: env.FRESA_QUOTE_FORM_URL ? shippingPreview(client.profile) : null,
   }, corsOrigin);
 }
 

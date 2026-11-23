@@ -630,15 +630,10 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
 
   if (orderType === 'Delivery') {
     const deliveryField = requireField(fields, 'Delivery', 'date');
-    const addressField = requireField(fields, 'Address', 'short_text');
-    const cityField = requireField(fields, 'City', 'short_text');
-    const stateField = requireField(fields, 'State', 'short_text');
-    const zipField = requireField(fields, 'Zip Code', 'short_text');
     answers[deliveryField.id] = deliveryDateTimeForFresa(payload);
-    answers[addressField.id] = payload?.delivery?.address ?? '';
-    answers[cityField.id] = payload?.delivery?.city ?? '';
-    answers[stateField.id] = payload?.delivery?.state ?? '';
-    answers[zipField.id] = payload?.delivery?.zipCode ?? '';
+    for (const [name, field] of Object.entries(resolveFresaShippingFields(fields))) {
+      answers[field.id] = payload?.delivery?.[name] ?? '';
+    }
   } else {
     const pickupField = requireField(fields, 'pickup', 'date');
     answers[pickupField.id] = payload?.deliveryDateTime ?? '';
@@ -713,6 +708,21 @@ export function resolveFresaQuoteAnswerIds(fields, contactFields) {
     ...quoteFields.map(([label, type]) => findField(fields, label, type)),
     ...fields.filter((field) => field?.type === 'catalog_items'),
   ].flatMap((field) => typeof field?.id === 'string' ? [field.id] : []);
+}
+
+export function resolveFresaShippingFields(fields) {
+  return {
+    address: requireField(fields, 'Address', 'short_text'),
+    city: requireField(fields, 'City', 'short_text'),
+    state: requireField(fields, 'State', 'short_text'),
+    zipCode: requireField(fields, 'Zip Code', 'short_text'),
+  };
+}
+
+export function isFresaDeliveryOrder(fields, answers) {
+  const orderType = requireField(fields, 'Type of Order', 'select');
+  const deliveryValue = findOptionValue(orderType, 'Delivery');
+  return deliveryValue !== null && answers[orderType.id] === deliveryValue;
 }
 
 export function resolveFresaSubmitError(status, message) {

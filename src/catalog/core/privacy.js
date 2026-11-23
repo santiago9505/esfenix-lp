@@ -7,7 +7,26 @@ export function normalizeContactPreview(value) {
   if (preview.phone && typeof value.phoneLastDigits === 'string' && /^\d{2}$/.test(value.phoneLastDigits)) {
     preview.phoneLastDigits = value.phoneLastDigits;
   }
+  for (const field of ['firstName', 'lastName', 'company']) {
+    const key = `${field}Initial`;
+    if (preview[field] && initial(value[key])) preview[key] = value[key];
+  }
   return preview;
+}
+
+export function normalizeShippingPreview(value) {
+  if (value?.available !== true) return null;
+  return {
+    available: true,
+    cityInitial: initial(value.cityInitial),
+    stateInitial: initial(value.stateInitial),
+    zipCodeLastDigits: typeof value.zipCodeLastDigits === 'string' && /^\d{2}$/.test(value.zipCodeLastDigits)
+      ? value.zipCodeLastDigits : '',
+  };
+}
+
+function initial(value) {
+  return typeof value === 'string' && /^\p{L}$/u.test(value) ? value : '';
 }
 
 /**

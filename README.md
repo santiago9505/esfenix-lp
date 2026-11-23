@@ -102,10 +102,11 @@ un email válido continúe como cliente nuevo. El borrador vive en
 ## Consulta segura de clientes activos
 
 La configuración de despliegue está en `wrangler.jsonc`. Cuando Fresa reconoce
-un correo, el formulario muestra los campos guardados con una máscara y hasta
-dos dígitos del teléfono. Al enviar la solicitud, el Worker recupera los datos
-vigentes y completa en Fresa los campos que el cliente dejó en blanco. Los
-datos guardados completos se transmiten directamente del Worker a Fresa.
+un correo, el formulario muestra los campos guardados con asteriscos,
+iniciales y los dos últimos dígitos del teléfono. Una dirección de envío
+completa puede usarse para una entrega y se muestra con una máscara similar.
+Al enviar la solicitud, el Worker adjunta a Fresa los datos vigentes del
+contacto y la dirección guardada si el cliente la eligió.
 
 ```sh
 npx wrangler secret put FRESA_CLIENTS_API_KEY

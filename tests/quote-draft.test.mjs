@@ -24,6 +24,8 @@ test('a quote draft survives a new read and keeps the entered form state', () =>
     recognized: true,
     vip: false,
     savedContactPreview: { firstName: true, phone: true, phoneLastDigits: '42' },
+    savedShippingPreview: { available: true, cityInitial: 'M', stateInitial: 'T', zipCodeLastDigits: '10' },
+    shippingAddressMode: 'saved',
     clientLookup: 'found',
     phoneCountry: 'US',
     contact: {
@@ -50,6 +52,8 @@ test('a quote draft survives a new read and keeps the entered form state', () =>
     recognized: true,
     vip: false,
     savedContactPreview: { firstName: true, phone: true, phoneLastDigits: '42' },
+    savedShippingPreview: { available: true, cityInitial: 'M', stateInitial: 'T', zipCodeLastDigits: '10' },
+    shippingAddressMode: 'saved',
     clientLookup: 'found',
     phoneCountry: 'US',
     contact: {
@@ -91,6 +95,8 @@ test('malformed draft values are normalized to safe form defaults', () => {
     recognized: false,
     vip: false,
     savedContactPreview: null,
+    savedShippingPreview: null,
+    shippingAddressMode: null,
     clientLookup: 'idle',
     phoneCountry: 'US',
     contact: { firstName: '', lastName: '', phone: '', company: '', socialMediaProfiles: '' },

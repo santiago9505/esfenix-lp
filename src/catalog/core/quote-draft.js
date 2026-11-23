@@ -8,7 +8,7 @@
 
 import { readSession, removeSession, writeSession } from './session-storage.js';
 import { DEFAULT_COUNTRY, COUNTRY_CALLING_CODES } from '../data/country-calling-codes.js';
-import { normalizeContactPreview } from './privacy.js';
+import { normalizeContactPreview, normalizeShippingPreview } from './privacy.js';
 
 const STORAGE_KEY = 'quote-draft';
 const MAX_STEP = 5;
@@ -65,6 +65,8 @@ function delivery(value) {
  * @property {boolean} recognized
  * @property {boolean} vip
  * @property {ReturnType<typeof normalizeContactPreview>} savedContactPreview
+ * @property {ReturnType<typeof normalizeShippingPreview>} savedShippingPreview
+ * @property {'saved'|'manual'|null} shippingAddressMode
  * @property {'idle'|'checking'|'found'|'not-found'|'unavailable'} clientLookup
  * @property {string} phoneCountry
  * @property {{ firstName: string, lastName: string, phone: string, company: string, socialMediaProfiles: string }} contact
@@ -89,6 +91,8 @@ export function readQuoteDraft() {
     recognized: stored.recognized === true,
     vip: stored.vip === true,
     savedContactPreview: normalizeContactPreview(stored.savedContactPreview),
+    savedShippingPreview: normalizeShippingPreview(stored.savedShippingPreview),
+    shippingAddressMode: shippingMode(stored.shippingAddressMode),
     clientLookup: lookupState(stored.clientLookup),
     phoneCountry: country(stored.phoneCountry),
     contact: contact(stored.contact),
@@ -110,6 +114,8 @@ export function writeQuoteDraft(draft) {
     recognized: draft.recognized === true,
     vip: draft.vip === true,
     savedContactPreview: normalizeContactPreview(draft.savedContactPreview),
+    savedShippingPreview: normalizeShippingPreview(draft.savedShippingPreview),
+    shippingAddressMode: shippingMode(draft.shippingAddressMode),
     clientLookup: lookupState(draft.clientLookup),
     phoneCountry: country(draft.phoneCountry),
     contact: contact(draft.contact),
@@ -117,6 +123,10 @@ export function writeQuoteDraft(draft) {
     delivery: delivery(draft.delivery),
     notes: text(draft.notes, 2000),
   });
+}
+
+function shippingMode(value) {
+  return value === 'saved' || value === 'manual' ? value : null;
 }
 
 /** Removes the draft after a quote request succeeds. */

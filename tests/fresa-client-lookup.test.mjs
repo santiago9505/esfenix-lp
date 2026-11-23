@@ -214,7 +214,9 @@ test('worker rate limits before contacting Fresa', async () => {
   assert.equal(queried, false);
 });
 
-function savedQuoteFixture({ upstreamStatus = 200, phone = '+57 350 555 0100', hasSocialField = true } = {}) {
+function savedQuoteFixture({
+  upstreamStatus = 200, phone = '+57 350 555 0100', hasSocialField = true, shipping = { Line1: 'Hidden address' },
+} = {}) {
   const sent = [];
   const email = 'buyer@example.com';
   const formToken = 'quote-token';
@@ -237,6 +239,11 @@ function savedQuoteFixture({ upstreamStatus = 200, phone = '+57 350 555 0100', h
     ...(hasSocialField ? [{ id: 'social', label: 'Social Media Profiles (Business)', type: 'url' }] : []),
     { id: 'notes', label: 'Notes for the seller', type: 'long_text' },
     { id: 'items', label: 'Products', type: 'catalog_items' },
+    { id: 'orderType', label: 'Type of Order', type: 'select', options: [{ label: 'Delivery', value: 'delivery' }, { label: 'Pickup', value: 'pickup' }] },
+    { id: 'address', label: 'Address', type: 'short_text' },
+    { id: 'city', label: 'City', type: 'short_text' },
+    { id: 'state', label: 'State', type: 'short_text' },
+    { id: 'zip', label: 'Zip Code', type: 'short_text' },
     { id: 'unrelatedEmail', label: 'Unrelated email', type: 'email' },
     { id: 'price', label: 'order_price', type: 'number' },
   ];
@@ -259,9 +266,12 @@ function savedQuoteFixture({ upstreamStatus = 200, phone = '+57 350 555 0100', h
           return Response.json({ success: true, form: { enabled: true, fields } });
         }
         assert.match(decodeURIComponent(requestUrl.pathname), /buyer@example\.com-task$/);
-        const detail = task({ email, name: 'Ana Flowers', description: '```json\n{"entity":{"ShipAddr":{"Line1":"Hidden address"}}}\n```' });
+        const detail = task({ email, name: 'Test Account', description: `\`\`\`json\n${JSON.stringify({ entity: { ShipAddr: shipping } })}\n\`\`\`` });
+        detail.custom_fields.first = { name: 'NOMBRE_CONTACTO', value: 'Ana' };
+        detail.custom_fields.last = { name: 'APELLIDO_CONTACTO', value: 'Flowers' };
         detail.custom_fields.social = { name: 'Social media profiles (business)', value: 'https://example.com/flowers' };
-        detail.custom_fields.phone = { name: 'Phone Number', value: phone };
+        detail.custom_fields.mobile = { name: 'MÓVIL', value: null };
+        detail.custom_fields.phone = { name: 'TELÉFONO', value: phone };
         detail.custom_fields.company.value = 'Flower Studio';
         return Response.json({ success: true, task: detail });
       },
@@ -282,13 +292,51 @@ test('public lookup returns contact presence and last phone digits without the s
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
     success: true, found: true, vip: true, verificationAvailable: false,
-    contactPreview: { firstName: true, lastName: true, phone: true, phoneLastDigits: '00', company: true, socialMediaProfiles: true },
+    contactPreview: {
+      firstName: true, firstNameInitial: 'A', lastName: true, lastNameInitial: 'F',
+      phone: true, phoneLastDigits: '00', company: true, companyInitial: 'F', socialMediaProfiles: true,
+    },
+    shippingPreview: null,
   });
   assert.deepEqual(await (await request({ email: 'new@example.com' })).json(), {
-    success: true, found: false, vip: false, verificationAvailable: false, contactPreview: {},
+    success: true, found: false, vip: false, verificationAvailable: false, contactPreview: {}, shippingPreview: null,
   });
   assert.equal((await request({ action: 'send-code', email: 'buyer@example.com' })).status, 400);
   assert.equal(sent.length, 0);
+});
+
+test('loads structured phone data past a blank mobile column', async () => {
+  const { request, quote, sent } = savedQuoteFixture({ phone: { number: 15551234042 } });
+  const lookup = await (await request({ email: quote.email })).json();
+  assert.equal(lookup.contactPreview.phoneLastDigits, '42');
+  assert.equal((await request(quote)).status, 200);
+  assert.equal(sent[0].answers.phone, '15551234042');
+});
+
+test('masks the saved shipping address and sends the complete address only for delivery', async () => {
+  const { request, quote, sent } = savedQuoteFixture({ shipping: {
+    Line1: '123 Main Street', City: 'Seattle', CountrySubDivisionCode: 'WA', PostalCode: '98101',
+  } });
+  const lookup = await (await request({ email: quote.email })).json();
+  assert.deepEqual(lookup.shippingPreview, { available: true, cityInitial: 'S', stateInitial: 'W', zipCodeLastDigits: '01' });
+  quote.useSavedShippingAddress = true;
+  quote.savedContactFields = [];
+  Object.assign(quote.answers, { first: 'Ana', last: 'Flower', phone: '+1 555 123 0100', orderType: 'pickup' });
+  assert.equal((await request(quote)).status, 400);
+  assert.equal(sent.length, 0);
+
+  quote.answers.orderType = 'delivery';
+  assert.equal((await request(quote)).status, 200);
+  const { address, city, state, zip, first } = sent[0].answers;
+  assert.deepEqual({ address, city, state, zip, first }, {
+    address: '123 Main Street', city: 'Seattle', state: 'WA', zip: '98101', first: 'Ana',
+  });
+
+  const incomplete = savedQuoteFixture();
+  const response = await incomplete.request(quote);
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { success: false, code: 'SAVED_SHIPPING_UNAVAILABLE' });
+  assert.equal(incomplete.sent.length, 0);
 });
 
 test('sends saved social details in notes when the live Fresa form has no social field', async () => {

@@ -865,7 +865,10 @@
 }
 .cat-quote-field input:focus,.cat-quote-notes-field textarea:focus,.cat-quote-step-form select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px rgba(137,36,160,.11)}
 .cat-quote-field input[readonly]{background:var(--c-cream-2);color:var(--c-muted)}
+.cat-quote-field input[data-saved-value]::placeholder{color:var(--c-text);opacity:1;font-weight:500}
 .cat-quote-phone-control{display:grid;grid-template-columns:58px minmax(0,1fr);gap:8px;align-items:stretch}
+.cat-quote-phone-control:has(input[data-saved-value]:placeholder-shown){grid-template-columns:minmax(0,1fr)}
+.cat-quote-phone-control:has(input[data-saved-value]:placeholder-shown) .cat-quote-country-picker{display:none}
 .cat-quote-country-picker{position:relative;min-width:0}
 .cat-quote-country-trigger{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;height:100%;min-height:51px;padding:15px 5px;font:400 13px var(--ff);color:var(--c-text);background:#fff;border:1px solid var(--c-line);border-radius:17px;cursor:pointer;transition:border-color var(--d2) var(--e),box-shadow var(--d2) var(--e),background var(--d2) var(--e)}
 .cat-quote-country-trigger:hover,.cat-quote-country-picker.is-open .cat-quote-country-trigger{border-color:var(--accent);background:#fff}
