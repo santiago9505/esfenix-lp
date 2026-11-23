@@ -8,8 +8,10 @@ export function normalizeContactPreview(value) {
     preview.phoneLastDigits = value.phoneLastDigits;
   }
   for (const field of ['firstName', 'lastName', 'company']) {
-    const key = `${field}Initial`;
-    if (preview[field] && initial(value[key])) preview[key] = value[key];
+    const key = `${field}Prefix`;
+    const prefix = value[key];
+    const letters = typeof prefix === 'string' && /^\p{L}{1,2}$/u.test(prefix) ? prefix : initial(value[`${field}Initial`]);
+    if (preview[field] && letters) preview[key] = letters;
   }
   return preview;
 }

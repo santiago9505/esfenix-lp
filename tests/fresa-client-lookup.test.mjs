@@ -6,6 +6,7 @@ import {
   lookupActiveClientByEmail,
 } from '../worker/src/client-lookup.js';
 import { handleRequest } from '../worker/src/index.js';
+import { contactPreview } from '../worker/src/saved-contact.js';
 
 const LIST_ID = 'clients-list';
 const EMAIL_FIELD_ID = 'email-field';
@@ -293,8 +294,9 @@ test('public lookup returns contact presence and last phone digits without the s
   assert.deepEqual(await response.json(), {
     success: true, found: true, vip: true, verificationAvailable: false,
     contactPreview: {
-      firstName: true, firstNameInitial: 'A', lastName: true, lastNameInitial: 'F',
-      phone: true, phoneLastDigits: '00', company: true, companyInitial: 'F', socialMediaProfiles: true,
+      firstName: true, firstNameInitial: 'A', firstNamePrefix: 'An',
+      lastName: true, lastNameInitial: 'F', lastNamePrefix: 'Fl',
+      phone: true, phoneLastDigits: '00', company: true, companyInitial: 'F', companyPrefix: 'Fl', socialMediaProfiles: true,
     },
     shippingPreview: null,
   });
@@ -303,6 +305,14 @@ test('public lookup returns contact presence and last phone digits without the s
   });
   assert.equal((await request({ action: 'send-code', email: 'buyer@example.com' })).status, 400);
   assert.equal(sent.length, 0);
+});
+
+test('saved contact prefixes preserve accented letters and keep short names masked', () => {
+  const preview = contactPreview({ 'First Name': 'Éva', 'Last Name': 'Li', Company: 'X' });
+  assert.equal(preview.firstNamePrefix, 'Év');
+  assert.equal(preview.lastNamePrefix, 'L');
+  assert.equal(preview.company, true);
+  assert.equal(Object.hasOwn(preview, 'companyPrefix'), false);
 });
 
 test('loads structured phone data past a blank mobile column', async () => {

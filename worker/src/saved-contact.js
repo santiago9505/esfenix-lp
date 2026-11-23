@@ -26,16 +26,19 @@ export function contactPreview(profile) {
   const digits = contact.phone.replace(/\D/g, '');
   if (digits.length > 2) preview.phoneLastDigits = digits.slice(-2);
   for (const key of ['firstName', 'lastName', 'company']) {
-    const initial = maskedInitial(contact[key]);
-    if (initial) preview[`${key}Initial`] = initial;
+    const prefix = maskedPrefix(contact[key], 2);
+    if (!prefix) continue;
+    preview[`${key}Prefix`] = prefix;
+    preview[`${key}Initial`] = [...prefix][0];
   }
   return preview;
 }
 
-function maskedInitial(value) {
+function maskedPrefix(value, limit) {
   const characters = value.normalize('NFC').match(/[\p{L}\p{N}]/gu) ?? [];
-  const first = characters[0];
-  return characters.length > 1 && /^\p{L}$/u.test(first) ? first : '';
+  const visibleLength = Math.min(limit, characters.length - 1);
+  if (visibleLength < 1) return '';
+  return characters.slice(0, visibleLength).join('').match(/^\p{L}+/u)?.[0] ?? '';
 }
 
 function savedShipping(profile) {
@@ -49,8 +52,8 @@ export function shippingPreview(profile) {
   const zipDigits = shipping.zipCode.replace(/\D/g, '');
   return {
     available: true,
-    cityInitial: maskedInitial(shipping.city),
-    stateInitial: maskedInitial(shipping.state),
+    cityInitial: maskedPrefix(shipping.city, 1),
+    stateInitial: maskedPrefix(shipping.state, 1),
     zipCodeLastDigits: zipDigits.length > 2 ? zipDigits.slice(-2) : '',
   };
 }

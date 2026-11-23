@@ -537,20 +537,22 @@ export function renderQuoteFormView(ctx, options) {
     const value = name === 'socialMediaProfiles'
       ? normalizeSocialMediaUrl(state.contact[name])
       : state.contact[name] ?? '';
+    const hasSavedValue = state.savedContactPreview?.[name] === true;
+    const prefix = state.savedContactPreview?.[`${name}Prefix`] ?? '';
     return field({
       label,
       name,
       type,
       value,
-      placeholder: state.savedContactPreview?.[name] ? `${state.savedContactPreview[`${name}Initial`] ?? ''}${SAVED_VALUE_MASK}` : undefined,
-      savedValue: state.savedContactPreview?.[name],
+      placeholder: hasSavedValue ? `${prefix}${SAVED_VALUE_MASK}` : undefined,
+      savedValue: hasSavedValue,
       autocomplete,
       inputmode: name === 'socialMediaProfiles' ? 'url' : undefined,
       spellcheck: name === 'socialMediaProfiles' ? 'false' : undefined,
       autocapitalize: name === 'socialMediaProfiles' ? 'none' : undefined,
       linkPreview: name === 'socialMediaProfiles',
       maxlength: name === 'company' ? '120' : name === 'socialMediaProfiles' ? '500' : '80',
-      required: required && !state.savedContactPreview?.[name],
+      required: required && !hasSavedValue,
       optional: !required,
     });
   }

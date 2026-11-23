@@ -102,9 +102,9 @@ un email válido continúe como cliente nuevo. El borrador vive en
 ## Consulta segura de clientes activos
 
 La configuración de despliegue está en `wrangler.jsonc`. Cuando Fresa reconoce
-un correo, el formulario muestra los campos guardados con asteriscos,
-iniciales y los dos últimos dígitos del teléfono. Una dirección de envío
-completa puede usarse para una entrega y se muestra con una máscara similar.
+un correo, el formulario muestra hasta dos letras iniciales del nombre,
+el apellido y la empresa, y los dos últimos dígitos del teléfono. Una dirección
+de envío completa puede usarse para una entrega y se muestra con una máscara similar.
 Al enviar la solicitud, el Worker adjunta a Fresa los datos vigentes del
 contacto y la dirección guardada si el cliente la eligió.
 

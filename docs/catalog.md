@@ -340,8 +340,8 @@ its source task identity.
 The email step calls the Cloudflare Worker configured by
 `VITE_FRESA_CLIENT_LOOKUP_URL`. The Worker uses a server-only key to match one
 normalized email in Fresa’s `Active clients` list and determines VIP routing.
-In the contact step, saved fields show asterisks with initials or the last two
-phone digits. Typed values take precedence. For Delivery, a complete saved
+In the contact step, saved fields show asterisks with up to two starting letters
+or the last two phone digits. Typed values take precedence. For Delivery, a complete saved
 shipping address can be selected as a unit and is shown with a masked street,
 city, state and ZIP code. A destination already entered for Other U.S. location
 is used by default. The Worker rechecks the active client and sends the saved
