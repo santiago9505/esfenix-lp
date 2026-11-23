@@ -101,11 +101,16 @@ un email válido continúe como cliente nuevo. El borrador vive en
 
 ## Consulta segura de clientes activos
 
-La configuración de despliegue está en `wrangler.jsonc`. Solo la API key se
-guarda como secreto de Cloudflare:
+La configuración de despliegue está en `wrangler.jsonc`. Los clientes activos
+pueden solicitar un código por correo desde el paso de contacto. Tras verificarlo,
+el formulario carga sus datos guardados en Fresa y permite editarlos.
+Para habilitar el envío, verifica el dominio de `CLIENT_PROFILE_EMAIL_FROM` en
+Resend y configura estas claves como secretos del Worker.
+[Configurar un dominio en Resend](https://resend.com/docs/dashboard/domains/introduction)
 
 ```sh
 npx wrangler secret put FRESA_CLIENTS_API_KEY
+npx wrangler secret put RESEND_API_KEY
 npx wrangler deploy
 ```
 
@@ -117,8 +122,8 @@ VITE_FRESA_CLIENT_LOOKUP_URL=https://esfenix-client-lookup.<cuenta>.workers.dev 
 
 El Worker limita solicitudes, acepta los orígenes declarados en
 `ALLOWED_ORIGINS`, exige POST JSON, valida el email y marca cada respuesta como
-`no-store`. Los IDs de lista/campos son configuración no secreta; la API key
-permanece en el Worker.
+`no-store`. El código vence a los diez minutos y se usa una sola vez. La entrada
+manual de contacto sigue disponible para todos los clientes.
 
 En `npm run dev` y `npm run preview`, Vite reenvía `/api/client-lookup` al mismo
 Worker. Así localhost puede probar clientes activos sin exponer credenciales ni

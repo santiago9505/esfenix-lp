@@ -67,6 +67,18 @@ export function createQuoteIntegration(options = {}) {
     options.openImpl ?? ((url) => window.open(url, '_blank', 'noopener,noreferrer'));
   const formCatalogs = new Map();
 
+  async function requestProfileVerification(email, details) {
+    if (!clientLookupEndpoint) return { ok: false };
+    try {
+      const response = await postClientLookup({ endpoint: clientLookupEndpoint, email, details, doFetch, timeoutMs });
+      const data = await readJson(response);
+      if (response.ok && data?.success === true) return { ...data, ok: true };
+      return { ok: false, status: response.status };
+    } catch {
+      return { ok: false };
+    }
+  }
+
   function getFormCatalog(payload) {
     // The form's product field depends on location and VIP routing. Quantities
     // and selected units are validated anew against those rows on every call.
@@ -149,6 +161,14 @@ export function createQuoteIntegration(options = {}) {
         doFetch,
         timeoutMs,
       });
+    },
+
+    requestClientCode(email, language) {
+      return requestProfileVerification(email, { action: 'send-code', language });
+    },
+
+    verifyClientCode(email, challengeId, code) {
+      return requestProfileVerification(email, { action: 'verify-code', challengeId, code });
     },
 
     /**
@@ -453,12 +473,7 @@ async function lookupClientThroughEndpoint({ endpoint, email, doFetch, timeoutMs
   if (!normalizedEmail) return { ok: false, found: false, error: 'Enter a valid email address.' };
 
   try {
-    const response = await fetchWithTimeout(doFetch, endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      cache: 'no-store',
-      body: JSON.stringify({ email: normalizedEmail }),
-    }, timeoutMs);
+    const response = await postClientLookup({ endpoint, email: normalizedEmail, doFetch, timeoutMs });
     const data = await readJson(response);
     if (!response.ok || data?.success !== true) {
       return {
@@ -474,6 +489,7 @@ async function lookupClientThroughEndpoint({ endpoint, email, doFetch, timeoutMs
       vip: booleanValue(data.vip),
       profile: data.profile && typeof data.profile === 'object' ? data.profile : {},
       taskId: typeof data.taskId === 'string' ? data.taskId : null,
+      ...(typeof data.verificationAvailable === 'boolean' && { verificationAvailable: data.verificationAvailable }),
     };
   } catch (error) {
     return {
@@ -484,6 +500,15 @@ async function lookupClientThroughEndpoint({ endpoint, email, doFetch, timeoutMs
         : 'Customer validation is temporarily unavailable.',
     };
   }
+}
+
+function postClientLookup({ endpoint, email, details, doFetch, timeoutMs }) {
+  return fetchWithTimeout(doFetch, endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    cache: 'no-store',
+    body: JSON.stringify({ email: normalizeLookupValue(email), ...details }),
+  }, timeoutMs);
 }
 
 function booleanValue(value) {

@@ -4,6 +4,14 @@
   "main": "worker/src/index.js",
   "compatibility_date": "2026-09-07",
   "workers_dev": true,
+  "durable_objects": {
+    "bindings": [
+      { "name": "CLIENT_PROFILE_CODES", "class_name": "ClientProfileCodes" }
+    ]
+  },
+  "migrations": [
+    { "tag": "profile-codes-v1", "new_sqlite_classes": ["ClientProfileCodes"] }
+  ],
   "ratelimits": [
     {
       "name": "CLIENT_LOOKUP_RATE_LIMITER",
@@ -20,6 +28,7 @@
     "FRESA_CLIENTS_EMAIL_FIELD_ID": "385ea80b-dafe-498a-a153-1d83419149f7",
     "FRESA_CLIENTS_ACTIVE_FIELD_ID": "e25c3417-f03a-4a32-9809-85951e015a41",
     "FRESA_CLIENTS_VIP_FIELD_ID": "4350219c-1021-4a5c-932c-d7432b50d09a",
+    "CLIENT_PROFILE_EMAIL_FROM": "Esfenix <quotes@verify.esfenix.com>",
     "ALLOWED_ORIGINS": "https://esfenix-landing-page.web.app,https://esfenix-landing-page.firebaseapp.com,https://esfenix.com,https://www.esfenix.com"
   }
 }

@@ -21,9 +21,10 @@ test('a quote draft survives a new read and keeps the entered form state', () =>
   draft.writeQuoteDraft({
     step: 4,
     email: 'ana@example.com',
-    recognized: false,
+    recognized: true,
     vip: false,
-    clientLookup: 'not-found',
+    profilePrefilled: true,
+    clientLookup: 'found',
     phoneCountry: 'US',
     contact: {
       firstName: 'Ana',
@@ -46,9 +47,10 @@ test('a quote draft survives a new read and keeps the entered form state', () =>
   assert.deepEqual(draft.readQuoteDraft(), {
     step: 4,
     email: 'ana@example.com',
-    recognized: false,
+    recognized: true,
     vip: false,
-    clientLookup: 'not-found',
+    profilePrefilled: true,
+    clientLookup: 'found',
     phoneCountry: 'US',
     contact: {
       firstName: 'Ana',
@@ -88,6 +90,7 @@ test('malformed draft values are normalized to safe form defaults', () => {
     email: '',
     recognized: false,
     vip: false,
+    profilePrefilled: false,
     clientLookup: 'idle',
     phoneCountry: 'US',
     contact: { firstName: '', lastName: '', phone: '', company: '', socialMediaProfiles: '' },

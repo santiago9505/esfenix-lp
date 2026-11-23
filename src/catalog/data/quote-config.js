@@ -18,8 +18,8 @@ export const QUOTE_FORM_URL = String(env.VITE_FRESA_QUOTE_FORM_URL ?? '').trim()
   || PRODUCTION_FORM_URL;
 
 /**
- * Secure edge endpoint for the live Active clients lookup. It accepts only an
- * email and never exposes the private Fresa API key or the full client list.
+ * Edge endpoint for the live Active clients lookup and email verification.
+ * The Worker keeps the Fresa API key and client directory server-side.
  */
 export const CLIENT_LOOKUP_ENDPOINT = String(env.VITE_FRESA_CLIENT_LOOKUP_URL ?? '').trim()
   || (isLocalCatalog ? LOCAL_CLIENT_LOOKUP_URL : PRODUCTION_CLIENT_LOOKUP_URL);

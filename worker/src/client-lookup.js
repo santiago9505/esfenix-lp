@@ -10,7 +10,7 @@ const FIRST_NAME_ALIASES = ['nombre contacto', 'first name', 'firstname', 'conta
 const LAST_NAME_ALIASES = ['apellido contacto', 'last name', 'lastname', 'surname', 'apellido', 'family name'];
 const PHONE_ALIASES = ['movil', 'mobile', 'celular', 'phone', 'phone number', 'telephone', 'telefono'];
 const COMPANY_ALIASES = ['company', 'company name', 'empresa', 'nombre empresa'];
-const SOCIAL_ALIASES = ['social media', 'social media profiles', 'social media link', 'social media url'];
+const SOCIAL_ALIASES = ['social media', 'social media profiles', 'social media profiles business', 'social media link', 'social media url', 'redes sociales'];
 const ADDRESS_ALIASES = ['address', 'shipping address', 'delivery address', 'direccion', 'envio direccion'];
 const CITY_ALIASES = ['envio ciudad', 'city', 'shipping city', 'delivery city', 'ciudad'];
 const STATE_ALIASES = ['envio estado', 'state', 'shipping state', 'delivery state', 'estado'];
@@ -341,7 +341,7 @@ function booleanValue(value) {
   return ['true', '1', 'yes', 'si', 'sí', 'activo', 'activa', 'active', 'vip'].includes(normalizeLabel(value));
 }
 
-function normalizeEmail(value) {
+export function normalizeEmail(value) {
   return String(value ?? '')
     .trim()
     .replace(/[\u200B-\u200D\uFEFF]/g, '')

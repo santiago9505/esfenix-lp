@@ -63,6 +63,7 @@ function delivery(value) {
  * @property {string} email
  * @property {boolean} recognized
  * @property {boolean} vip
+ * @property {boolean} profilePrefilled
  * @property {'idle'|'checking'|'found'|'not-found'|'unavailable'} clientLookup
  * @property {string} phoneCountry
  * @property {{ firstName: string, lastName: string, phone: string, company: string, socialMediaProfiles: string }} contact
@@ -86,6 +87,7 @@ export function readQuoteDraft() {
     email: text(stored.email, 254),
     recognized: stored.recognized === true,
     vip: stored.vip === true,
+    profilePrefilled: stored.profilePrefilled === true,
     clientLookup: lookupState(stored.clientLookup),
     phoneCountry: country(stored.phoneCountry),
     contact: contact(stored.contact),
@@ -106,6 +108,7 @@ export function writeQuoteDraft(draft) {
     email: text(draft.email, 254),
     recognized: draft.recognized === true,
     vip: draft.vip === true,
+    profilePrefilled: draft.profilePrefilled === true,
     clientLookup: lookupState(draft.clientLookup),
     phoneCountry: country(draft.phoneCountry),
     contact: contact(draft.contact),

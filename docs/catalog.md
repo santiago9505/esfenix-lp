@@ -337,14 +337,13 @@ its source task identity.
 
 ### Product prefill and client lookup
 
-The landing reads lightweight public-form metadata, then sends only the email
-the visitor entered to `/api/forms/<token>/lookup`. Fresa evaluates the scoped
-`exists_in_list` rule server-side and returns only that match. If metadata is
-temporarily unavailable, the landing retries the scoped lookup with the public
-form's email field instead of blocking the visitor. A match prefills the
-configured contact fields and VIP flag; a missing match remains a valid new
-quote, and a lookup outage also remains non-blocking. The browser never
-receives the active-client list or an API credential.
+The email step calls the Cloudflare Worker configured by
+`VITE_FRESA_CLIENT_LOOKUP_URL`. The Worker uses a server-only key to match one
+normalized email in Fresa’s `Active clients` list and determines VIP routing.
+In the contact step, a returning client can request an email code. After the
+Worker verifies the code, the form fills the available saved details. Manual
+entry stays available if the email is unknown, email delivery fails, or Fresa
+is temporarily unavailable.
 For `Other U.S. location`, the catalog also keeps the destination state, city
 and ZIP in the active session and includes them in Pickup submissions, even
 though Fresa hides those fields for Pickup.
@@ -379,14 +378,6 @@ line against the current catalog, asks for the visitor's email first, and then
 builds the payload and hands it to `quoteIntegrationService`. A new or
 unrecognized email is still allowed to continue so it can request a quote. The
 same screen is used by the quote CTA when no products were selected.
-
-The email step calls the Cloudflare Worker configured by
-`VITE_FRESA_CLIENT_LOOKUP_URL`. On every request the Worker reads Fresa's
-`Active clients` list with the server-only API key, requires an exact normalized
-email match and returns only the fields the landing can prefill. It does not
-cache or persist the directory, and it never sends the API key or the complete
-list to the browser. A lookup failure is non-blocking, so any valid email can
-continue as a new client.
 
 When the visitor sends the request, the landing still uses its existing Fresa
 API adapter: it loads the required metadata, resolves the one visible native

@@ -39,7 +39,7 @@ import { createLoadingOverlay } from './loading-indicator.js';
 import { NO_PAYMENT_NOTE } from './states.js';
 import { openVariantPicker } from './variant-picker.js';
 import { imageForQuoteItem } from './quote-summary.js';
-import { t } from '../../i18n/locale.js';
+import { getLanguage, t } from '../../i18n/locale.js';
 
 const STEPS = [
   'Email',
@@ -62,6 +62,8 @@ const PLURAL_MEASURES = { stem: 'stems', bunch: 'bunches', unit: 'units', pack: 
  *   onBack: () => void,
  *   onOpenProductPicker?: (options?: { onClose?: () => void }) => void,
  *   onLookupClient?: (email: string) => Promise<any>,
+ *   onRequestClientCode?: (email: string, language: string) => Promise<any>,
+ *   onVerifyClientCode?: (email: string, challengeId: string, code: string) => Promise<any>,
  *   onCheckDeliveryEligibility?: (payload: ReturnType<typeof buildQuotePayload>) => Promise<any>,
  *   onGetDeliveryAvailability?: (dateKey: string, timeZone: string) => Promise<Array<{ start: string, booked?: number }>>,
  *   onPrepareSubmission?: (payload: ReturnType<typeof buildQuotePayload>) => Promise<void>,
@@ -87,6 +89,8 @@ export function renderQuoteFormView(ctx, options) {
     email: savedDraft?.email ?? '',
     recognized: savedDraft?.recognized === true,
     vip: savedDraft?.vip === true,
+    profilePrefilled: savedDraft?.profilePrefilled === true,
+    verificationAvailable: undefined,
     clientLookup: savedDraft?.clientLookup ?? 'idle',
     phoneCountry: savedDraft?.phoneCountry ?? savedPhone.countryCode,
     contact: { ...savedContact, phone: savedPhone.nationalNumber },
@@ -381,10 +385,11 @@ export function renderQuoteFormView(ctx, options) {
           form.reportValidity();
           return;
         }
-        state.email = input.value.trim();
+        const email = input.value.trim();
         // A visitor can go back and submit a different email. Clear the
         // previous contact data so two people can never be mixed.
-        clearProfileData();
+        if (email.toLowerCase() !== state.email.toLowerCase()) clearProfileData();
+        state.email = email;
         state.submitPending = true;
         state.clientLookup = 'checking';
         button.disabled = true;
@@ -405,10 +410,10 @@ export function renderQuoteFormView(ctx, options) {
         // native email input validation above can stop this step.
         state.recognized = lookup?.ok === true && lookup.found === true;
         state.vip = state.recognized && lookup.vip === true;
+        state.verificationAvailable = lookup?.verificationAvailable;
         state.clientLookup = lookup?.ok === true
           ? lookup.found ? 'found' : 'not-found'
           : 'unavailable';
-        if (state.recognized) applyLookupProfile(lookup.profile);
         state.step = 1;
         state.error = '';
         persistDraft();
@@ -454,7 +459,7 @@ export function renderQuoteFormView(ctx, options) {
       contactField('Social media link', 'socialMediaProfiles', 'url', false),
     ];
 
-    return el('form', {
+    const contactForm = el('form', {
       class: 'cat-quote-step-form',
       onSubmit: (event) => {
         event.preventDefault();
@@ -471,12 +476,90 @@ export function renderQuoteFormView(ctx, options) {
       ...fields,
       stepActions('Continue to products'),
     ]);
+    if (!state.recognized || state.profilePrefilled || state.verificationAvailable === false
+      || !options.onRequestClientCode || !options.onVerifyClientCode) return contactForm;
+
+    return el('div', { class: 'cat-quote-step-form' }, [profileVerificationPanel(contactForm), contactForm]);
+  }
+
+  function profileVerificationPanel(contactForm) {
+    const email = state.email;
+    let challengeId;
+    const status = el('p', { role: 'status' });
+    const sendButton = el('button', {
+      type: 'button',
+      class: 'btn btn-light',
+      text: 'Send code to fill saved details',
+      onClick: async () => {
+        sendButton.disabled = true;
+        verifyButton.disabled = true;
+        status.textContent = 'Sending your code…';
+        const result = await options.onRequestClientCode(email, getLanguage());
+        if (!contactForm.isConnected) return;
+
+        sendButton.disabled = false;
+        verifyButton.disabled = false;
+        if (result.ok && typeof result.challengeId === 'string') {
+          challengeId = result.challengeId;
+          codeForm.hidden = false;
+          sendButton.textContent = 'Send another code';
+          status.textContent = 'Check your email for an 8-digit code.';
+          codeInput.value = '';
+          codeInput.focus();
+        } else {
+          status.textContent = result.status === 429
+            ? 'Please wait before requesting another code. You can enter your details manually.'
+            : 'We couldn’t send a code. You can enter your details manually.';
+        }
+      },
+    });
+    const verifyButton = el('button', { type: 'submit', class: 'btn btn-primary', text: 'Verify and fill details' });
+    const codeField = field({
+      label: 'Verification code',
+      name: 'profileCode',
+      autocomplete: 'one-time-code',
+      inputmode: 'numeric',
+      maxlength: '8',
+      pattern: '[0-9]{8}',
+      required: true,
+    });
+    const codeInput = codeField.querySelector('input');
+    const codeForm = el('form', {
+      class: 'cat-quote-profile-code',
+      hidden: true,
+      onSubmit: async (event) => {
+        event.preventDefault();
+        if (verifyButton.disabled || !challengeId) return;
+        sendButton.disabled = true;
+        verifyButton.disabled = true;
+        status.textContent = 'Verifying your code…';
+        const result = await options.onVerifyClientCode(email, challengeId, codeInput.value);
+        if (!contactForm.isConnected) return;
+
+        sendButton.disabled = false;
+        verifyButton.disabled = false;
+        if (result.ok && result.verified === true) {
+          readContact(contactForm);
+          applyLookupProfile(result.profile);
+          state.profilePrefilled = true;
+          state.vip = result.vip === true;
+          render(true);
+        } else {
+          status.textContent = result.status === 400
+            ? 'That code is invalid or expired. Check it or request another code.'
+            : 'We couldn’t load your saved details. You can enter them manually.';
+          codeInput.focus();
+        }
+      },
+    }, [codeField, verifyButton]);
+    return el('div', { class: 'cat-quote-info-note' }, [sendButton, status, codeForm]);
   }
 
   function clearProfileData() {
     const currentDestination = ctx.locationStore.getShippingDestination() ?? {};
     state.recognized = false;
     state.vip = false;
+    state.profilePrefilled = false;
     state.clientLookup = 'idle';
     state.phoneCountry = DEFAULT_COUNTRY;
     state.contact = {
@@ -499,31 +582,39 @@ export function renderQuoteFormView(ctx, options) {
   function applyLookupProfile(profile = {}) {
     const value = (...labels) => {
       for (const label of labels) {
-        const found = profile[label];
+        const found = profile?.[label];
         if (found !== null && found !== undefined && String(found).trim()) return String(found).trim();
       }
       return '';
     };
-    state.contact = {
-      firstName: value('First Name'),
-      lastName: value('Last Name'),
-      phone: value('Phone Number', 'Phone'),
-      company: value('Company'),
-      socialMediaProfiles: normalizeSocialMediaUrl(value(
-        'Social media profiles (business)',
-        'Social Media Profiles (Business)',
-        'Social Media Profiles',
-        'Social media link',
-        'Social Media URL',
-      )),
-    };
-    state.delivery = {
-      ...state.delivery,
-      address: value('Address'),
+    const contact = state.contact;
+    contact.firstName ||= value('First Name');
+    contact.lastName ||= value('Last Name');
+    contact.company ||= value('Company');
+    contact.socialMediaProfiles ||= normalizeSocialMediaUrl(value(
+      'Social media profiles (business)',
+      'Social Media Profiles (Business)',
+      'Social Media Profiles',
+      'Social media link',
+      'Social Media URL',
+    ));
+    if (!contact.phone) {
+      const phone = splitPhoneNumber(value('Phone Number', 'Phone'));
+      contact.phone = phone.nationalNumber;
+      if (phone.nationalNumber) state.phoneCountry = phone.countryCode;
+    }
+
+    const savedDestination = {
       city: value('City'),
       state: value('State'),
       zipCode: value('Zip Code', 'ZIP Code'),
     };
+    const matchesDestination = Object.entries(savedDestination).every(([key, saved]) => (
+      !state.delivery[key] || state.delivery[key].toLowerCase() === saved.toLowerCase()
+    ));
+    if (!state.delivery.address && matchesDestination) {
+      Object.assign(state.delivery, savedDestination, { address: value('Address') });
+    }
   }
 
   function contactField(label, name, autocomplete, required, type = 'text') {
@@ -1552,6 +1643,7 @@ export function renderQuoteFormView(ctx, options) {
       spellcheck: config.spellcheck,
       autocapitalize: config.autocapitalize,
       maxlength: config.maxlength,
+      pattern: config.pattern,
       required: config.required,
       readonly: config.readonly,
       onInput: (event) => {

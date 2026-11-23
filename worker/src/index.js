@@ -1,4 +1,7 @@
-import { FresaClientLookupError, lookupActiveClientByEmail } from './client-lookup.js';
+import { FresaClientLookupError, lookupActiveClientByEmail, normalizeEmail } from './client-lookup.js';
+import { profileVerificationConfigured, sendProfileCode, verifyProfileCode } from './profile-verification.js';
+
+export { ClientProfileCodes } from './profile-verification.js';
 
 const SECURITY_HEADERS = {
   'Cache-Control': 'private, no-store, max-age=0',
@@ -65,12 +68,26 @@ export async function handleRequest(request, env, options = {}) {
     return jsonResponse(400, { success: false, error: 'Invalid request.' }, corsOrigin);
   }
 
-  const email = typeof body?.email === 'string' ? body.email.trim() : '';
+  const email = typeof body?.email === 'string' ? normalizeEmail(body.email) : '';
   if (!isEmail(email)) {
     return jsonResponse(400, { success: false, error: 'Invalid email.' }, corsOrigin);
   }
 
+  const action = body.action ?? 'lookup';
+  if (!['lookup', 'send-code', 'verify-code'].includes(action)) {
+    return jsonResponse(400, { success: false }, corsOrigin);
+  }
+  if (action !== 'lookup' && !isVerificationEmail(email)) {
+    return jsonResponse(400, { success: false }, corsOrigin);
+  }
+  const verificationAvailable = profileVerificationConfigured(env);
   try {
+    if (action !== 'lookup' && !verificationAvailable) {
+      return jsonResponse(503, { success: false }, corsOrigin);
+    }
+    if (action === 'verify-code' && !await verifyProfileCode(env, email, body.challengeId, body.code)) {
+      return jsonResponse(400, { success: false }, corsOrigin);
+    }
     const result = await lookupActiveClientByEmail(email, {
       apiUrl: env.FRESA_CLIENTS_API_URL,
       apiKey: env.FRESA_CLIENTS_API_KEY,
@@ -80,12 +97,18 @@ export async function handleRequest(request, env, options = {}) {
       vipFieldId: env.FRESA_CLIENTS_VIP_FIELD_ID,
       fetchImpl: options.fetchImpl,
     });
+    if (action === 'send-code') {
+      if (!result.found) return jsonResponse(404, { success: false }, corsOrigin);
+      const { status, challengeId } = await sendProfileCode(env, email, body.language, options.sendEmailFetch);
+      return jsonResponse(status, { success: status === 200, challengeId }, corsOrigin);
+    }
     return jsonResponse(200, {
       success: true,
       found: result.found,
       vip: result.vip,
-      // Knowing an email address does not authorize access to the profile.
-      profile: {},
+      verificationAvailable,
+      verified: action === 'verify-code' && result.found,
+      profile: action === 'verify-code' ? result.profile : {},
     }, corsOrigin);
   } catch (error) {
     if (!(error instanceof FresaClientLookupError) || error.status >= 500) {
@@ -101,6 +124,11 @@ export async function handleRequest(request, env, options = {}) {
 
 function isEmail(value) {
   return value.length <= 254 && /^[^\s@]+@[^\s@]+$/.test(value);
+}
+
+function isVerificationEmail(value) {
+  // Only a single bare address may be sent to the email provider.
+  return /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(value);
 }
 
 function jsonResponse(status, data, corsOrigin = '', extraHeaders = {}) {
