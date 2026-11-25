@@ -9,7 +9,9 @@ test('Spanish copy covers the catalog, quote flow, dynamic counts, and countries
   assert.equal(translateText('Quantity for Carnation'), 'Cantidad de Clavel');
   assert.equal(translateText('High season — Mother\'s Day'), 'Temporada alta — Día de la Madre');
   assert.equal(translateText('United States'), 'Estados Unidos');
-  assert.equal(translateText('Freedom · Red · 60 cm · Bunch'), 'Freedom · Rojo · 60 cm · Ramo');
+  assert.equal(translateText('Freedom · Red · 60 cm · Bunch'), 'Freedom · Rojo · 60 cm · Bunch');
+  assert.equal(translateText('Stem · Bunch'), 'Stem · Bunch');
+  assert.equal(translateText('bunches'), 'bunches');
   assert.equal(translateText('Email address *'), 'Correo electrónico *');
   assert.equal(translateText('Your selection is 80% toward the $150 minimum for Delivery.'), 'Tu selección alcanza el 80% del mínimo de $150 para entrega.');
   assert.equal(translateText('FREEDOM'), 'FREEDOM');

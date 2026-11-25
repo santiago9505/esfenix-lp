@@ -566,6 +566,35 @@ function deliveryWindowNote(payload) {
 }
 
 /**
+ * Labels the catalog accepts for the Fresa field that records which supplies
+ * the visitor asked about. A long or short text field with any of these labels
+ * receives the list ("Floral foam, Tape"). Without one, the list goes into
+ * "Notes for the seller" so it is never lost.
+ */
+export const SUPPLIES_INTEREST_FIELD_LABELS = [
+  'Supplies of interest',
+  'Supplies interest',
+  'Interested in supplies',
+  'Interesado en supplies',
+];
+
+/** @param {Array<any>} fields */
+export function findSuppliesInterestField(fields) {
+  for (const label of SUPPLIES_INTEREST_FIELD_LABELS) {
+    const field = findField(fields, label, 'long_text') ?? findField(fields, label, 'short_text');
+    if (field) return field;
+  }
+  return null;
+}
+
+/** @param {unknown} value */
+function suppliesInterestList(value) {
+  return [...new Set((Array.isArray(value) ? value : [])
+    .map((label) => String(label ?? '').trim())
+    .filter(Boolean))];
+}
+
+/**
  * Builds the body accepted by POST /api/forms/:token/submit.
  *
  * @param {ReturnType<typeof import('./quote-payload').buildQuotePayload>} payload
@@ -611,6 +640,20 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     );
   }
 
+  // A request may carry only supplies (information request, no products).
+  // Fresa still needs the product field to accept an empty selection.
+  const suppliesInterest = suppliesInterestList(payload?.suppliesInterest);
+  const requestedProducts = Array.isArray(payload?.fresa?.products) ? payload.fresa.products : [];
+  const suppliesOnly = requestedProducts.length === 0
+    && (payload?.fresa?.unmappedProducts ?? []).length === 0
+    && suppliesInterest.length > 0;
+  if (suppliesOnly && productField.required === true) {
+    throw new FresaFormConfigurationError(
+      'Supplies-only requests are not available yet. Add at least one product to send this request.',
+      'FRESA_PRODUCTS_REQUIRED',
+    );
+  }
+
   const contact = payload?.contact ?? {};
   const answers = {
     [emailField.id]: payload?.email ?? '',
@@ -621,7 +664,7 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     ...(companyField?.id ? { [companyField.id]: contact.company ?? '' } : {}),
     ...(socialMediaField?.id ? { [socialMediaField.id]: contact.socialMediaProfiles ?? '' } : {}),
     [locationField.id]: locationValue,
-    [productField.id]: buildProductLines(
+    [productField.id]: suppliesOnly ? [] : buildProductLines(
       payload,
       getFresaCatalogConfig(publicFormResponse, productField.id, productField),
     ),
@@ -657,11 +700,17 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     }
   }
 
+  const suppliesField = suppliesInterest.length > 0 ? findSuppliesInterestField(fields) : null;
+  if (suppliesField?.id) answers[suppliesField.id] = suppliesInterest.join(', ');
+
   const notes = [
     contact.company ? `Company: ${contact.company}` : '',
     deliveryWindowNote(payload),
     !socialMediaField && contact.socialMediaProfiles
       ? `Social media profiles (business): ${contact.socialMediaProfiles}`
+      : '',
+    suppliesInterest.length > 0 && !suppliesField?.id
+      ? `Supplies of interest (more information requested): ${suppliesInterest.join(', ')}.`
       : '',
     payload?.fresa?.notes ?? payload?.notes ?? '',
   ].filter(Boolean).join('\n\n');
@@ -706,6 +755,7 @@ export function resolveFresaQuoteAnswerIds(fields, contactFields) {
   return [
     ...Object.values(contactFields),
     ...quoteFields.map(([label, type]) => findField(fields, label, type)),
+    findSuppliesInterestField(fields),
     ...fields.filter((field) => field?.type === 'catalog_items'),
   ].flatMap((field) => typeof field?.id === 'string' ? [field.id] : []);
 }

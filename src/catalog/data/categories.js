@@ -51,9 +51,10 @@ export const CATEGORIES = [
     label: 'Supplies',
     description: 'Floral materials and accessories for your studio.',
     image: { src: '/assets/images/products/supplies.webp', alt: 'Floral supplies' },
-    // Supplies are not part of the product export yet. Rather than invent a
-    // supplies list, the category presents itself and offers a way to ask for
-    // the current one.
+    // Supplies are shown as a showcase laid out like the printed catalog
+    // (data/supplies.js) and are only asked about, never added to the quote
+    // list. They are sold from the Texas product list only; the copy below is
+    // the fallback if the showcase is ever unavailable.
     emptyMessage:
       'Our supplies catalog is not listed online yet. Tell us what you need and our team will send you the current selection.',
     emptyCta: 'Request current supplies catalog',

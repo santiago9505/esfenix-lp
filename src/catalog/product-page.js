@@ -105,6 +105,7 @@ export function renderProductView(ctx, route) {
               currentCategory: product.category,
               hrefFor: (entry) => ctx.hrefFor(entry),
               catalogHref: ctx.catalogHref(false),
+              suppliesHref: ctx.offersSupplies ? ctx.suppliesHref() : null,
             }),
           ]),
 
@@ -730,6 +731,7 @@ function openCategoryDrawer(ctx, product) {
       currentCategory: product?.category ?? null,
       hrefFor: (entry) => ctx.hrefFor(entry),
       catalogHref: ctx.catalogHref(false),
+      suppliesHref: ctx.offersSupplies ? ctx.suppliesHref() : null,
     }),
   });
   return modal;

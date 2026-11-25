@@ -152,6 +152,8 @@ export interface LocationConfig {
   timeZone: string;
   /** "Other U.S. location" asks for state, city and ZIP code. */
   requiresShippingDestination: boolean;
+  /** Shows the supplies showcase (Texas product list only). */
+  offersSupplies: boolean;
   note?: string | null;
 }
 
@@ -243,4 +245,6 @@ export interface QuotePayload {
     };
   };
   notes: string;
+  /** Supplies the visitor asked about (English names), never quote lines. */
+  suppliesInterest?: string[];
 }

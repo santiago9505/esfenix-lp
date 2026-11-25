@@ -19,14 +19,30 @@ function startHeroVideoWhenReady() {
   const connection = navigator.connection ?? navigator.mozConnection ?? navigator.webkitConnection;
   if (connection?.saveData || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
+  // Fade the video in over the poster image only once a real frame is on screen,
+  // so the swap from image to video is a crossfade instead of a hard cut.
+  const reveal = () => video.classList.add('is-playing');
+  const revealOnFirstFrame = () => {
+    let done = false;
+    const once = () => {
+      if (done) return;
+      done = true;
+      reveal();
+    };
+    if ('requestVideoFrameCallback' in video) video.requestVideoFrameCallback(once);
+    // Fallback for browsers without requestVideoFrameCallback, or if no frame is composited.
+    window.setTimeout(once, 300);
+  };
+
   const start = () => {
+    video.addEventListener('playing', revealOnFirstFrame, { once: true });
     for (const source of video.querySelectorAll('source[data-src]')) {
       source.src = source.dataset.src;
       source.removeAttribute('data-src');
     }
     video.load();
     video.play().catch(() => {
-      // The optimized poster remains visible if autoplay is unavailable.
+      // The poster image remains visible if autoplay is unavailable.
     });
   };
 

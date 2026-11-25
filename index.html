@@ -64,7 +64,10 @@
 .hero .hero-media .par{position:absolute;inset:-9% 0;height:118%;will-change:transform}
 .hero .hero-media .ph{width:100%;height:100%;clip-path:inset(0 0 100% 0);transform:scale(1.16);transition:clip-path 1.3s var(--e2),transform 1.7s var(--e2)}
 .hero .hero-media.show .ph{clip-path:inset(0 0 0 0);transform:scale(1)}
-.hero-video{width:100%;height:100%;object-fit:cover;display:block}
+/* La imagen queda debajo y el video aparece encima con un fundido cuando ya tiene frames */
+.hero-poster,.hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.hero-video{opacity:0;transition:opacity 1s var(--e)}
+.hero-video.is-playing{opacity:1}
 .hero .hero-scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(to top,rgba(29,29,27,.5),rgba(29,29,27,.06) 42%,rgba(29,29,27,.18))}
 .hero .hero-inner{position:relative;z-index:2;width:100%;max-width:var(--maxw);margin:0 auto;padding:0 26px;transform:translateY(20px);color:#fff}
 .hero .eyebrow{color:#fff;opacity:.92}
@@ -282,7 +285,7 @@ html[data-lang="es"] .hero-wordmark.wordmark-en{display:none}
 
 <!-- HERO (contenido A · scroll-cover B) -->
 <section class="hero" id="inicio" data-theme="light">
-  <div class="hero-media"><div class="par" data-parallax><div class="ph"><video class="hero-video" muted loop playsinline preload="none" poster="/assets/images/heroimage.webp" data-hero-video><source media="(max-width: 700px)" data-src="/assets/images/Hero-Video.mobile.mp4" type="video/mp4"><source data-src="/assets/images/Hero-Video.optimized.mp4" type="video/mp4"></video></div></div></div>
+  <div class="hero-media"><div class="par" data-parallax><div class="ph"><img class="hero-poster" src="/assets/images/heroimage.webp" alt="" fetchpriority="high"><video class="hero-video" muted loop playsinline preload="none" data-hero-video><source media="(max-width: 700px)" data-src="/assets/images/Hero-Video.mobile.mp4" type="video/mp4"><source data-src="/assets/images/Hero-Video.optimized.mp4" type="video/mp4"></video></div></div></div>
   <div class="hero-scrim"></div>
   <div class="hero-inner">
     <span class="eyebrow" data-reveal>Import and Wholesale Distribution</span>
@@ -329,7 +332,7 @@ html[data-lang="es"] .hero-wordmark.wordmark-en{display:none}
       <p>An exclusive selection of premium blooms, greenery and floral essentials.</p>
     </div>
     <div class="rooms">
-      <a class="room fx-pop" href="/catalog?category=roses"><div class="imgwrap"><div class="ph" data-label="roses" data-img data-src="/assets/images/products/rosa.webp"></div></div><div class="body"><h3>Roses</h3><p>Varieties in different lengths and tones, with controlled freshness.</p><span class="tlink">View category <span class="arr">›</span></span></div></a>
+      <a class="room fx-pop" href="/catalog?category=roses"><div class="imgwrap"><div class="ph" data-label="roses" data-img data-src="/assets/images/products/rosa.webp"></div></div><div class="body"><h3>Roses</h3><p>Varieties in different lengths and tones, kept cool from farm to delivery.</p><span class="tlink">View category <span class="arr">›</span></span></div></a>
       <a class="room fx-pop" href="/catalog?category=other-flowers"><div class="imgwrap"><div class="ph" data-label="other flowers" data-img data-src="/assets/images/girasoles.webp"></div></div><div class="body"><h3>Other Flowers</h3><p>A wide selection of colors and varieties for every occasion.</p><span class="tlink">View category <span class="arr">›</span></span></div></a>
       <a class="room fx-pop" href="/catalog?category=foliage"><div class="imgwrap"><div class="ph" data-label="greenery" data-img data-src="/assets/images/products/follaje.webp"></div></div><div class="body"><h3>Greenery</h3><p>Fresh and decorative foliage to add texture and volume.</p><span class="tlink">View category <span class="arr">›</span></span></div></a>
       <a class="room fx-pop" href="/catalog?category=supplies"><div class="imgwrap"><div class="ph supplies-photo" data-label="supplies" data-img data-src="/assets/images/products/supplies-card.webp"></div></div><div class="body"><h3>Supplies</h3><p>Floral supplies and accessories for florist, event designers, and floral studios.</p><span class="tlink">View category <span class="arr">›</span></span></div></a>

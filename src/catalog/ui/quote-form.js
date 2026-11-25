@@ -20,6 +20,7 @@ import { normalizeSocialMediaUrl } from '../core/social-media-url.js';
 import { normalizeContactPreview, normalizeShippingPreview } from '../core/privacy.js';
 import { resolveSeason } from '../core/season.js';
 import { getCategoryLabel } from '../data/categories.js';
+import { getSupplyItem } from '../data/supplies.js';
 // Temporarily disabled with the advisor portrait block below.
 // import { resolveAdvisor } from '../data/advisors.js';
 import { US_STATE_OPTIONS } from '../data/us-states.js';
@@ -55,6 +56,7 @@ const STEPS = [
 const DELIVERY_STEP_INDEX = 4;
 const REVIEW_STEP_INDEX = STEPS.length - 1;
 const PRODUCTS_REQUIRED_ERROR = 'Select at least one product to continue.';
+const REQUEST_ITEMS_REQUIRED_ERROR = 'Select at least one product or supply to continue.';
 const SAVED_VALUE_MASK = '***';
 const SHIPPING_FIELDS = ['address', 'city', 'state', 'zipCode'];
 const PLURAL_MEASURES = { stem: 'stems', bunch: 'bunches', unit: 'units', pack: 'packs', box: 'boxes' };
@@ -172,9 +174,9 @@ export function renderQuoteFormView(ctx, options) {
   function render(shouldFocus = false) {
     // A resumed draft must not bypass the product step if its separately
     // persisted quote list was cleared or is no longer available.
-    if (!state.result && state.step > 2 && ctx.quoteStore.isEmpty()) {
+    if (!state.result && state.step > 2 && !hasRequestItems()) {
       state.step = 2;
-      state.error = PRODUCTS_REQUIRED_ERROR;
+      state.error = itemsRequiredError();
     }
 
     // Only a real step change animates. Re-rendering after, say, a quantity
@@ -254,6 +256,23 @@ export function renderQuoteFormView(ctx, options) {
     } else {
       lookupLoader.hide();
     }
+  }
+
+  /**
+   * Supplies the visitor asked about, only where the location sells them.
+   * They are not quote lines: they travel with the request as names.
+   */
+  function suppliesForRequest() {
+    return ctx.offersSupplies && ctx.suppliesInterest ? ctx.suppliesInterest.getIds() : [];
+  }
+
+  /** A request needs products, supplies to ask about, or both. */
+  function hasRequestItems() {
+    return !ctx.quoteStore.isEmpty() || suppliesForRequest().length > 0;
+  }
+
+  function itemsRequiredError() {
+    return ctx.offersSupplies ? REQUEST_ITEMS_REQUIRED_ERROR : PRODUCTS_REQUIRED_ERROR;
   }
 
   function persistDraft() {
@@ -691,10 +710,13 @@ export function renderQuoteFormView(ctx, options) {
   function productsStep() {
     syncShippingDestination();
     const items = ctx.quoteStore.getItems();
-    const hasProducts = items.length > 0;
+    const supplies = suppliesForRequest();
+    const canContinue = items.length > 0 || supplies.length > 0;
     const productRows = items.length > 0
       ? el('ul', { class: 'cat-quote-product-list' }, items.map(productRow))
-      : el('div', { class: 'cat-quote-empty-products' }, [
+      : supplies.length > 0
+        ? el('p', { class: 'cat-quote-products-optional', text: 'No products selected. Add flowers or greenery if you also need them.' })
+        : el('div', { class: 'cat-quote-empty-products' }, [
           el('button', {
             type: 'button',
             class: 'cat-quote-empty-products-icon',
@@ -710,8 +732,18 @@ export function renderQuoteFormView(ctx, options) {
       class: 'cat-quote-step-form',
       onSubmit: async (event) => {
         event.preventDefault();
+        if (!hasRequestItems()) {
+          state.error = itemsRequiredError();
+          render(true);
+          return;
+        }
+        // A request for supplies only has no product quantities to check.
+        // Delivery needs the $150 product minimum, so Pickup is the option.
         if (ctx.quoteStore.isEmpty()) {
-          state.error = PRODUCTS_REQUIRED_ERROR;
+          state.pricingKey = quotePricingKey([]);
+          state.pricing = getQuotePricing([], ctx.products);
+          state.step = 3;
+          state.error = '';
           render(true);
           return;
         }
@@ -772,7 +804,44 @@ export function renderQuoteFormView(ctx, options) {
           onClick: openCatalogProductPicker,
         }),
       ]),
-      stepActions('Continue to order type', { disabled: !hasProducts }),
+      supplies.length > 0 ? suppliesSection(supplies) : null,
+      stepActions('Continue to order type', { disabled: !canContinue }),
+    ]);
+  }
+
+  /**
+   * The supplies the visitor asked about. They can be removed here; the
+   * showcase in the catalog is where more are added.
+   * @param {string[]} supplies
+   */
+  function suppliesSection(supplies) {
+    return el('div', { class: 'cat-quote-form-section cat-quote-supplies' }, [
+      el('div', { class: 'cat-quote-section-label' }, [
+        el('span', { text: 'Supplies (more information)' }),
+        el('span', { class: 'cat-quote-section-count', text: `${supplies.length} selected` }),
+      ]),
+      el('p', { class: 'cat-quote-supplies-note', text: 'Supplies change often, so they are not quoted as products. We will confirm availability and options with you.' }),
+      el('ul', { class: 'cat-quote-supplies-list' }, supplies.map((id) => {
+        const label = getSupplyItem(id)?.label ?? id;
+        return el('li', { class: 'cat-quote-supply' }, [
+          el('span', { text: label }),
+          el('button', {
+            type: 'button',
+            class: 'cat-quote-supply-remove',
+            'aria-label': `Remove ${label}`,
+            text: '×',
+            onClick() {
+              ctx.suppliesInterest.remove(id);
+              render();
+            },
+          }),
+        ]);
+      })),
+      el('a', {
+        class: 'cat-linkbtn cat-quote-add-products',
+        href: ctx.suppliesHref(),
+        text: '+ Add or edit supplies',
+      }),
     ]);
   }
 
@@ -780,7 +849,7 @@ export function renderQuoteFormView(ctx, options) {
     if (options.onOpenProductPicker) {
       options.onOpenProductPicker({
         onClose: () => {
-          if (!ctx.quoteStore.isEmpty() && state.error === PRODUCTS_REQUIRED_ERROR) state.error = '';
+          if (hasRequestItems() && [PRODUCTS_REQUIRED_ERROR, REQUEST_ITEMS_REQUIRED_ERROR].includes(state.error)) state.error = '';
           render();
         },
       });
@@ -985,6 +1054,12 @@ export function renderQuoteFormView(ctx, options) {
     const items = ctx.quoteStore.getItems();
     const key = quotePricingKey(items);
     if (state.pricing && state.pricingKey === key) return;
+    // Supplies-only requests have nothing for Fresa to price.
+    if (items.length === 0) {
+      state.pricingKey = key;
+      state.pricing = getQuotePricing([], ctx.products);
+      return;
+    }
     // A pending request for an older selection must not block a fresh request
     // for the current one. The stale response is ignored by the key check
     // below, while the latest request owns the pending state.
@@ -1410,6 +1485,7 @@ export function renderQuoteFormView(ctx, options) {
             },
             shippingDestination: ctx.locationStore.getShippingDestination(),
             notes: state.notes,
+            suppliesInterest: suppliesForRequest().map((id) => getSupplyItem(id)?.label ?? id),
           });
           const savedContactFields = Object.keys(state.contact).filter((key) => (
             state.savedContactPreview?.[key] === true && !state.contact[key]?.trim()
@@ -1417,6 +1493,7 @@ export function renderQuoteFormView(ctx, options) {
           const result = await options.onSubmit(payload, { savedContactFields, useSavedShippingAddress: usingSavedShipping });
           if (result?.ok) {
             ctx.quoteStore.clear();
+            if (payload.suppliesInterest?.length) ctx.suppliesInterest?.clear();
             clearQuoteDraft();
             state.result = result;
           } else {
@@ -1430,6 +1507,8 @@ export function renderQuoteFormView(ctx, options) {
               state.savedShippingPreview = null;
               state.shippingAddressMode = 'manual';
               state.step = DELIVERY_STEP_INDEX;
+            } else if (result?.code === 'FRESA_PRODUCTS_REQUIRED') {
+              state.step = 2;
             } else if (result?.code === 'SLOT_FULL') {
               state.delivery.dateTime = '';
               state.delivery.slot = undefined;
@@ -1482,12 +1561,13 @@ export function renderQuoteFormView(ctx, options) {
       weekday: 'short', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
     }).format(date);
 
-    return el('section', { class: 'cat-quote-review', 'aria-labelledby': 'cat-quote-review-products' }, [
-      el('div', { class: 'cat-quote-review-head' }, [
+    const supplies = suppliesForRequest();
+    return el('section', { class: 'cat-quote-review', 'aria-labelledby': items.length > 0 ? 'cat-quote-review-products' : 'cat-quote-review-supplies' }, [
+      items.length > 0 ? el('div', { class: 'cat-quote-review-head' }, [
         el('h3', { id: 'cat-quote-review-products', text: 'Products' }),
         el('span', { text: `${items.length} product${items.length === 1 ? '' : 's'}` }),
-      ]),
-      el('ul', { class: 'cat-quote-review-items', role: 'list' }, items.map((item) => {
+      ]) : null,
+      items.length > 0 ? el('ul', { class: 'cat-quote-review-items', role: 'list' }, items.map((item) => {
         const image = productMedia(imageForQuoteItem(item, ctx.products), {
           label: item.productName, className: 'cat-quote-review-thumb', width: 96, height: 96,
         });
@@ -1505,7 +1585,14 @@ export function renderQuoteFormView(ctx, options) {
             measure ? el('span', { text: measure }) : null,
           ]),
         ]);
-      })),
+      })) : null,
+      supplies.length > 0 ? el('div', { class: 'cat-quote-review-head cat-quote-review-supplies-head' }, [
+        el('h3', { id: 'cat-quote-review-supplies', text: 'Supplies (more information)' }),
+        el('span', { text: `${supplies.length} selected` }),
+      ]) : null,
+      supplies.length > 0 ? el('ul', { class: 'cat-quote-review-supplies', role: 'list' }, supplies.map((id) => (
+        el('li', { text: getSupplyItem(id)?.label ?? id })
+      ))) : null,
       el('div', { class: 'cat-quote-review-fulfillment' }, [
         el('dl', { class: 'cat-quote-review-details' }, [
           el('div', {}, [

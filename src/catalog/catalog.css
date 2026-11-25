@@ -1045,3 +1045,104 @@
   .cat-quote-schedule-calendar{border-right:0;border-bottom:1px solid var(--c-line)}
   .cat-quote-schedule-slots{padding-top:16px}
 }
+
+/* ---- Supplies showcase -------------------------------------------- */
+
+/* Laid out like the printed catalog: photos resting on a grey band that names
+   them. The two catalog pages sit side by side on wide screens and stack below
+   that. Photos and names toggle interest; the bar asks for more information.
+   With only Supplies chosen the showcase spans the full catalog width. */
+.cat-layout>.cat-supplies-host{grid-column:1 / -1;min-width:0}
+@media(min-width:1000px){
+  .cat-layout.is-supplies{grid-template-rows:auto auto}
+  .cat-layout.is-supplies>.cat-results{grid-row:1}
+  .cat-layout.is-supplies>.cat-results .cat-browse{margin-bottom:0}
+  .cat-layout.is-supplies>.cat-supplies-host{grid-row:2;margin-top:24px}
+}
+
+.sup{--sup-band:#E5DFDC;--sup-gap:14px;display:flex;flex-direction:column;gap:44px;padding-top:44px;border-top:1px solid var(--c-line)}
+.sup-head{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:8px 8px 22px;text-align:center}
+.sup-title{margin:0;padding-left:.5em;font-size:clamp(30px,3.6vw,46px);font-weight:300;line-height:1.1;letter-spacing:.5em;text-transform:uppercase;color:var(--c-text)}
+.sup-intro{max-width:52ch;margin:0;font-size:15px;line-height:1.7;color:var(--c-muted)}
+.sup-intro strong{color:var(--c-text);font-weight:600}
+.sup-spread{display:grid;grid-template-columns:minmax(0,1fr);gap:48px}
+@media(min-width:1100px){.sup-spread{grid-template-columns:repeat(2,minmax(0,1fr));gap:56px}}
+.sup-page{display:flex;flex-direction:column;gap:48px;min-width:0}
+
+.sup-group{container-type:inline-size;display:flex;flex-direction:column;min-width:0}
+/* Every row has the height of a photo a third of the group wide (a little
+   wider than tall), so tiles that span half or one and a half thirds line up
+   with the others. */
+.sup-photos{position:relative;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:calc(((100cqi - 5 * var(--sup-gap)) / 3 + var(--sup-gap)) * .9);gap:var(--sup-gap)}
+.sup-photos::before{content:"";position:absolute;inset:auto 0 0 0;height:22%;background:var(--sup-band)}
+.sup-photo{position:relative;z-index:1;display:block;min-width:0;padding:0;border:0;background:#F3ECE6;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sup-photo{-webkit-user-select:none;user-select:none;touch-action:manipulation}
+/* The image never takes the click or starts a drag, so a slightly moving
+   press still counts as a tap on the photo. */
+.sup-photo img{display:block;width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none;transition:transform var(--d3) var(--e)}
+.sup-photo::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 0 var(--accent);transition:box-shadow var(--d2) var(--e);pointer-events:none}
+.sup-photo[aria-pressed="true"]::after{box-shadow:inset 0 0 0 3px var(--accent)}
+.sup-check{position:absolute;top:10px;right:10px;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.94);color:var(--c-text);font-size:17px;font-weight:600;line-height:1;box-shadow:0 2px 8px -3px rgba(51,47,42,.45);opacity:0;transform:scale(.85);transition:opacity var(--d2) var(--e),transform var(--d2) var(--e),background var(--d2) var(--e)}
+.sup-check::before{content:"+"}
+@media(hover:hover){
+  .sup-photo:hover img{transform:scale(1.03)}
+  .sup-photo:hover .sup-check{opacity:1;transform:none}
+}
+/* Without hover (phones, tablets) the + stays visible as the tap hint. */
+@media(hover:none){.sup-check{opacity:.92;transform:none}}
+.sup-photo[aria-pressed="true"] .sup-check{opacity:1;transform:none;background:var(--accent);color:#fff}
+.sup-photo[aria-pressed="true"] .sup-check::before{content:"✓";font-size:15px}
+
+.sup-caption{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 0;margin:0;padding:18px 16px 22px;background:var(--sup-band);text-align:center}
+.sup-name{padding:5px 8px;border:0;border-radius:6px;background:none;font-family:var(--ff);font-size:13px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--c-text);cursor:pointer;transition:color var(--d2) var(--e)}
+.sup-name:hover{color:var(--accent)}
+.sup-name:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.sup-name[aria-pressed="true"]{color:var(--accent);font-weight:700;text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:5px}
+/* A name covering two photos with only one chosen. */
+.sup-name[aria-pressed="mixed"]{color:var(--accent);text-decoration:underline dotted;text-decoration-thickness:1.5px;text-underline-offset:5px}
+.sup-sep{padding:0 4px;font-size:13px;color:var(--c-muted)}
+
+.sup-bar{position:sticky;bottom:18px;z-index:6;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;width:min(100%,860px);margin:0 auto;padding:12px 14px 12px 26px;background:var(--c-white);border:1px solid var(--c-line);border-radius:var(--r-pill);box-shadow:0 18px 40px -24px rgba(51,47,42,.55);transition:opacity var(--d2) var(--e),transform var(--d2) var(--e),visibility var(--d2)}
+/* The bar only appears once something is chosen, so browsing stays clean. */
+.sup-bar:not(.has-selection){opacity:0;visibility:hidden;transform:translateY(14px);pointer-events:none}
+.sup-bar-copy{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.sup-bar-status{margin:0;font-size:14px;font-weight:600;color:var(--c-text)}
+.sup-bar:not(.has-selection) .sup-bar-status{font-weight:500;color:var(--c-muted)}
+.sup-bar-names{margin:0;overflow:hidden;font-size:12.5px;color:var(--c-muted);white-space:nowrap;text-overflow:ellipsis}
+.sup-bar-actions{display:flex;align-items:center;gap:16px}
+.sup-bar-request{padding:12px 22px;font-size:14px}
+.sup-bar-request:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+/* Two pages side by side on a narrower screen: keep each caption on one line
+   like the printed catalog. */
+@media(min-width:1100px) and (max-width:1279px){
+  .sup-caption{padding:16px 10px 20px}
+  .sup-name{padding:5px 4px;font-size:12px;letter-spacing:.08em}
+  .sup-sep{padding:0 2px;font-size:12px}
+}
+@media(max-width:559px){
+  .sup{--sup-gap:8px;gap:32px;padding-top:32px}
+  .sup-check{top:5px;right:5px;width:22px;height:22px;font-size:14px}
+  .sup-photo[aria-pressed="true"] .sup-check::before{font-size:12px}
+  .sup-spread,.sup-page{gap:32px}
+  .sup-caption{padding:13px 8px 16px}
+  .sup-name{padding:4px 4px;font-size:11.5px;letter-spacing:.08em}
+  .sup-sep{padding:0 2px;font-size:11.5px}
+  .sup-bar{gap:10px;border-radius:20px;padding:12px 12px 12px 16px}
+  .sup-bar-names{display:none}
+  .sup-bar-actions{width:100%;justify-content:space-between;gap:12px}
+  .sup-bar-request{flex:1;padding:11px 14px;font-size:13.5px}
+}
+
+/* Supplies inside the quote form: asked about, never quoted as products. */
+.cat-quote-products-optional{margin:2px 0 0;font-size:14px;color:var(--c-muted)}
+.cat-quote-supplies-note{margin:0;font-size:13px;color:var(--c-muted)}
+.cat-quote-supplies-list{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.cat-quote-supply{display:inline-flex;align-items:center;gap:6px;padding:6px 7px 6px 14px;border:1px solid var(--c-line);border-radius:var(--r-pill);background:var(--c-white);font-size:14px;font-weight:500}
+.cat-quote-supply-remove{width:24px;height:24px;border:0;border-radius:50%;background:var(--c-cream-2);color:var(--c-text);font-size:15px;line-height:1;cursor:pointer}
+.cat-quote-supply-remove:hover{background:var(--c-line)}
+.cat-quote-review-supplies{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:14px 22px 18px;list-style:none}
+.cat-quote-review-items+.cat-quote-review-supplies-head{border-top:1px solid var(--c-line)}
+@media(max-width:559px){.cat-quote-review-supplies{padding-inline:15px}}
+.cat-quote-review-supplies li{padding:6px 12px;border-radius:var(--r-pill);background:var(--c-cream-2);font-size:14px}
+.cat-sidenav-cat-link{text-decoration:none}
+.cat-sidenav-cat-link .cat-sidenav-chevron{transform:none}

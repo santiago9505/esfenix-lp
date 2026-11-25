@@ -55,6 +55,7 @@ function normalizeItemId(value) {
  *   orderType?: string|null,
  *   delivery?: { address?: string, city?: string, state?: string, zipCode?: string, dateTime?: string, timeZone?: string, slot?: { date?: string, start?: string, end?: string, capacity?: number } }|null,
  *   notes?: string,
+ *   suppliesInterest?: string[],
  * }} input
  * @returns {QuotePayload & { fresa: object }}
  */
@@ -109,6 +110,14 @@ export function buildQuotePayload(input) {
       socialMediaProfiles: String(input.contact.socialMediaProfiles ?? '').trim(),
     };
   }
+  // Supplies are requested for information only. They never become product
+  // lines; the names travel separately so Fresa can file them on their own.
+  const suppliesInterest = [...new Set(
+    (Array.isArray(input.suppliesInterest) ? input.suppliesInterest : [])
+      .map((label) => String(label ?? '').trim())
+      .filter(Boolean),
+  )];
+  if (suppliesInterest.length > 0) payload.suppliesInterest = suppliesInterest;
   if (input.delivery?.dateTime) {
     payload.deliveryDateTime = String(input.delivery.dateTime).trim();
   }

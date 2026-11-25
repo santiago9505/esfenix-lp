@@ -40,14 +40,42 @@ import { parseRoute } from './core/url-state.js';
 import { renderCatalogView } from './catalog-page.js';
 import { renderProductView } from './product-page.js';
 import { refreshProductCardImages } from './ui/product-card.js';
-import { resolveLocation } from './data/locations.js';
+import { locationOffersSupplies, resolveLocation } from './data/locations.js';
+import { createSuppliesInterestStore } from './core/supplies-interest.js';
 import { initReveals } from './ui/site-chrome.js';
 import { getClientTimeZone } from './core/timezone.js';
 import { CLIENT_LOOKUP_ENDPOINT } from './data/quote-config.js';
 
+/**
+ * Products the catalog can add to a quote for a location. Supplies are left
+ * out on purpose: they are shown in their own showcase and only asked about
+ * (see data/supplies.js), never added to the quote list.
+ */
+function getQuotableProducts(products, locationId) {
+  return getProductsForLocation(products, locationId).filter((product) => product.category !== 'supplies');
+}
+
+/**
+ * Supplies are a showcase, not product cards, so the Supplies category is
+ * never combined with product categories or product filters: choosing
+ * Supplies shows only Supplies, and choosing another category leaves it.
+ * A mixed link (no previous state) keeps the product categories.
+ * @param {import('./core/types').FilterState} next
+ * @param {import('./core/types').FilterState|null} previous
+ */
+export function exclusiveSupplies(next, previous) {
+  const category = next.category ?? [];
+  if (!category.includes('supplies')) return next;
+  const others = category.filter((value) => value !== 'supplies');
+  const justChoseSupplies = previous !== null && !previous.category.includes('supplies');
+  if (others.length === 0 || justChoseSupplies) return { ...emptyFilters(), category: ['supplies'] };
+  return { ...next, category: others };
+}
+
 export function createApp({ head, body }) {
   const locationStore = createLocationStore();
   const quoteStore = createQuoteStore(locationStore.getId());
+  const suppliesInterest = createSuppliesInterestStore();
   const integration = createQuoteIntegration({ clientLookupEndpoint: CLIENT_LOOKUP_ENDPOINT });
   const clientTimeZone = getClientTimeZone();
 
@@ -80,9 +108,14 @@ export function createApp({ head, body }) {
     get location() {
       return resolveLocation(locationStore.getId());
     },
+    /** Supplies are shown only for the Texas product list. */
+    get offersSupplies() {
+      return locationOffersSupplies(locationStore.getId());
+    },
     clientTimeZone,
     locationStore,
     quoteStore,
+    suppliesInterest,
     route: parseRoute(),
 
     urlState() {
@@ -98,6 +131,12 @@ export function createApp({ head, body }) {
         filters: withFilters ? filters : emptyFilters(),
       });
     },
+    suppliesHref() {
+      return catalogHref({
+        location: locationStore.getId(),
+        filters: { ...emptyFilters(), category: ['supplies'] },
+      });
+    },
 
     categoryTree() {
       return buildCategoryTree(locationProducts);
@@ -109,7 +148,7 @@ export function createApp({ head, body }) {
     },
 
     onToggleFilter(facetId, value) {
-      filters = toggleFilter(filters, facetId, value);
+      filters = exclusiveSupplies(toggleFilter(filters, facetId, value), filters);
       render();
     },
     onClearFilters() {
@@ -117,7 +156,7 @@ export function createApp({ head, body }) {
       render();
     },
     onSetFilters(next) {
-      filters = next;
+      filters = exclusiveSupplies(next, filters);
       render();
     },
 
@@ -126,6 +165,7 @@ export function createApp({ head, body }) {
     openProductPicker,
     openQuote: openSummary,
     startQuoteWithoutProducts,
+    requestSuppliesInfo,
   };
 
   /* ---------------------------------------------------------------- */
@@ -165,7 +205,7 @@ export function createApp({ head, body }) {
     if (options.clearQuote) quoteStore.setLocation(nextLocationId);
     else quoteStore.setLocation(nextLocationId);
 
-    locationProducts = getProductsForLocation(allProducts, nextLocationId);
+    locationProducts = getQuotableProducts(allProducts, nextLocationId);
     // Keep whatever still applies rather than silently showing an empty grid.
     filters = pruneFilters(locationProducts, filters);
     summary?.close();
@@ -326,6 +366,16 @@ export function createApp({ head, body }) {
     openQuoteFormScreen();
   }
 
+  /**
+   * Flow 3 — the visitor asks for more information about supplies. The
+   * supplies stay out of the quote list; the form sends their names, together
+   * with any products already selected.
+   */
+  function requestSuppliesInfo() {
+    if (suppliesInterest.count() === 0 || !locationOffersSupplies(locationStore.getId())) return;
+    openQuoteFormScreen();
+  }
+
   /** Flow 2 — the visitor continues with the products they selected. */
   async function continueToQuote() {
     const items = quoteStore.getItems();
@@ -393,7 +443,13 @@ export function createApp({ head, body }) {
       return;
     }
 
-    const route = parseRoute();
+    let route = parseRoute();
+    // Supplies no longer have product pages. Older links land on the showcase.
+    if (route.view === 'product' && route.category === 'supplies') {
+      filters = { ...emptyFilters(), category: ['supplies'] };
+      window.history.replaceState({}, '', ctx.catalogHref());
+      route = parseRoute();
+    }
     ctx.route = route;
 
     const view =
@@ -425,7 +481,7 @@ export function createApp({ head, body }) {
 
     allProducts = pendingProducts;
     pendingProducts = null;
-    locationProducts = getProductsForLocation(allProducts, locationStore.getId());
+    locationProducts = getQuotableProducts(allProducts, locationStore.getId());
     filters = pruneFilters(locationProducts, filters);
     quoteStore.reconcile(locationProducts);
     summary?.update(quoteStore.getItems());
@@ -447,8 +503,8 @@ export function createApp({ head, body }) {
       return;
     }
 
-    locationProducts = getProductsForLocation(allProducts, locationStore.getId());
-    filters = readFiltersFromUrl(locationProducts);
+    locationProducts = getQuotableProducts(allProducts, locationStore.getId());
+    filters = exclusiveSupplies(readFiltersFromUrl(locationProducts), null);
 
     // A stored quote list belongs to the location it was built in. If the URL
     // asks for a different one, that is the same decision as changing location
@@ -464,7 +520,7 @@ export function createApp({ head, body }) {
         },
         onCancel() {
           locationStore.setLocation(quoteLocation);
-          locationProducts = getProductsForLocation(allProducts, quoteLocation);
+          locationProducts = getQuotableProducts(allProducts, quoteLocation);
           filters = pruneFilters(locationProducts, filters);
           render();
         },
@@ -495,7 +551,7 @@ export function createApp({ head, body }) {
       // Keep the mounted catalog stable while someone browses or chooses a variant.
       pendingProducts = result.products;
       if (parseRoute().view === 'list') {
-        const refreshedLocationProducts = getProductsForLocation(result.products, locationStore.getId());
+        const refreshedLocationProducts = getQuotableProducts(result.products, locationStore.getId());
         const showingEmptySupplies = filters.category.length === 1
           && filters.category[0] === 'supplies'
           && !locationProducts.some((product) => product.category === 'supplies');
@@ -555,8 +611,8 @@ export function createApp({ head, body }) {
   }
 
   window.addEventListener('popstate', () => {
-    locationProducts = getProductsForLocation(allProducts, locationStore.getId());
-    filters = readFiltersFromUrl(locationProducts);
+    locationProducts = getQuotableProducts(allProducts, locationStore.getId());
+    filters = exclusiveSupplies(readFiltersFromUrl(locationProducts), null);
     render();
   });
 

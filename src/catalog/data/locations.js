@@ -25,6 +25,7 @@ export const LOCATIONS = [
     serviceCenter: 'HOUSTON',
     catalogSource: 'houston',
     requiresShippingDestination: false,
+    offersSupplies: true,
     note: null,
   },
   {
@@ -34,6 +35,7 @@ export const LOCATIONS = [
     serviceCenter: 'THE_WOODLANDS',
     catalogSource: 'houston',
     requiresShippingDestination: false,
+    offersSupplies: true,
     // The source data has one Texas product list. The Woodlands is served from
     // it while keeping its own service centre. If Esfenix starts exporting a
     // separate The Woodlands list, add it to scripts/catalog-source.config.mjs
@@ -47,6 +49,7 @@ export const LOCATIONS = [
     serviceCenter: 'SEATTLE',
     catalogSource: 'seattle',
     requiresShippingDestination: false,
+    offersSupplies: false,
     note: null,
   },
   {
@@ -56,6 +59,7 @@ export const LOCATIONS = [
     serviceCenter: 'DMV',
     catalogSource: 'dmv',
     requiresShippingDestination: false,
+    offersSupplies: false,
     note: 'Washington DC · Maryland · Virginia',
   },
   {
@@ -65,6 +69,7 @@ export const LOCATIONS = [
     serviceCenter: 'HOUSTON',
     catalogSource: 'houston',
     requiresShippingDestination: true,
+    offersSupplies: true,
     note: 'Handled by our Houston team.',
   },
 ];
@@ -102,6 +107,15 @@ export function getLocation(id) {
  */
 export function resolveLocation(id) {
   return getLocation(id) ?? /** @type {LocationConfig} */ (getLocation(DEFAULT_LOCATION_ID));
+}
+
+/**
+ * Supplies are sold from the Texas product list only (Houston, The Woodlands
+ * and other U.S. destinations served by Houston), not in Seattle or the DMV.
+ * @param {string|null|undefined} id
+ */
+export function locationOffersSupplies(id) {
+  return resolveLocation(id).offersSupplies === true;
 }
 
 /** @param {string|null|undefined} id */

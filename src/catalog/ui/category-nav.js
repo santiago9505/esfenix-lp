@@ -20,6 +20,7 @@ import { el } from './dom.js';
  *   currentCategory?: string|null,
  *   hrefFor: (product: import('../core/repository').LocationProduct) => string,
  *   catalogHref: string,
+ *   suppliesHref?: string|null,
  * }} options
  */
 export function categoryNav(options) {
@@ -44,6 +45,16 @@ export function categoryNav(options) {
         options,
       });
     }),
+
+    // Supplies have no product pages: the link opens their showcase.
+    options.suppliesHref
+      ? el('section', { class: 'cat-sidenav-section' }, [
+          el('a', { class: 'cat-sidenav-cat cat-sidenav-cat-link', href: options.suppliesHref }, [
+            el('span', { text: getCategoryLabel('supplies') }),
+            el('span', { class: 'cat-sidenav-chevron', 'aria-hidden': 'true', text: '›' }),
+          ]),
+        ])
+      : null,
   ]);
 }
 
