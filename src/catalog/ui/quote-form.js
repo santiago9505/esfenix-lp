@@ -13,6 +13,7 @@
 
 import { formatTimeRange, getDeliverySlots, normalizeDeliveryDate, normalizeDeliveryValue } from '../core/delivery-schedule.js';
 import { buildQuotePayload } from '../core/quote-payload.js';
+import { SUPPLIES_INQUIRY_ORDER_TYPE } from '../core/fresa-form-submission.js';
 import { clearQuoteDraft, readQuoteDraft, writeQuoteDraft } from '../core/quote-draft.js';
 import { getQuotePricing, quotePricingKey } from '../core/pricing.js';
 import { describeQuoteItem } from '../core/format.js';
@@ -20,7 +21,7 @@ import { normalizeSocialMediaUrl } from '../core/social-media-url.js';
 import { normalizeContactPreview, normalizeShippingPreview } from '../core/privacy.js';
 import { resolveSeason } from '../core/season.js';
 import { getCategoryLabel } from '../data/categories.js';
-import { getSupplyItem } from '../data/supplies.js';
+import { getSupplyItem, supplyLabels } from '../data/supplies.js';
 // Temporarily disabled with the advisor portrait block below.
 // import { resolveAdvisor } from '../data/advisors.js';
 import { US_STATE_OPTIONS } from '../data/us-states.js';
@@ -177,6 +178,8 @@ export function renderQuoteFormView(ctx, options) {
     if (!state.result && state.step > 2 && !hasRequestItems()) {
       state.step = 2;
       state.error = itemsRequiredError();
+    } else if (!state.result && isSuppliesInquiry() && [3, DELIVERY_STEP_INDEX].includes(state.step)) {
+      state.step = REVIEW_STEP_INDEX;
     }
 
     // Only a real step change animates. Re-rendering after, say, a quantity
@@ -186,7 +189,11 @@ export function renderQuoteFormView(ctx, options) {
     const isCatalogExit = state.result || state.step === 0;
     const isReview = !state.result && state.step === REVIEW_STEP_INDEX;
     if (isReview && !preparedReview && options.onPrepareSubmission) {
-      const routing = buildQuotePayload({ locationId: ctx.locationId, vip: state.vip });
+      const routing = buildQuotePayload({
+        locationId: ctx.locationId,
+        vip: state.vip,
+        orderType: isSuppliesInquiry() ? SUPPLIES_INQUIRY_ORDER_TYPE : null,
+      });
       // This is only a GET. The submit action still owns the POST and handles
       // any catalog or availability error if preparation did not succeed.
       void options.onPrepareSubmission(routing).catch(() => {});
@@ -200,7 +207,7 @@ export function renderQuoteFormView(ctx, options) {
     topBack.setAttribute('aria-label', isCatalogExit ? 'Back to catalog' : 'Back to previous question');
 
     screen.classList.toggle('is-wide', !state.result && (state.step === 2 || isReview));
-    screenNote.hidden = isReview;
+    screenNote.hidden = isReview || isSuppliesInquiry() || state.result?.inquiry === true;
     layout.classList.toggle('is-done', Boolean(state.result));
     updateRail();
 
@@ -219,7 +226,7 @@ export function renderQuoteFormView(ctx, options) {
       options.onBack();
       return;
     }
-    state.step -= 1;
+    state.step = isSuppliesInquiry() && state.step === REVIEW_STEP_INDEX ? 2 : state.step - 1;
     state.error = '';
     render(true);
   }
@@ -269,6 +276,10 @@ export function renderQuoteFormView(ctx, options) {
   /** A request needs products, supplies to ask about, or both. */
   function hasRequestItems() {
     return !ctx.quoteStore.isEmpty() || suppliesForRequest().length > 0;
+  }
+
+  function isSuppliesInquiry() {
+    return ctx.quoteStore.isEmpty() && suppliesForRequest().length > 0;
   }
 
   function itemsRequiredError() {
@@ -322,13 +333,18 @@ export function renderQuoteFormView(ctx, options) {
     railSteps[DELIVERY_STEP_INDEX].name.textContent = state.orderType === 'Delivery'
       ? 'Delivery information'
       : 'Pickup information';
+    const inquiry = isSuppliesInquiry();
+    rail.setAttribute('aria-label', inquiry ? 'Inquiry progress' : 'Quote progress');
+    railSteps[2].name.textContent = ctx.offersSupplies ? 'Products and supplies' : STEPS[2];
     railSteps.forEach((entry, index) => {
+      const skipped = inquiry && (index === 3 || index === DELIVERY_STEP_INDEX);
       const status = index === state.step ? 'current' : index < state.step ? 'complete' : 'upcoming';
+      entry.item.hidden = skipped;
       entry.item.dataset.state = status;
-      entry.mark.textContent = status === 'complete' ? '✓' : String(index + 1);
+      entry.mark.textContent = status === 'complete' ? '✓' : String(inquiry && index === REVIEW_STEP_INDEX ? 4 : index + 1);
       // Only already-answered steps are reachable; the current one is where
       // the visitor already is.
-      entry.button.disabled = index >= state.step || state.submitPending;
+      entry.button.disabled = skipped || index >= state.step || state.submitPending;
       if (status === 'current') entry.button.setAttribute('aria-current', 'step');
       else entry.button.removeAttribute('aria-current');
     });
@@ -337,8 +353,12 @@ export function renderQuoteFormView(ctx, options) {
   function currentStep(direction) {
     const config = [
       ['What’s the best email for you?', ''],
-      ['Tell us a little about you', 'These details help our team get your quote right.'],
-      ['Select your products', 'Review the products selected from your catalog location.'],
+      ['Tell us a little about you', isSuppliesInquiry()
+        ? 'These details help our team follow up about availability.'
+        : 'These details help our team get your quote right.'],
+      ctx.offersSupplies
+        ? ['Products and supplies', 'Review your products and the supplies you’d like us to check.']
+        : ['Select your products', 'Review the products selected from your catalog location.'],
       ['How would you like to receive it?', 'Choose delivery or pickup so we can plan the next step.'],
       state.orderType === 'Delivery'
         ? ['Where should we deliver?', 'Choose a preferred date and confirm the shipping address for this request.']
@@ -725,7 +745,7 @@ export function renderQuoteFormView(ctx, options) {
             onClick: openCatalogProductPicker,
           }),
           el('strong', { text: 'No products selected yet' }),
-          el('p', { text: 'Add at least one product from the catalog to continue.' }),
+          el('p', { text: ctx.offersSupplies ? REQUEST_ITEMS_REQUIRED_ERROR : 'Add at least one product from the catalog to continue.' }),
         ]);
 
     return el('form', {
@@ -737,12 +757,8 @@ export function renderQuoteFormView(ctx, options) {
           render(true);
           return;
         }
-        // A request for supplies only has no product quantities to check.
-        // Delivery needs the $150 product minimum, so Pickup is the option.
-        if (ctx.quoteStore.isEmpty()) {
-          state.pricingKey = quotePricingKey([]);
-          state.pricing = getQuotePricing([], ctx.products);
-          state.step = 3;
+        if (isSuppliesInquiry()) {
+          state.step = REVIEW_STEP_INDEX;
           state.error = '';
           render(true);
           return;
@@ -804,8 +820,8 @@ export function renderQuoteFormView(ctx, options) {
           onClick: openCatalogProductPicker,
         }),
       ]),
-      supplies.length > 0 ? suppliesSection(supplies) : null,
-      stepActions('Continue to order type', { disabled: !canContinue }),
+      ctx.offersSupplies ? suppliesSection(supplies) : null,
+      stepActions(isSuppliesInquiry() ? 'Review supply inquiry' : 'Continue to order type', { disabled: !canContinue }),
     ]);
   }
 
@@ -817,11 +833,11 @@ export function renderQuoteFormView(ctx, options) {
   function suppliesSection(supplies) {
     return el('div', { class: 'cat-quote-form-section cat-quote-supplies' }, [
       el('div', { class: 'cat-quote-section-label' }, [
-        el('span', { text: 'Supplies (more information)' }),
+        el('span', { text: 'Supplies to check' }),
         el('span', { class: 'cat-quote-section-count', text: `${supplies.length} selected` }),
       ]),
-      el('p', { class: 'cat-quote-supplies-note', text: 'Supplies change often, so they are not quoted as products. We will confirm availability and options with you.' }),
-      el('ul', { class: 'cat-quote-supplies-list' }, supplies.map((id) => {
+      el('p', { class: 'cat-quote-supplies-note', text: 'We’ll check availability and confirm your options before adding any supplies to a quote.' }),
+      supplies.length > 0 ? el('ul', { class: 'cat-quote-supplies-list' }, supplies.map((id) => {
         const label = getSupplyItem(id)?.label ?? id;
         return el('li', { class: 'cat-quote-supply' }, [
           el('span', { text: label }),
@@ -836,11 +852,11 @@ export function renderQuoteFormView(ctx, options) {
             },
           }),
         ]);
-      })),
+      })) : null,
       el('a', {
         class: 'cat-linkbtn cat-quote-add-products',
         href: ctx.suppliesHref(),
-        text: '+ Add or edit supplies',
+        text: supplies.length > 0 ? '+ Add or edit supplies' : '+ Select supplies',
       }),
     ]);
   }
@@ -1395,11 +1411,12 @@ export function renderQuoteFormView(ctx, options) {
   }
 
   function detailsStep() {
+    const inquiry = isSuppliesInquiry();
     const button = el('button', {
       type: 'submit',
       class: 'btn btn-primary cat-quote-submit',
       disabled: state.submitPending,
-      text: state.submitPending ? 'Sending request…' : 'Request my quote',
+      text: state.submitPending ? 'Sending request…' : inquiry ? 'Send supply inquiry' : 'Request my quote',
     });
 
     return el('form', {
@@ -1410,7 +1427,7 @@ export function renderQuoteFormView(ctx, options) {
         state.notes = event.currentTarget.querySelector('textarea[name="notes"]').value.trim();
         persistDraft();
 
-        const orderType = state.orderType === 'Delivery' ? 'Delivery' : 'Pickup';
+        const orderType = inquiry ? SUPPLIES_INQUIRY_ORDER_TYPE : state.orderType;
         if (orderType === 'Delivery' && resolveSeason(state.delivery.dateTime).type === 'HIGH') {
           state.orderType = 'Pickup';
           state.delivery.slot = undefined;
@@ -1426,10 +1443,10 @@ export function renderQuoteFormView(ctx, options) {
           mode: orderType === 'Delivery' ? 'delivery' : 'pickup',
           isDateAllowed,
         };
-        const validDateTime = orderType === 'Delivery'
+        const validDateTime = inquiry ? '' : orderType === 'Delivery'
           ? normalizeDeliveryValue(state.delivery.dateTime, currentScheduleOptions)
           : normalizeDeliveryDate(state.delivery.dateTime, currentScheduleOptions);
-        if (!validDateTime) {
+        if (!inquiry && !validDateTime) {
           state.orderType = orderType;
           state.delivery.dateTime = '';
           state.error = orderType === 'Delivery'
@@ -1439,18 +1456,21 @@ export function renderQuoteFormView(ctx, options) {
           render(true);
           return;
         }
-        state.delivery.dateTime = validDateTime;
-        state.delivery.slot = orderType === 'Delivery'
+        const slot = orderType === 'Delivery'
           ? getDeliverySlots(validDateTime.slice(0, 10), currentScheduleOptions)
             .find((slot) => slot.value === validDateTime)
           : undefined;
-        if (orderType === 'Delivery' && !state.delivery.slot) {
+        if (orderType === 'Delivery' && !slot) {
           state.orderType = orderType;
           state.delivery.dateTime = '';
           state.error = 'Please choose an available delivery date and time window again.';
           state.step = 4;
           render(true);
           return;
+        }
+        if (!inquiry) {
+          state.delivery.dateTime = validDateTime;
+          state.delivery.slot = slot;
         }
 
         const usingSavedShipping = orderType === 'Delivery' && useSavedShippingAddress();
@@ -1467,8 +1487,6 @@ export function renderQuoteFormView(ctx, options) {
         state.error = '';
         setSubmitBusy(true);
 
-        state.orderType = orderType;
-
         try {
           const payload = buildQuotePayload({
             locationId: ctx.locationId,
@@ -1480,12 +1498,14 @@ export function renderQuoteFormView(ctx, options) {
             orderType,
             delivery: {
               ...state.delivery,
+              dateTime: validDateTime,
+              slot,
               ...(usingSavedShipping && { address: '', city: '', state: '', zipCode: '' }),
               timeZone: resolveLocation(ctx.locationId).timeZone,
             },
             shippingDestination: ctx.locationStore.getShippingDestination(),
             notes: state.notes,
-            suppliesInterest: suppliesForRequest().map((id) => getSupplyItem(id)?.label ?? id),
+            suppliesInterest: supplyLabels(suppliesForRequest()),
           });
           const savedContactFields = Object.keys(state.contact).filter((key) => (
             state.savedContactPreview?.[key] === true && !state.contact[key]?.trim()
@@ -1495,7 +1515,7 @@ export function renderQuoteFormView(ctx, options) {
             ctx.quoteStore.clear();
             if (payload.suppliesInterest?.length) ctx.suppliesInterest?.clear();
             clearQuoteDraft();
-            state.result = result;
+            state.result = { ...result, inquiry };
           } else {
             if (result?.code === 'SAVED_CONTACT_UNAVAILABLE') {
               if (options.onLookupClient) {
@@ -1507,7 +1527,7 @@ export function renderQuoteFormView(ctx, options) {
               state.savedShippingPreview = null;
               state.shippingAddressMode = 'manual';
               state.step = DELIVERY_STEP_INDEX;
-            } else if (result?.code === 'FRESA_PRODUCTS_REQUIRED') {
+            } else if (result?.code === 'FRESA_PRODUCTS_REQUIRED' || result?.code === 'FRESA_SUPPLIES_OPTIONS_CHANGED') {
               state.step = 2;
             } else if (result?.code === 'SLOT_FULL') {
               state.delivery.dateTime = '';
@@ -1536,7 +1556,7 @@ export function renderQuoteFormView(ctx, options) {
       ]),
       el('div', { class: 'cat-quote-form-actions cat-quote-review-actions' }, [
         button,
-        el('p', { text: NO_PAYMENT_NOTE }),
+        el('p', { text: inquiry ? 'We’ll confirm availability by email.' : NO_PAYMENT_NOTE }),
       ]),
     ]);
   }
@@ -1546,14 +1566,15 @@ export function renderQuoteFormView(ctx, options) {
     const { delivery, orderType } = state;
     const location = resolveLocation(ctx.locationId);
     const outsideArea = location.requiresShippingDestination;
-    const isDelivery = orderType === 'Delivery';
+    const inquiry = isSuppliesInquiry();
+    const isDelivery = !inquiry && orderType === 'Delivery';
     const city = [delivery.city, [delivery.state, delivery.zipCode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
     const destination = isDelivery && useSavedShippingAddress()
       ? maskedShippingAddress()
       : (isDelivery || outsideArea ? [delivery.address, city].filter(Boolean).join(', ') : location.label);
     const dateKey = delivery.dateTime.slice(0, 10);
     const date = new Date(`${dateKey}T12:00:00Z`);
-    const hasDate = !Number.isNaN(date.getTime());
+    const hasDate = !inquiry && !Number.isNaN(date.getTime());
     const slot = isDelivery && hasDate
       ? getDeliverySlots(dateKey, { timeZone: location.timeZone }).find(({ value }) => value === delivery.dateTime)
       : null;
@@ -1587,7 +1608,7 @@ export function renderQuoteFormView(ctx, options) {
         ]);
       })) : null,
       supplies.length > 0 ? el('div', { class: 'cat-quote-review-head cat-quote-review-supplies-head' }, [
-        el('h3', { id: 'cat-quote-review-supplies', text: 'Supplies (more information)' }),
+        el('h3', { id: 'cat-quote-review-supplies', text: 'Supplies to check' }),
         el('span', { text: `${supplies.length} selected` }),
       ]) : null,
       supplies.length > 0 ? el('ul', { class: 'cat-quote-review-supplies', role: 'list' }, supplies.map((id) => (
@@ -1596,7 +1617,7 @@ export function renderQuoteFormView(ctx, options) {
       el('div', { class: 'cat-quote-review-fulfillment' }, [
         el('dl', { class: 'cat-quote-review-details' }, [
           el('div', {}, [
-            el('dt', { text: outsideArea ? 'Requested destination' : isDelivery ? 'Requested delivery' : 'Pickup' }),
+            el('dt', { text: outsideArea ? 'Requested destination' : inquiry ? 'Location' : isDelivery ? 'Requested delivery' : 'Pickup' }),
             el('dd', {}, [
               hasDate ? el('time', {
                 datetime: dateKey,
@@ -1611,11 +1632,11 @@ export function renderQuoteFormView(ctx, options) {
             ]),
           ]),
           el('div', {}, [
-            el('dt', { text: 'Quote email' }),
+            el('dt', { text: inquiry ? 'Contact email' : 'Quote email' }),
             el('dd', { text: state.email }),
           ]),
         ]),
-        outsideArea ? el('p', { class: 'cat-quote-review-outside-area', text: OUTSIDE_AREA_NOTICE }) : null,
+        outsideArea && !inquiry ? el('p', { class: 'cat-quote-review-outside-area', text: OUTSIDE_AREA_NOTICE }) : null,
       ]),
     ]);
   }
@@ -1624,9 +1645,11 @@ export function renderQuoteFormView(ctx, options) {
     return el('div', { class: 'cat-quote-success' }, [
       el('div', { class: 'cat-quote-success-icon', text: '✓' }),
       el('p', { class: 'cat-quote-step-count', text: 'Request received' }),
-      el('h2', { id: 'cat-quote-title', text: 'Your quote request is on its way.' }),
-      el('p', { text: 'Your request was recorded. You can return to the catalog whenever you’re ready.' }),
-      ctx.location.requiresShippingDestination ? el('p', { text: OUTSIDE_AREA_NOTICE }) : null,
+      el('h2', { id: 'cat-quote-title', text: state.result.inquiry ? 'We received your supply inquiry.' : 'Your quote request is on its way.' }),
+      el('p', { text: state.result.inquiry
+        ? 'Our team will check availability and follow up by email.'
+        : 'Your request was recorded. You can return to the catalog whenever you’re ready.' }),
+      ctx.location.requiresShippingDestination && !state.result.inquiry ? el('p', { text: OUTSIDE_AREA_NOTICE }) : null,
     ]);
   }
 

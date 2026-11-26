@@ -7,13 +7,16 @@ import { createSuppliesInterestStore } from '../src/catalog/core/supplies-intere
 import { exclusiveSupplies } from '../src/catalog/app.js';
 import { emptyFilters } from '../src/catalog/core/facets.js';
 import { buildQuotePayload } from '../src/catalog/core/quote-payload.js';
+import { createQuoteIntegration } from '../src/catalog/core/quote-integration.js';
 import {
   buildFresaFormSubmission,
   resolveFresaContactFields,
   resolveFresaQuoteAnswerIds,
+  SUPPLIES_INQUIRY_ORDER_TYPE,
 } from '../src/catalog/core/fresa-form-submission.js';
+import { submitQuoteWithSavedContact } from '../worker/src/saved-contact.js';
 
-function formResponse({ productsRequired = false, suppliesField = false } = {}) {
+function formResponse({ productsRequired = false, suppliesField } = {}) {
   return {
     success: true,
     listId: 'esfenix-orders',
@@ -45,11 +48,15 @@ function formResponse({ productsRequired = false, suppliesField = false } = {}) 
         { id: 'type', label: 'Type of Order', type: 'select', options: [
           { value: 'delivery', label: 'Delivery' },
           { value: 'pickup', label: 'Pickup' },
+          ...(suppliesField === 'multiselect' ? [{ value: 'supplies_inquiry', label: SUPPLIES_INQUIRY_ORDER_TYPE }] : []),
         ] },
         { id: 'delivery', label: 'Delivery', type: 'date' },
         { id: 'pickup', label: 'pickup', type: 'date' },
         { id: 'notes', label: 'Notes for the seller', type: 'long_text' },
-        ...(suppliesField ? [{ id: 'supplies', label: 'Supplies of interest', type: 'long_text' }] : []),
+        ...(suppliesField ? [{
+          id: 'supplies', label: 'Supplies of interest', type: suppliesField,
+          options: SUPPLY_ITEMS.map(({ id, label }) => ({ value: id, label })),
+        }] : []),
       ],
     },
   };
@@ -166,7 +173,7 @@ test('a supplies-only request goes to Notes for the seller when Fresa has no sup
 });
 
 test('a dedicated Supplies of interest field receives the list instead of the notes', () => {
-  const submission = buildFresaFormSubmission(suppliesPayload([roseLine]), formResponse({ suppliesField: true }));
+  const submission = buildFresaFormSubmission(suppliesPayload([roseLine]), formResponse({ suppliesField: 'long_text' }));
   assert.equal(submission.answers.supplies, 'Floral foam, Ribbons');
   assert.equal(submission.answers.products.length, 1);
   assert.doesNotMatch(submission.answers.notes ?? '', /Supplies of interest/);
@@ -181,8 +188,70 @@ test('a required Fresa product field stops a supplies-only request with a clear 
   assert.equal(withProducts.answers.products.length, 1);
 });
 
-test('saved-contact submissions keep the supplies field answer', () => {
-  const { fields } = formResponse({ suppliesField: true }).form;
+test('labels use configured option values alongside the existing product lines', () => {
+  const form = formResponse({ suppliesField: 'multiselect' });
+  const payload = suppliesPayload([roseLine]);
+  const plainQuote = buildFresaFormSubmission({ ...payload, suppliesInterest: [] }, form);
+  const mixedQuote = buildFresaFormSubmission(payload, form);
+  assert.deepEqual(mixedQuote.answers, { ...plainQuote.answers, supplies: ['floral-foam', 'ribbons'] });
+  assert.equal(mixedQuote.answers.products.length, 1);
+});
+
+test('a supply inquiry submits labels without a pickup or delivery reservation', () => {
+  const form = formResponse({ suppliesField: 'multiselect' });
+  const inquiry = { ...suppliesPayload(), orderType: SUPPLIES_INQUIRY_ORDER_TYPE };
+  const { answers } = buildFresaFormSubmission(inquiry, form);
+  assert.equal(answers.type, 'supplies_inquiry');
+  assert.deepEqual(answers.supplies, ['floral-foam', 'ribbons']);
+  assert.deepEqual(answers.products, []);
+  assert.equal(Object.hasOwn(answers, 'pickup'), false);
+  assert.equal(Object.hasOwn(answers, 'delivery'), false);
+  assert.throws(() => buildFresaFormSubmission(inquiry, formResponse()),
+    { code: 'FRESA_SUPPLIES_UNAVAILABLE' });
+  assert.throws(() => buildFresaFormSubmission({ ...inquiry, suppliesInterest: ['Removed item'] }, form),
+    { code: 'FRESA_SUPPLIES_OPTIONS_CHANGED' });
+});
+
+test('the public adapter submits a supply inquiry using only form metadata', async () => {
+  const form = formResponse({ suppliesField: 'multiselect' });
+  delete form.form.fields.find(field => field.id === 'products').catalogConfig.items;
+  const inquiry = { ...suppliesPayload(), orderType: SUPPLIES_INQUIRY_ORDER_TYPE };
+  const calls = [];
+  const integration = createQuoteIntegration({
+    formUrl: 'https://example.test/f/quote-test',
+    reserveDeliverySlotImpl: () => assert.fail('An availability inquiry must not reserve a slot'),
+    fetchImpl: async (url, request) => {
+      calls.push(new URL(url).pathname + new URL(url).search);
+      if (url.endsWith('?catalog=metadata')) return Response.json(form);
+      assert.equal(request.method, 'POST');
+      assert.deepEqual(JSON.parse(request.body).answers.supplies, ['floral-foam', 'ribbons']);
+      return Response.json({ success: true, taskId: 'test-order' });
+    },
+  });
+  await integration.prepareSubmission(inquiry);
+  assert.equal((await integration.start(inquiry)).ok, true);
+  assert.deepEqual(calls, ['/api/forms/quote-test?catalog=metadata', '/api/forms/quote-test/submit']);
+});
+
+test('saved-contact submissions keep the supplies field answer', async () => {
+  const form = formResponse({ suppliesField: 'multiselect' });
+  const { fields } = form.form;
   const ids = resolveFresaQuoteAnswerIds(fields, resolveFresaContactFields(fields));
   assert.ok(ids.includes('supplies'));
+  const inquiry = { ...suppliesPayload(), orderType: SUPPLIES_INQUIRY_ORDER_TYPE };
+  const { answers, meta } = buildFresaFormSubmission(inquiry, form);
+  let submitted;
+  const result = await submitQuoteWithSavedContact({
+    body: { formToken: 'quote-test', savedContactFields: ['firstName'], answers: { ...answers, first: '' }, meta },
+    email: inquiry.email,
+    client: { found: true, vip: false, profile: { 'First Name': 'Ana' } },
+    formUrl: 'https://example.test/f/quote-test',
+    fetchImpl: async (url, request) => {
+      if (url.endsWith('?catalog=metadata')) return Response.json(form);
+      submitted = JSON.parse(request.body).answers;
+      return Response.json({ success: true, taskId: 'test-order' });
+    },
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(submitted, answers);
 });

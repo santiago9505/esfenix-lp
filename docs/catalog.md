@@ -217,7 +217,7 @@ uses lists as categories, from `listName`:
 | `Roses` | `roses` |
 | `Other Flowers` | `other-flowers` |
 | `Greenery` | `foliage` |
-| — | `supplies` (no data yet; the category presents itself and offers a CTA) |
+| — | `supplies` (a selectable showcase for availability inquiries at Texas-served locations) |
 
 The interface keeps the current category presentation and never invents a
 missing category. If a new grouping is needed, authorize the corresponding

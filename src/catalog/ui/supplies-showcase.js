@@ -36,7 +36,7 @@ export function suppliesShowcase(options) {
     el('p', { class: 'sup-intro' }, [
       el('strong', { text: 'Ask us about supplies.' }),
       el('span', {
-        text: ' Our supplies change often and are not always in stock, so they are not added to your quote list. Tap the ones you are interested in and request more information. We will confirm what is available.',
+        text: ' Select the supplies you’re interested in. We’ll check availability and confirm your options before adding any supplies to a quote.',
       }),
     ]),
   ]);
@@ -56,7 +56,7 @@ export function suppliesShowcase(options) {
   const request = el('button', {
     type: 'button',
     class: 'btn btn-primary sup-bar-request',
-    text: 'Request more information',
+    text: 'Ask about availability',
     onClick: () => {
       if (store.count() > 0) options.onRequest();
     },
@@ -105,14 +105,12 @@ export function suppliesShowcase(options) {
 function supplyGroup(group, register, store) {
   const photos = el('div', { class: 'sup-photos' }, group.tiles.map((tile) => {
     const label = getSupplyItem(tile.item)?.label ?? tile.item;
-    // The names below are the keyboard controls; each photo is a larger
-    // target for its own supply, so it stays out of the tab order.
+    // Each photo is individually selectable, including items that share a caption.
     return register(el('button', {
       type: 'button',
       class: 'sup-photo',
       style: `grid-column:span ${tile.span}`,
-      tabindex: '-1',
-      'aria-hidden': 'true',
+      'aria-label': label,
       title: label,
       dataset: { supply: tile.item },
       onClick: () => store.toggle(tile.item),

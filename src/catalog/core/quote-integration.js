@@ -29,6 +29,7 @@ import {
   resolveFresaFormApi,
   resolveFresaProductFieldId,
   resolveFresaSubmitError,
+  SUPPLIES_INQUIRY_ORDER_TYPE,
   validateFresaQuoteProducts,
 } from './fresa-form-submission.js';
 import { normalizeContactPreview, normalizeShippingPreview } from './privacy.js';
@@ -73,13 +74,14 @@ export function createQuoteIntegration(options = {}) {
   function getFormCatalog(payload) {
     // The form's product field depends on location and VIP routing. Quantities
     // and selected units are validated anew against those rows on every call.
-    const key = JSON.stringify([payload?.fresa?.location, payload?.vip === true]);
+    const metadataOnly = payload?.orderType === SUPPLIES_INQUIRY_ORDER_TYPE;
+    const key = JSON.stringify([payload?.fresa?.location, payload?.vip === true, metadataOnly]);
     const cached = formCatalogs.get(key);
     if (cached && Date.now() < cached.expiresAt) return cached.request;
 
     const { formApiUrl } = resolveFresaFormApi(formUrl);
     const entry = { expiresAt: Infinity, request: null };
-    entry.request = loadFresaFormData({ formApiUrl, payload, doFetch, timeoutMs })
+    entry.request = loadFresaFormData({ formApiUrl, payload, metadataOnly, doFetch, timeoutMs })
       .then((data) => {
         entry.expiresAt = Date.now() + FORM_CATALOG_TTL_MS;
         return data;
@@ -722,7 +724,7 @@ async function readJson(response) {
  *
  * @param {{ formApiUrl: string, payload: any, doFetch: typeof fetch, timeoutMs: number }} options
  */
-async function loadFresaFormData({ formApiUrl, payload, doFetch, timeoutMs }) {
+async function loadFresaFormData({ formApiUrl, payload, metadataOnly, doFetch, timeoutMs }) {
   async function readForm(url) {
     const response = await fetchWithTimeout(doFetch, url.toString(), {
       method: 'GET',
@@ -744,7 +746,7 @@ async function loadFresaFormData({ formApiUrl, payload, doFetch, timeoutMs }) {
     return null;
   });
   if (metadata) {
-    if (hasUsableFresaCatalog(metadata, payload)) return metadata;
+    if (metadataOnly || hasUsableFresaCatalog(metadata, payload)) return metadata;
     const productFieldId = resolveFresaProductFieldId(payload, metadata);
     const scopedFormUrl = new URL(formApiUrl);
     scopedFormUrl.searchParams.set('catalogFieldId', productFieldId);

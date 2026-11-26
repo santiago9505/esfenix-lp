@@ -565,24 +565,23 @@ function deliveryWindowNote(payload) {
   return `Requested delivery window: ${date} ${start}–${end}${timeZone ? ` (${timeZone})` : ''}.`;
 }
 
-/**
- * Labels the catalog accepts for the Fresa field that records which supplies
- * the visitor asked about. A long or short text field with any of these labels
- * receives the list ("Floral foam, Tape"). Without one, the list goes into
- * "Notes for the seller" so it is never lost.
- */
-export const SUPPLIES_INTEREST_FIELD_LABELS = [
+export const SUPPLIES_INQUIRY_ORDER_TYPE = 'Supplies inquiry';
+
+const SUPPLIES_INTEREST_FIELD_LABELS = [
   'Supplies of interest',
   'Supplies interest',
   'Interested in supplies',
   'Interesado en supplies',
+  'Insumos de interés',
 ];
 
-/** @param {Array<any>} fields */
+/** The public form exposes labels as a multiselect. Prefer it over legacy text. */
 export function findSuppliesInterestField(fields) {
-  for (const label of SUPPLIES_INTEREST_FIELD_LABELS) {
-    const field = findField(fields, label, 'long_text') ?? findField(fields, label, 'short_text');
-    if (field) return field;
+  for (const type of ['multiselect', 'long_text', 'short_text']) {
+    for (const label of SUPPLIES_INTEREST_FIELD_LABELS) {
+      const field = findField(fields, label, type);
+      if (field?.id && field.readOnly !== true && field.hidden !== true) return field;
+    }
   }
   return null;
 }
@@ -622,8 +621,22 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     );
   }
 
-  const orderType = payload?.orderType === 'Delivery' ? 'Delivery' : 'Pickup';
+  const suppliesInterest = suppliesInterestList(payload?.suppliesInterest);
+  const requestedProducts = Array.isArray(payload?.fresa?.products) ? payload.fresa.products : [];
+  const suppliesOnly = requestedProducts.length === 0
+    && (payload?.fresa?.unmappedProducts ?? []).length === 0
+    && suppliesInterest.length > 0;
+  const suppliesField = suppliesInterest.length > 0 ? findSuppliesInterestField(fields) : null;
+  const orderType = payload?.orderType === SUPPLIES_INQUIRY_ORDER_TYPE ? SUPPLIES_INQUIRY_ORDER_TYPE
+    : payload?.orderType === 'Delivery' ? 'Delivery' : 'Pickup';
   const orderTypeValue = findOptionValue(orderTypeField, orderType);
+  if (orderType === SUPPLIES_INQUIRY_ORDER_TYPE
+    && (!suppliesOnly || suppliesField?.type !== 'multiselect' || !orderTypeValue)) {
+    throw new FresaFormConfigurationError(
+      'We couldn’t submit your supply inquiry right now. Please try again.',
+      'FRESA_SUPPLIES_UNAVAILABLE',
+    );
+  }
   if (!orderTypeValue) {
     throw new FresaFormConfigurationError(
       `The order type "${orderType}" is not available in Fresa.`,
@@ -642,11 +655,6 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
 
   // A request may carry only supplies (information request, no products).
   // Fresa still needs the product field to accept an empty selection.
-  const suppliesInterest = suppliesInterestList(payload?.suppliesInterest);
-  const requestedProducts = Array.isArray(payload?.fresa?.products) ? payload.fresa.products : [];
-  const suppliesOnly = requestedProducts.length === 0
-    && (payload?.fresa?.unmappedProducts ?? []).length === 0
-    && suppliesInterest.length > 0;
   if (suppliesOnly && productField.required === true) {
     throw new FresaFormConfigurationError(
       'Supplies-only requests are not available yet. Add at least one product to send this request.',
@@ -677,31 +685,38 @@ export function buildFresaFormSubmission(payload, publicFormResponse) {
     for (const [name, field] of Object.entries(resolveFresaShippingFields(fields))) {
       answers[field.id] = payload?.delivery?.[name] ?? '';
     }
-  } else {
+  } else if (orderType === 'Pickup') {
     const pickupField = requireField(fields, 'pickup', 'date');
     answers[pickupField.id] = payload?.deliveryDateTime ?? '';
+  }
 
-    // Other U.S. location still needs its destination when the customer
-    // chooses Pickup. Fresa hides the delivery address controls for Pickup,
-    // but accepting these answers preserves the routing data collected by the
-    // catalog for new customers instead of silently dropping it. Branch
-    // pickups do not need a second destination, so leave those submissions
-    // unchanged.
-    if (payload?.selectedLocation === 'OTHER') {
-      for (const [label, value] of [
-        ['City', payload?.delivery?.city],
-        ['State', payload?.delivery?.state],
-        ['Zip Code', payload?.delivery?.zipCode],
-      ]) {
-        const field = findField(fields, label, 'short_text');
-        const text = String(value ?? '').trim();
-        if (field?.id && text) answers[field.id] = text;
-      }
+  // Keep the destination collected for nationwide requests without delivery.
+  if (orderType !== 'Delivery' && payload?.selectedLocation === 'OTHER') {
+    for (const [label, value] of [
+      ['City', payload?.delivery?.city],
+      ['State', payload?.delivery?.state],
+      ['Zip Code', payload?.delivery?.zipCode],
+    ]) {
+      const field = findField(fields, label, 'short_text');
+      const text = String(value ?? '').trim();
+      if (field?.id && text) answers[field.id] = text;
     }
   }
 
-  const suppliesField = suppliesInterest.length > 0 ? findSuppliesInterestField(fields) : null;
-  if (suppliesField?.id) answers[suppliesField.id] = suppliesInterest.join(', ');
+  if (suppliesField?.type === 'multiselect') {
+    const hasOptions = (suppliesField.options ?? []).length > 0;
+    const values = suppliesInterest.map((label) => findOptionValue(suppliesField, label)
+      ?? (!hasOptions && suppliesField.allowCreate === true ? label : null));
+    if (values.includes(null)) {
+      throw new FresaFormConfigurationError(
+        'Some selected supplies have changed. Please review your selection and try again.',
+        'FRESA_SUPPLIES_OPTIONS_CHANGED',
+      );
+    }
+    answers[suppliesField.id] = [...new Set(values)];
+  } else if (suppliesField?.id) {
+    answers[suppliesField.id] = suppliesInterest.join(', ');
+  }
 
   const notes = [
     contact.company ? `Company: ${contact.company}` : '',
