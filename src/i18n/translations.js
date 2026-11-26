@@ -163,7 +163,7 @@ export const ES = Object.freeze({
   'Your next order': 'Tu próximo pedido',
   'starts': 'comienza',
   'here': 'aquí',
-  "Tell us what you need and we'll send you availability, pricing and shipping options. No commitment.": 'Cuéntanos qué necesitas y te enviaremos disponibilidad, precios y opciones de envío.',
+  "Tell us what you need and we'll send you availability, pricing and shipping options.": 'Cuéntanos qué necesitas y te enviaremos disponibilidad, precios y opciones de envío.',
   'Recognition': 'Reconocimientos',
   'Awards and': 'Premios y',
   'certifications': 'certificaciones',
